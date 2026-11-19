@@ -10,11 +10,27 @@ body{margin:0;background:#111;color:#ddd;font-family:Galmuri11,monospace;display
 canvas{width:min(100vw,1200px);image-rendering:pixelated;background:#000}
 #bar{width:min(100vw,1200px);display:flex;flex-wrap:wrap;gap:2px;padding:.5rem;box-sizing:border-box}
 #bar img{width:30px;height:30px;image-rendering:pixelated}
+/* 터치 기기: 화면 아래 양쪽에 스틱, 오른쪽에 버튼. 캔버스는 높이에 맞춰 줄인다 */
+#touch{display:none}
+body.touch{touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+body.touch canvas{width:min(100vw,calc((100vh - 8px) * 880 / 492));touch-action:none}
+body.touch #touch{display:block;position:fixed;inset:0;pointer-events:none;z-index:5}
+@media (orientation:portrait){body.touch canvas{width:100vw}}
+.stick{position:absolute;bottom:18px;width:136px;height:136px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.22);pointer-events:auto;touch-action:none}
+.stick i{position:absolute;left:43px;top:43px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.35)}
+#stickL{left:18px}#stickR{right:18px}
+.tbtn{position:absolute;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.3);color:#fff;font:13px Galmuri11,monospace;
+  display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none}
+.tbtn.on{background:rgba(255,255,255,.4)}
+#bA{right:168px;bottom:96px}#bB{right:168px;bottom:30px}#bDash{left:168px;bottom:30px}#bMap{left:168px;bottom:96px}
+@media (orientation:portrait){.stick{bottom:28px}#bA{right:18px;bottom:184px}#bB{right:84px;bottom:184px}#bDash{left:18px;bottom:184px}#bMap{left:84px;bottom:184px}}
 </style>
 </head>
 <body>
 <canvas id="game" width="880" height="492"></canvas>
 <div id="bar"></div>
+<div id="touch"><div class="stick" id="stickL"><i></i></div><div class="stick" id="stickR"><i></i></div>
+  <div class="tbtn" id="bA">A</div><div class="tbtn" id="bB">B</div><div class="tbtn" id="bDash">구르기</div><div class="tbtn" id="bMap">지도</div></div>
 <div id="credit" style="font-size:11px;color:#777;padding:0 .5rem .5rem">필드 포켓몬 스프라이트: <a style="color:#999" href="https://sprites.pmdcollab.org/">PMD SpriteCollab</a> 기여자들 (CC BY-NC 4.0) · 데이터·배틀 그림: PokeAPI · 트레이너 그림: Pokémon Showdown · 비상업 팬게임</div>
 <script>
 const API = 'https://pokeapi.co/api/v2', SPR = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites';
@@ -22,7 +38,7 @@ const SIDE = 160, W = 720, H = 432, HUD = 60, CW = SIDE + W, CH = HUD + H;
 const TS = 48, CELL = 26, MARGIN = 14, TEAR_Z = 22, FLY_Z = 30, DAY = 300;
 const DIRS = [[0, -1], [0, 1], [-1, 0], [1, 0]];
 const DIRS8 = [...DIRS, [-1, -1], [1, -1], [-1, 1], [1, 1]];
-const LEGEND_KEY = 'pokemon-dungeon-legends', DEX_KEY = 'pokemon-dungeon-dex', SHINY_KEY = 'pokemon-dungeon-shiny', SHINY_RATE = 0.01, NAMES_KEY = 'pokemon-dungeon-names-v2';
+const LEGEND_KEY = 'pokemon-dungeon-legends', DEX_KEY = 'pokemon-dungeon-dex', SHINY_KEY = 'pokemon-dungeon-shiny', SHINY_RATE = 0.01, NAMES_KEY = 'pokemon-dungeon-names-v2', STARTER_KEY = 'pokemon-dungeon-starters';
 const MAX_MOVES = 4;
 
 // 체육관 관장 / 사천왕·챔피언: [이름, 트레이너 스프라이트, 타입, 엔트리(마지막이 에이스)]
@@ -369,7 +385,8 @@ function ach(id) {
   if (ACHIEVED.has(id)) return;
   const a = ACH.find(a => a.id === id);
   ACHIEVED.add(id); store.set(ACH_KEY, [...ACHIEVED]);
-  toasts.push({ a, t: 0 });
+  toasts.push({ a, t: 0 }); sfx('ach');
+  if (player && state !== 'region' && state !== 'select') (player.runAch ??= []).push(a);
 }
 // 상태로 판정하는 도전과제. 플레이 중 0.5초마다, 그리고 판이 끝날 때 확인한다
 function checkAch() {
@@ -584,13 +601,32 @@ const cv = $('#game'), ctx = cv.getContext('2d');
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const randDir = () => { const a = Math.random() * Math.PI * 2; return [Math.cos(a), Math.sin(a)]; };
-const getJson = u => fetch(u).then(r => { if (!r.ok) throw new Error(`${r.status} ${u}`); return r.json(); });
-const loadImg = src => new Promise((ok, fail) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = () => fail(new Error(src)); i.src = src; });
+// 받은 데이터·그림은 브라우저 Cache Storage에 넣어 두고 다음부터는 네트워크 없이 꺼낸다. 404도 기억해서(스프라이트가 없는 포켓몬) 다시 묻지 않는다
+// Cache Storage를 못 쓰는 환경(file://, 사생활 보호 모드 등)에서는 그냥 네트워크로 받는다
+const CACHE_NAME = 'pokemon-dungeon-cache-v1';
+let cacheP = null;
+async function cfetch(url) {
+  let c = null;
+  try { c = await (cacheP ??= caches.open(CACHE_NAME)); const hit = await c.match(url); if (hit) return hit; } catch { c = null; }
+  const r = await fetch(url);
+  if (c && (r.ok || r.status === 404)) c.put(url, r.clone()).catch(() => {});
+  return r;
+}
+const getJson = u => cfetch(u).then(r => { if (!r.ok) throw new Error(`${r.status} ${u}`); return r.json(); });
+const loadImg = src => cfetch(src).then(r => { if (!r.ok) throw new Error(`${r.status} ${src}`); return r.blob(); })
+  .then(b => new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => fail(new Error(src)); i.src = URL.createObjectURL(b); }));
+const TOUCH = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 && !matchMedia('(pointer: fine)').matches;
+let taps = [];  // 이번 프레임에 그린, 누를 수 있는 곳 (터치·클릭)
 const store = { get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
   del: k => { try { localStorage.removeItem(k); } catch {} } };
 const loadUnlocked = () => store.get(LEGEND_KEY) ?? [];
 // 도감: 한 번이라도 쓰러뜨린 포켓몬. 판이 끝나도 남고, 다음 판 스타팅 후보가 된다
-const BASE = {}, DEX = new Set(store.get(DEX_KEY) ?? []), SHINY = new Set(store.get(SHINY_KEY) ?? []);
+const DEX = new Set(store.get(DEX_KEY) ?? []), SHINY = new Set(store.get(SHINY_KEY) ?? []);
+// 스타팅으로 고를 수 있게 되는 포켓몬: 각 세대 스타팅 계열(쓰러뜨리면 첫 단계가 열림)과 전설·환상(LEGEND_KEY)뿐. 나머지는 도감에만 등록된다
+const ALL_STARTERS = REGIONS.flatMap(r => r.starters);
+const starterBase = id => ALL_STARTERS.find(s => id >= s && id <= s + 2) ?? null;
+// 예전 저장(도감 전체가 스타팅이던 때)에서 옮겨 올 때는 도감 속 스타팅 계열만 남긴다
+const STARTERS = new Set(store.get(STARTER_KEY) ?? [...DEX].map(starterBase).filter(Boolean));
 const CLEARED = new Set(store.get(CLEAR_KEY) ?? []), ACHIEVED = new Set(store.get(ACH_KEY) ?? []);
 const itemById = id => ITEMS.find(i => i.id === id);
 const moveDef = id => TMS.find(t => t.id === id) ?? LTMS.find(t => t.id === id);
@@ -622,7 +658,7 @@ const PMD = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/spr
 async function loadField(id, form = '') {
   const base = `${PMD}/${String(id).padStart(4, '0')}${form}`;
   try {
-    const xml = await fetch(`${base}/AnimData.xml`).then(r => r.ok ? r.text() : Promise.reject(new Error('no anim')));
+    const xml = await cfetch(`${base}/AnimData.xml`).then(r => r.ok ? r.text() : Promise.reject(new Error('no anim')));
     const blocks = xml.split('<Anim>').slice(1);
     const anim = name => {
       const b = blocks.find(b => b.includes(`<Name>${name}</Name>`));
@@ -688,14 +724,8 @@ async function loadRegion(rg) {
   rg.dex = [...dex].sort((a, b) => a - b);
   const rival = RIVALS[rg.name], rivalIds = rival ? [...rg.starters.flatMap(s => [s, s + 1, s + 2]), ...rival[2].flat()] : [];
   await Promise.all([...new Set([...dex, ...rivalIds, ...ACH.filter(a => a.reward).map(a => a.reward), ...loadUnlocked()])].map(loadMon));
-  // 다른 지방에서 등록한 도감 포켓몬: 하나가 실패해도 지방은 열린다
-  // shortcut: 도감이 수백 마리가 되면 지방 로딩이 느려진다. 그때는 선택 화면에서 보이는 칸만 불러오기로
-  await Promise.all([...DEX].map(id => loadMon(id).catch(() => {})));
-  await Promise.all([...DEX].map(async id => {
-    const s = MON[id]?.species;
-    if (!s?.evolves_from_species || BASE[id]) return;
-    try { BASE[id] = +(await getJson(s.evolution_chain.url)).chain.species.url.split('/').at(-2); await loadMon(BASE[id]); } catch {}
-  }));
+  // 다른 지방에서 해금한 스타팅: 하나가 실패해도 지방은 열린다
+  await Promise.all([...STARTERS].map(id => loadMon(id).catch(() => {})));
   const sprites = [...rg.gyms.map(g => g.sprite), ...rg.league.map(e => e.sprite), ...(rival ? [rival[1]] : []),...Object.values(TRAINERS).flat().map(t => t[0]), ...FRIENDLY.map(t => t[0]), 'nurse', 'clerk'];
   await Promise.all([...new Set(sprites)].map(loadTrainer));
 }
@@ -728,7 +758,7 @@ const eff = (atk, defTypes) => defTypes.reduce((m, t) => m * (CHART[atk]?.[t] ??
 const has = id => player.moves.has(id);
 const hasFx = f => FX.has(f);
 const refreshFx = () => { FX = new Set([...player.moves].map(id => moveDef(id)?.fx).filter(Boolean)); legendPow = 1.5 ** [...player.moves].filter(id => moveDef(id)?.legend).length; };
-const starterIds = () => [...new Set([...region.starters, 25, ...achRewards(), ...loadUnlocked(), ...[...DEX].map(id => BASE[id] ?? id).filter(id => MON[id] && !MON[id].species.evolves_from_species).sort((a, b) => a - b)])].filter(id => MON[id]);
+const starterIds = () => [...new Set([...region.starters, 25, ...achRewards(), ...[...STARTERS].sort((a, b) => a - b), ...loadUnlocked()])].filter(id => MON[id]);
 const untargetable = e => e.z > 30 || e.fade > 0.5;
 const baseOf = m => ({ hp: Math.round(m.st.hp / 7.5), dmg: Math.max(m.st.attack, m.st['special-attack']) / 20, speed: 120 + m.st.speed * 1.5 });
 // 레벨업 필요 경험치: 초반엔 적게, 갈수록 기하급수로 (5레벨 15, 30레벨 177, 60레벨 3400쯤)
@@ -736,7 +766,11 @@ const expNeed = lv => Math.round(20 * 2 ** ((lv - 8) / 7));
 // 체력 배율: 잡몹·트레이너는 x2에 마을 단계(tier)마다 x1.5, 관장·사천왕은 x10에 체육관마다 x1.6(tier = 체육관 번호, 리그 8)
 // 전설은 x20에 나타난 곳의 단계마다 x1.6: 기본 체력이 관장의 2배라 같은 단계 관장 에이스의 약 4배, 관장 팀 전체보다 조금 더 단단하다
 // 플레이어 화력이 단계마다 1.5배쯤 크는 것(dps 시뮬레이션)에 맞춘 값
-const hpMult = (rank, t) => rank === 'legend' ? 20 * 1.6 ** t : rank === 'boss' ? 10 * 1.6 ** t : 2 * 1.5 ** t;
+// 관장·라이벌·사천왕 체력 보정: 체육관 번호(tier)별로 곱한다. 초반을 가볍게, 5번째 체육관부터는 원래대로
+// 0번째(첫 체육관) ~ 4번째까지 차례로. 숫자를 바꾸면 바로 반영된다
+const BOSS_HP_EARLY = [0.55, 0.64, 0.73, 0.82, 0.91];
+const bossEase = t => t >= BOSS_HP_EARLY.length ? 1 : BOSS_HP_EARLY[Math.max(0, Math.floor(t))];
+const hpMult = (rank, t) => rank === 'legend' ? 20 * 1.6 ** t : rank === 'boss' ? 10 * 1.6 ** t * bossEase(t) : 2 * 1.5 ** t;
 
 function makePlayer(m) {
   const b = baseOf(m);
@@ -1102,7 +1136,7 @@ function levelUp() {
   const p = player;
   p.level++;
   withDelta(p => { p.dmg += 0.12; p.speed += 1; if (p.level % 3 === 0) { p.maxHp += 1; p.hp += 1; } });
-  say(`레벨 ${p.level}!`, p.x, p.y - 80, '#8ff');
+  say(`레벨 ${p.level}!`, p.x, p.y - 80, '#8ff'); sfx('level');
   if (p.evo[0] && p.level >= p.evo[0].level) evolve();
 }
 
@@ -1112,24 +1146,26 @@ function evolve() {
   const a = baseOf(p.mon), b = baseOf(m), old = p.mon.name;
   withDelta(p => { p.maxHp += b.hp - a.hp; p.hp += Math.max(0, b.hp - a.hp); p.dmg += b.dmg - a.dmg; p.speed += b.speed - a.speed; });
   p.mon = m; if (p.shiny) loadShiny(m);
-  fx.push({ kind: 'evo', x: p.x, y: p.y, t: 1.2, max: 1.2 });
+  fx.push({ kind: 'evo', x: p.x, y: p.y, t: 1.2, max: 1.2 }); sfx('evolve');
   banner = { text: `축하합니다! ${old}는(은) ${m.name}(으)로 진화했다!`, t: 4 };
   ach('evolve');
 }
 
 function gainMoney(n, x, y) {
   const v = Math.round(n * player.moneyMul);
-  player.money += v;
+  player.money += v; sfx('coin');
   texts.push({ text: `+₽${v}`, x, y: y - 40, t: 0.9, color: '#fd6', size: 11 });
 }
 
 function newRun(m, shiny = false) {
+  store.del(SAVE_KEY);
   taken = new Set(); texts = []; banner = null; dialog = null; fx = []; dayTime = 0;
-  player = makePlayer(m); player.shiny = shiny;
+  player = makePlayer(m); player.shiny = shiny; player.startId = m.id;
   // 전설의 포켓몬은 상징적인 기술을 갖고 시작한다
   // 전설이 아니면 타입에 맞는 기술머신 하나를 갖고 시작한다
   const first = LEGEND_MOVE[m.id] ?? typeMove(m);
   if (first) { taken.add(first); learnMove(first); }
+  player.first = first ?? null;
   world = genWorld(Math.floor(Math.random() * 2 ** 31));
   map = world;
   [player.x, player.y] = world.start;
@@ -1138,6 +1174,67 @@ function newRun(m, shiny = false) {
   state = 'loading';
   Promise.all([loadEvo(m.id).catch(() => []), shiny && loadShiny(m)]).then(([evo]) => { player.evo = evo; state = 'play'; });
 }
+
+// ---------- 이어하기: 지도는 시드로 똑같이 다시 만들고, 그 위에 플레이어와 바뀐 것(주운 볼, 이긴 트레이너, 받은 선물...)만 덮어쓴다 ----------
+const SAVE_KEY = 'pokemon-dungeon-save';
+const loadSave = () => { const sv = store.get(SAVE_KEY); return sv?.v === 1 && REGIONS.some(r => r.name === sv.region) ? sv : null; };
+const packContent = k => k.kind === 'tm' ? { kind: 'tm', tm: k.tm.id } : k.kind === 'item' ? { kind: 'item', item: k.item.id } : { kind: k.kind };
+const unpackContent = k => k.kind === 'tm' ? { kind: 'tm', tm: moveDef(k.tm) } : k.kind === 'item' ? { kind: 'item', item: itemById(k.item) } : { kind: k.kind };
+
+function saveRun() {
+  const p = player;
+  if (!p || !world || p.hp <= 0 || !['play', 'pause', 'map', 'shop', 'learn'].includes(state)) return false;
+  if (map.battle && map === world) return false;  // 승부 중에는 저장하지 않는다 (도망치기 꼼수 방지)
+  const prim = Object.fromEntries(Object.entries(p).filter(([, v]) => v === null || ['number', 'boolean', 'string'].includes(typeof v)));
+  const [x, y] = map === world ? [p.x, p.y] : world.returnTo;
+  const sv = {
+    v: 1, region: region.name, seed: world.seed, dayTime, at: Date.now(), monName: p.mon.name,
+    player: { ...prim, x, y, mon: p.mon.id, items: p.items.map(i => i.tm ? { m: i.id } : { i: i.id }), moves: [...p.moves], beaten: [...p.beaten], seen: [...p.seen],
+      defeated: p.defeated, bought: p.bought, evo: p.evo, rival: p.rival && { ...p.rival, done: [...p.rival.done] } },
+    taken: [...taken],
+    pickups: world.pickups.filter(k => k.id).map(k => k.id),
+    drops: world.pickups.filter(k => !k.id).map(k => ({ ...packContent(k), x: k.x, y: k.y, ball: !!k.ball })),
+    npcs: world.npcs.filter(n => n.id >= 0).map(n => ({ id: n.id, defeated: !!n.defeated, gift: n.kind === 'gift' && !n.gift, sold: !!n.sold, healed: !!n.healed })),
+    legends: world.legends.filter(l => l.done).map(l => l.i),
+    visited: world.nodes.filter(n => n.visited).map(n => n.i),
+  };
+  return store.set(SAVE_KEY, sv);
+}
+
+async function continueRun() {
+  const sv = loadSave();
+  if (!sv) return;
+  state = 'loading'; region = REGIONS.find(r => r.name === sv.region); probeBgm(region);
+  try {
+    await loadRegion(region);
+    const sp = sv.player;
+    await Promise.all([sp.startId, sp.mon, ...sp.evo.map(e => e.id)].map(loadMon));
+    // 처음 판을 시작할 때와 똑같은 상태에서 지도를 만들어야 볼·선물 내용물이 같아진다
+    taken = new Set(); texts = []; banner = null; dialog = null; fx = []; dayTime = sv.dayTime ?? 0;
+    player = makePlayer(MON[sp.startId]);
+    if (sp.first) { taken.add(sp.first); learnMove(sp.first); }
+    world = genWorld(sv.seed);
+    const p = player, { mon, items, moves, beaten, seen, defeated, bought, evo, rival, ...prim } = sp;
+    Object.assign(p, prim);
+    p.mon = MON[mon]; p.items = items.map(o => o.m ? moveDef(o.m) : itemById(o.i)).filter(Boolean);
+    p.moves = new Set(moves); p.beaten = new Set(beaten); p.seen = new Set(seen); p.defeated = defeated; p.bought = bought; p.evo = evo;
+    p.rival = rival && { ...rival, done: new Set(rival.done) };
+    p.deltas = Array(STATS.length).fill(null);
+    taken = new Set(sv.taken);
+    const left = new Set(sv.pickups), byId = new Map(sv.npcs.map(n => [n.id, n]));
+    world.pickups = [...world.pickups.filter(k => left.has(k.id)), ...sv.drops.map(d => ({ ...unpackContent(d), x: d.x, y: d.y, ball: d.ball })).filter(k => k.kind === 'berry' || k.tm || k.item)];
+    for (const n of world.npcs) { const o = byId.get(n.id); if (!o) continue; if (o.defeated) n.defeated = true; if (o.gift) n.gift = null; if (o.sold) n.sold = true; if (o.healed) n.healed = true; }
+    for (const i of sv.legends) world.legends[i].done = true;
+    for (const i of sv.visited) world.nodes[i].visited = true;
+    map = world;
+    resetCombat(); refreshFx(); renderBar();
+    if (p.shiny) await loadShiny(p.mon);
+    banner = { text: `${region.name}지방 모험을 이어서 한다`, t: 2.5 };
+    state = 'play';
+  } catch (e) { loadError = `이어하기 실패: ${e.message}`; state = 'error'; }
+}
+
+function autoSave() { if (saveRun()) { sfx('save'); say('기록했다', player.x, player.y - 100, '#8cf'); } }
 
 const resetCombat = () => { tears = []; beams = []; bombs = []; hazards = []; puddles = []; pstrikes = []; fx = fx ?? []; curNode = null; timeStop = 0; };
 
@@ -1155,8 +1252,8 @@ function withDelta(fn) {
   STATS.forEach((s, i) => { const d = s[2](p) - before[i]; if (Math.abs(d) > 1e-6) p.deltas[i] = { v: d, t: 3 }; });
 }
 
-function hurt(type, amount = 1) {
-  const p = player;
+function hurt(type, amount = 1, src = null) {
+  const p = player, who = src?.src ?? curEnemy, move = src?.move ?? who?.act?.name;
   if (p.inv > 0 || p.dash > 0 || p.vanish > 0 || state !== 'play') return;
   if (Math.random() < p.dodge) { p.inv = 0.5; return say('공격을 피했다!', p.x, p.y - 60, '#aef'); }
   const m = eff(type, p.mon.types);
@@ -1165,11 +1262,12 @@ function hurt(type, amount = 1) {
   p.inv = p.invTime; p.streak = 0; p.hits = (p.hits ?? 0) + 1;
   if (p.balloon && d > 0) { p.balloon = p.flying = false; say('풍선이 터졌다!', p.x, p.y - 80, '#f88'); unstick(p); }
   if (m > 1 && p.weaknessPolicy) { p.weaknessPolicy = false; withDelta(p => p.dmg += 0.6); say('약점보험 발동!', p.x, p.y - 90, '#ff8'); }
+  if (d > 0) sfx('hurt');
   if (p.hp - d <= 0 && p.sash) { p.sash = false; p.hp = 1; say('기합의띠로 버텼다!', p.x, p.y - 60, '#ff8'); }
   else p.hp -= d;
   if (m > 1) say('효과가 굉장했다!', p.x, p.y - 60, '#f66');
   if (p.hp <= 0 && p.revive) { p.revive = false; p.hp = p.maxHp; banner = { text: '무지개깃털이 빛나며 다시 일어섰다!', t: 3 }; }
-  if (p.hp <= 0) { state = 'dead'; ach('die'); checkAch(); }
+  if (p.hp <= 0) { p.cause = who ? `${who.rank === 'trainer' || who.rank === 'boss' ? '상대 ' : who.rank === 'legend' ? '전설의 포켓몬 ' : '야생 '}${who.mon.name}의 ${move ?? '공격'}` : `${TYPE_KO[type]} 타입 공격`; state = 'dead'; store.del(SAVE_KEY); ach('die'); checkAch(); }
 }
 
 const nearestEnemy = (x, y, except, maxD) => map.enemies.filter(e => e !== except && e.hp > 0 && !untargetable(e) && Math.hypot(e.x - x, e.y - y) < maxD)
@@ -1188,6 +1286,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   const crit = Math.random() < p.crit + extraCrit + (has('aerial-ace') ? 0.15 : 0) + (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0);
   if (crit) d *= has('crunch') ? 2.2 : 1.5;
   e.hp -= d; e.hit = 0.1; e.aggro = true;
+  if (!tick) sfx(crit ? 'crit' : 'hit');
   if (hasFx('drain') && (p.drain2 += d) >= 12) { p.drain2 -= 12; heal(1); }
   if (!tick) {
     const msg = crit ? '급소에 맞았다!' : raw > 1 ? '효과가 굉장했다!' : raw === 0 ? '효과가 없는 것 같다...' : raw < 1 ? '효과가 별로인 듯하다' : null;
@@ -1280,12 +1379,14 @@ function attack(dt) {
       // 광선은 누른 방향으로 나가서 휘어 들어간다(beamPath). 처음부터 적을 조준하면 곧은 선이 된다
       const base = Math.atan2(p.aim[1], p.aim[0]), w = ((has('shadow-ball') ? 32 : 20) + (has('thunderbolt') ? 10 : 0)) * beamCfg().wm * shotScale();
       for (const off of spread()) beams.push({ a: base + off, t: 0.4, tick: 0, w });
+      sfx('beam'); p.fired = true;
       waves(base);
     }
     p.charge = 0;
     return;
   }
   if (!sd || p.cd > 0) return;
+  sfx('shot'); p.fired = true;
   const base = kind === 'bomb' ? aimAngle(sd) : Math.atan2(sd[1], sd[0]);
   for (const off of spread()) {
     const a = base + off;
@@ -1330,7 +1431,7 @@ function explode(b) {
 
 function enemyShot(e, a, speed) {
   if (player.lagTail) speed *= 0.7;
-  tears.push({ x: e.x, y: e.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 3, r: 6, from: 'e', type: e.mon.types[0] });
+  tears.push({ x: e.x, y: e.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 3, r: 6, from: 'e', type: e.mon.types[0], src: e, move: e.act?.name });
 }
 
 // 플레이어 주변 41x29칸만 BFS 거리 지도를 만든다. 땅 위의 적은 거리가 줄어드는 칸으로 걸어서 장애물을 돌아간다
@@ -1385,7 +1486,7 @@ function startAct(e, [kind, name], opts = {}) {
   const a = e.act = { kind, name, type, t: 0, phase: 0, ...opts };
   if (kind === 'charge') { a.reps ??= name === '역린' ? 3 : 1; a.wind ??= 0.6; a.dur ??= 0.7; a.speed ??= e.rank === 'trainer' ? 380 : 470; aimAt(a, e); }
   if (kind === 'beam') a.ang = Math.atan2(p.y - e.y, p.x - e.x);
-  if (kind === 'strike') for (let i = 0; i < (e.rank === 'trainer' ? 2 : 4); i++) hazards.push({ kind: 'strike', type, r: 38, t: 0.9 + i * 0.15,
+  if (kind === 'strike') for (let i = 0; i < (e.rank === 'trainer' ? 2 : 4); i++) hazards.push({ kind: 'strike', type, r: 38, t: 0.9 + i * 0.15, src: e, move: name,
     x: p.x + (i ? Math.random() * 180 - 90 : 0), y: p.y + (i ? Math.random() * 180 - 90 : 0) });
 }
 
@@ -1426,7 +1527,7 @@ function updateAct(e, dt) {
   } else if (a.kind === 'strike') {
     if (a.t >= 0.7) end();
   } else if (a.kind === 'quake') {
-    if (a.phase === 0) { if (a.t >= 0.35) { hazards.push({ kind: 'quake', x: e.x, y: e.y, R: e.r, type: a.type, hit: false }); shake = 0.25; next(); } }
+    if (a.phase === 0) { if (a.t >= 0.35) { hazards.push({ kind: 'quake', x: e.x, y: e.y, R: e.r, type: a.type, hit: false, src: e, move: a.name }); shake = 0.25; next(); } }
     else if (a.t >= 0.4) end();
   } else if (a.kind === 'radial') {
     if (a.t >= a.phase * 0.35) { const n = e.rank === 'trainer' ? 8 : 12, off = Math.random(); for (let i = 0; i < n; i++) enemyShot(e, (i / n + off) * Math.PI * 2, 170); a.phase++; }
@@ -1469,9 +1570,10 @@ function inTown(x, y) {
   return (n.kind === 'T' || !!n.gym || n.league) && Math.abs(tx - n.tx) <= n.hx + 1 && Math.abs(ty - n.ty) <= n.hy + 1;
 }
 
+let curEnemy = null;  // 지금 행동 중인 적: 그 사이에 맞으면 이 적이 때린 것
 function updateEnemy(e, dt) {
   const ox = e.x, oy = e.y;
-  updateEnemyInner(e, dt);
+  curEnemy = e; updateEnemyInner(e, dt); curEnemy = null;
   // 야생·전설이 마을 경계를 넘으려 하면 막고, 쫓기를 그만두고 제자리로 돌아가게 한다
   if ((e.rank === 'wild' || e.rank === 'legend') && !e.battle && inTown(e.x, e.y) && !inTown(ox, oy)) {
     e.x = ox; e.y = oy; e.aggro = false; e.leash = 2; e.act = null; e.vx = e.vy = 0;
@@ -1563,19 +1665,25 @@ function checkLegends() {
     const e = spawnEnemy(MON[l.id], l.x, l.y, 'legend', nodeAt(l.x, l.y).tier);
     e.legend = l; l.alive = true;
     map.enemies.push(e);
-    banner = { text: `앗! 야생의 ${MON[l.id].name}이(가) 나타났다!`, t: 3 };
+    banner = { text: `앗! 야생의 ${MON[l.id].name}이(가) 나타났다!`, t: 3 }; sfx('legend');
   }
 }
 
 function onKill(e) {
   const p = player;
   fx.push({ kind: 'poof', x: e.x, y: e.y, t: 0.3, max: 0.3 });
+  sfx(isBig(e) ? 'boss' : 'faint');
   p.seen.add(e.mon.id); p.defeated[e.mon.id] = (p.defeated[e.mon.id] ?? 0) + 1;
-  if (!DEX.has(e.mon.id)) { DEX.add(e.mon.id); store.set(DEX_KEY, [...DEX]); say(`${e.mon.name} 도감 등록!`, e.x, e.y - 90, '#8cf'); }
+  if (!DEX.has(e.mon.id)) { DEX.add(e.mon.id); p.newDex = (p.newDex ?? 0) + 1; store.set(DEX_KEY, [...DEX]); say(`${e.mon.name} 도감 등록!`, e.x, e.y - 90, '#8cf'); }
+  const sb = starterBase(e.mon.id);
+  if (sb && !STARTERS.has(sb)) {
+    STARTERS.add(sb); store.set(STARTER_KEY, [...STARTERS]); (p.newStarters ??= []).push(sb);
+    banner = { text: `${MON[sb]?.name ?? e.mon.name}을(를) 다음 판부터 스타팅으로 고를 수 있다!`, t: 3.5, glow: '#8cf' };
+  }
   if (e.shiny) {
     if (!SHINY.has(e.mon.id)) { SHINY.add(e.mon.id); store.set(SHINY_KEY, [...SHINY]); }
     ach('shiny');
-    banner = { text: `색이 다른 ${e.mon.name}을(를) 쓰러뜨렸다! 다음 판부터 이로치로 시작할 수 있다`, t: 4 };
+    banner = { text: sb || LEGEND_MOVE[e.mon.id] ? `색이 다른 ${e.mon.name}을(를) 쓰러뜨렸다! 다음 판부터 이로치로 시작할 수 있다` : `색이 다른 ${e.mon.name}을(를) 쓰러뜨렸다!`, t: 4 };
     map.pickups.push({ ...rollContent(Math.random, { tm: 0.3, ltm: 0.05, c: 0, r: 0.6, l: 0.4 }), x: e.x, y: e.y + 30, ball: true });
   }
   if (p.bigRoot && Math.random() < 0.1) heal(1);
@@ -1597,7 +1705,7 @@ function onKill(e) {
   }
   if (e.rank === 'legend') {
     const ids = loadUnlocked();
-    if (!ids.includes(e.mon.id)) store.set(LEGEND_KEY, [...ids, e.mon.id]);
+    if (!ids.includes(e.mon.id)) { store.set(LEGEND_KEY, [...ids, e.mon.id]); (p.newStarters ??= []).push(e.mon.id); }
     if (e.legend) { e.legend.done = true; e.legend.alive = false; }
     if (p.rival) p.rival.legend = true;
     ach('legend1');
@@ -1613,6 +1721,7 @@ function onKill(e) {
 // ---------- 승부 (트레이너, 관장, 사천왕) ----------
 function startBattle(b) {
   map.battle = { wait: 1, ...b };
+  sfx('battle');
   // 필드 승부: 가까운 야생은 놀라서 달아나고, 나머지는 승부가 끝날 때까지 덤비지 않는다
   if (map === world) {
     const p = player, near = map.enemies.filter(e => e.rank === 'wild' && Math.hypot(e.x - p.x, e.y - p.y) < 650);
@@ -1635,10 +1744,39 @@ function startTrainer(n) {
   } });
 }
 
+// ---------- 첫 판 안내: 해 보면 다음으로 넘어간다. 끝나거나 H 키로 끄면 다시 나오지 않는다 ----------
+const TUT_KEY = 'pokemon-dungeon-tutorial';
+let tutDone = !!store.get(TUT_KEY);
+const TUT = [
+  { key: '이동', pc: 'WASD로 걸어 보세요', touch: '왼쪽 스틱으로 걸어 보세요', done: p => p.walk > 240 },
+  { key: '공격', pc: '방향키(↑↓←→)를 누르면 그 방향으로 기술을 쏩니다', touch: '오른쪽 스틱을 민 방향으로 기술을 쏩니다', done: p => p.fired },
+  { key: '구르기', pc: 'Space로 구르기: 구르는 동안은 공격을 맞지 않습니다', touch: '구르기 버튼: 구르는 동안은 공격을 맞지 않습니다', done: p => p.dashed },
+  { key: '대화', pc: '사람 앞에서 E로 말 걸기 (간호순: 회복과 기록, 점원: 상점)', touch: '사람 앞에서 A 버튼으로 말 걸기 (간호순: 회복과 기록, 점원: 상점)', done: p => p.talked },
+  { key: '지도·메뉴', pc: 'M = 지도, Esc = 메뉴 (도감·가방·설정)', touch: '지도 버튼 = 지도, B 버튼 = 메뉴 (도감·가방·설정)', done: p => p.opened },
+  { key: '목표', pc: '풀숲에는 야생 포켓몬! 체육관 배지 8개를 모아 포켓몬리그의 챔피언이 되세요', touch: '풀숲에는 야생 포켓몬! 체육관 배지 8개를 모아 포켓몬리그의 챔피언이 되세요', done: p => p.time - (p.tutGoalAt ??= p.time) > 6 },
+];
+const tutStep = () => tutDone || !player ? null : TUT.findIndex(s => !s.done(player));
+function tickTutorial() {
+  if (tutDone || !player) return;
+  if (tutStep() < 0) { tutDone = true; store.set(TUT_KEY, true); sfx('select'); }
+}
+function drawTutorial() {
+  const i = tutStep();
+  if (i === null || i < 0) return;
+  const st = TUT[i], w = 560, x = SIDE + (W - w) / 2, y = HUD + 10;
+  ctx.fillStyle = 'rgba(10,14,30,.88)'; ctx.fillRect(x, y, w, 52); ctx.strokeStyle = '#8cf'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, 50);
+  text(`안내 ${i + 1}/${TUT.length} · ${st.key}`, x + 12, y + 19, 11, '#8cf', 'left');
+  text(TOUCH ? '' : 'H = 안내 끄기', x + w - 12, y + 19, 10, '#678', 'right');
+  glowText(TOUCH ? st.touch : st.pc, x + w / 2, y + 41, 13, '#fff', '#4af');
+  if (TOUCH) taps.push({ x: x + w - 60, y, w: 60, h: 24, fn: skipTutorial });
+  if (TOUCH) text('안내 끄기', x + w - 12, y + 19, 10, '#678', 'right');
+}
+const skipTutorial = () => { tutDone = true; store.set(TUT_KEY, true); };
+
 // ---------- 라이벌 ----------
 // 라이벌 스타팅: 플레이어 스타팅(풀·불꽃·물 순)에 상성이 좋은 쪽. 스타팅이 아니면 무작위
 function rivalStarter() {
-  const id = BASE[player.mon.id] ?? player.mon.id, i = region.starters.findIndex(s => id >= s && id <= s + 2);
+  const id = player.mon.id, i = region.starters.findIndex(s => id >= s && id <= s + 2);
   return region.starters[i >= 0 ? (i + 1) % 3 : Math.floor(Math.random() * 3)];
 }
 
@@ -1651,7 +1789,7 @@ function rivalTeam(badges) {
 
 function rivalDue() {
   const p = player, r = p.rival, b = p.beaten.size, at = curNode;
-  if (!r.done.has('start')) return 'start';
+  if (!r.done.has('start')) { const i = tutStep(); return i === null || i < 0 || i >= 3 ? 'start' : null; }
   // 배지 이벤트는 가장 최근 것 하나만. 앞의 것을 놓쳤으면 건너뛴다
   const badge = ['b7', 'b5', 'b3'].find(ev => b >= +ev.slice(1) && !r.done.has(ev));
   if (badge) { ['b3', 'b5', 'b7'].forEach(ev => +ev.slice(1) <= +badge.slice(1) && r.done.add(ev)); r.done.delete(badge); return badge; }
@@ -1719,7 +1857,7 @@ function startRoom(r) {
   if (b.kind === 'gym') return startBattle({ who: r.who.leader, title: r.who.title, queue: [...r.who.team], ...at, rank: 'boss', tier: gi, onWin: () => {
     open(); if ((p.hits ?? 0) === hits0) ach('perfect'); p.beaten.add(gi); map.portal = gymPortal(r);
     gainMoney(1500 + gi * 600, at.x, at.y + 2 * TS);
-    banner = { text: `${r.who.leader}에게 이겼다! 배지를 손에 넣었다 (${p.beaten.size}/${region.gyms.length})`, t: 3 };
+    banner = { text: `${r.who.leader}에게 이겼다! 배지를 손에 넣었다 (${p.beaten.size}/${region.gyms.length})`, t: 3 }; sfx('badge');
     map.pickups.push({ ...rollContent(Math.random, { tm: 0.55, ltm: 0.12, c: 0, r: 0.7, l: 0.3 }), x: r.cx, y: (r.y0 + 4.5) * TS });
   } });
   // 사천왕 → 이기면 위쪽 방 문이 열린다. 마지막 방은 챔피언
@@ -1727,7 +1865,7 @@ function startRoom(r) {
     say: champ && ((i, ace) => ace ? CHAMP_ACE : CHAMP_SAY[Math.min(i, CHAMP_SAY.length - 1)]), onWin: () => {
     open(); gainMoney(3000, at.x, at.y + 2 * TS);
     if (!champ) { heal(Math.ceil(p.maxHp / 2)); banner = { text: `${r.who.leader}에게 이겼다! 위쪽 방의 문이 열렸다`, t: 3 }; return; }
-    recordClear();
+    recordClear(); store.del(SAVE_KEY);
     dialog = { name: r.who.leader, text: '...졌다. 너와 네 포켓몬이라면 이 자리를 맡겨도 되겠어. 오늘부터 네가 새로운 챔피언이다!', t: 6, keep: true };
     banner = { text: `챔피언 ${r.who.leader}에게 이겼다! 새로운 챔피언의 탄생이다!`, t: 5 }; p.winAt = 6;
   } });
@@ -1739,6 +1877,7 @@ function leaveBuilding() {
   map = world;
   [p.x, p.y] = world.returnTo;
   resetCombat();
+  if (p.hp > 0 && p.winAt <= 0) autoSave();
 }
 
 function updateBattle(dt) {
@@ -1792,8 +1931,14 @@ function updateNpcs(dt) {
 function talk() {
   const p = player, n = map.npcs.find(n => n.kind !== 'gymtrainer' && Math.hypot(n.x - p.x, n.y - p.y) < 90);
   if (!n || map.battle) return;
+  p.talked = true;
   const line = s => dialog = { name: n.name, text: s, t: 3 };
-  if (n.kind === 'nurse') { p.hp = p.maxHp; line('어서 오세요! 포켓몬의 체력을 모두 회복했어요!'); }
+  if (n.kind === 'nurse') {
+    // 마을마다 간호순은 한 번만 회복해 준다. 모험 기록은 언제든 해 준다
+    if (!n.healed) { n.healed = true; p.hp = p.maxHp; line('어서 오세요! 포켓몬의 체력을 모두 회복했어요! 모험도 기록해 둘게요.'); sfx('heal'); }
+    else line('오늘 이 포켓몬센터의 회복은 이미 받으셨어요. 모험 기록만 해 둘게요!');
+    autoSave();
+  }
   if (n.kind === 'shop') { shopNpc = n; state = 'shop'; dialog = null; }
   if (n.kind === 'gift') {
     if (!n.gift) return line('여행 조심해!');
@@ -1810,8 +1955,8 @@ function buy(i) {
   const p = player, n = shopNpc, s = SHOP[i], sp = i === SHOP.length ? shopSpecial(n) : null;
   const price = s ? shopPrice(s) : sp ? specialPrice(sp) : null;
   if (price === null) return;
-  if (p.money < price) return say('돈이 모자라다', p.x, p.y - 70, '#f88');
-  p.money -= price;
+  if (p.money < price) { sfx('deny'); return say('돈이 모자라다', p.x, p.y - 70, '#f88'); }
+  p.money -= price; sfx('item');
   if (s) { s.use(); p.bought[s.id] = (p.bought[s.id] ?? 0) + 1; say(`${s.name}을(를) 샀다`, p.x, p.y - 70, '#8f8'); }
   else { n.sold = true; map.pickups.push({ ...sp, x: p.x, y: p.y - 10 }); state = 'play'; }
 }
@@ -1829,12 +1974,15 @@ function update(dt) {
   p.time += dt; p.hop -= dt;
   if (p.regen && (p.regenT -= dt) <= 0) { p.regenT = 12; heal(1); }
   if ((p.achT = (p.achT ?? 0) - dt) <= 0) { p.achT = 0.5; checkAch(); }
+  tickTutorial();
 
   let vx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0), vy = (keys.KeyS ? 1 : 0) - (keys.KeyW ? 1 : 0);
   const len = Math.hypot(vx, vy) || 1, ox = p.x, oy = p.y;
   vx /= len; vy /= len;
   // 스페이스: 짧게 뛰어 피하기. 뛰는 동안은 무적이라 돌진, 낙하, 충격파를 넘길 수 있다
-  if (keys.Space && p.dashCd <= 0) {
+  if ((keys.Space || p.dashQ) && p.dashCd <= 0) {
+    p.dashQ = false;
+    sfx('dash'); p.dashed = true;
     p.dash = 0.2; p.dashCd = hasFx('dashStrike') ? 0.45 : hasFx('vanish') ? 1 : 0.7; p.dashDir = vx || vy ? [vx, vy] : [p.flip ? 1 : -1, 0]; p.dashHit = new Set();
     if (hasFx('vanish')) p.vanish = 0.6;
   }
@@ -1893,7 +2041,7 @@ function update(dt) {
   if (!frozenTime) for (const h of hazards) {
     if (h.kind === 'strike' && (h.t -= dt) <= 0) {
       fx.push({ kind: 'boom', x: h.x, y: h.y, r: h.r, t: 0.25, max: 0.25, color: TYPE_COLOR[h.type] });
-      if (Math.hypot(p.x - h.x, p.y - h.y) < h.r + p.r * 0.5) hurt(h.type);
+      if (Math.hypot(p.x - h.x, p.y - h.y) < h.r + p.r * 0.5) hurt(h.type, 1, h);
       h.done = true;
     }
     if (h.kind === 'quake') {
@@ -1901,7 +2049,7 @@ function update(dt) {
       // 지진 충격파는 땅을 타고 오므로, 진원지와 나 사이에 바위·기둥이 있으면 막힌다
       if (!h.hit && Math.abs(Math.hypot(p.x - h.x, p.y - h.y) - h.R) < 14 + p.r * 0.5) {
         h.hit = true;
-        if (losBlocked(h.x, h.y, p.x, p.y)) say('엄폐물 뒤에서 충격파를 피했다!', p.x, p.y - 60, '#aef'); else hurt(h.type);
+        if (losBlocked(h.x, h.y, p.x, p.y)) say('엄폐물 뒤에서 충격파를 피했다!', p.x, p.y - 60, '#aef'); else hurt(h.type, 1, h);
       }
       if (h.R > 560) h.done = true;
     }
@@ -1962,7 +2110,7 @@ function update(dt) {
         if (!isBig(e) && !e.act) moveBody(e, t.vx * (has('surf') ? 0.09 : 0.03), t.vy * (has('surf') ? 0.09 : 0.03));
         if (!t.pierce) { t.life = 0; break; }
       }
-    } else if (Math.hypot(p.x - t.x, p.y - t.y) < p.r + t.r) { hurt(t.type); t.life = 0; }
+    } else if (Math.hypot(p.x - t.x, p.y - t.y) < p.r + t.r) { hurt(t.type, 1, t); t.life = 0; }
   }
   tears = tears.filter(t => t.life > 0);
 
@@ -1987,8 +2135,8 @@ function takePickup(k) {
   map.pickups.splice(map.pickups.indexOf(k), 1);
   if (k.kind === 'item') { withDelta(k.item.apply); p.items.push(k.item); banner = { text: `${k.item.name}을(를) 손에 넣었다!`, t: 2.5 }; renderBar(); }
   if (k.kind === 'tm') { learnMove(k.tm.id); banner = { text: `${k.tm.name}을(를) 배웠다!`, t: 2.5, glow: rareGlow(k.tm) }; }
-  if (k.kind === 'berry') heal(2);
-  if (k.kind === 'item' || k.kind === 'tm') lastInfo = { k, t: 5 };
+  if (k.kind === 'berry') { heal(2); sfx('heal'); }
+  if (k.kind === 'item' || k.kind === 'tm') { lastInfo = { k, t: 5 }; sfx(ballGrade(k) >= 2 ? 'rare' : 'item'); }
 }
 
 // 기술이 4개일 때 기술머신: 하나를 잊고 배우거나, 배우지 않고 그대로 둔다
@@ -2433,7 +2581,7 @@ function drawPanel() {
   // 전설 기술이 여러 개면 x1.5가 곱해진 합계를 한 줄로
   if (legendPow > 1) { y += 15; glowText(`기술의 힘 x${+legendPow.toFixed(2)}`, 10, y, 11, '#fd6', '#c8f', 'left'); }
   p.items.filter(i => i.r === 'k').forEach((it, i) => ctx.drawImage(IMG[it.id], 4 + i * 26, y + 6, 26, 26));
-  text('Space 구르기·E 대화·M 지도·N 소리·Esc 메뉴', 4, CH - 6, 9, '#777', 'left');
+  text(TOUCH ? 'A 대화·B 메뉴·구르기·지도' : 'Space 구르기·E 대화·M 지도·N 소리·Esc 메뉴·H 안내', 4, CH - 6, 9, '#777', 'left');
 }
 
 function drawBadges(x, y) {
@@ -2718,13 +2866,14 @@ function drawLearn() {
   nameText(k.tm, `${p.mon.name}은(는) ${k.tm.name}을(를) 배우고 싶다!`, x + w / 2, y + 32, 15, '#fff', 'center');
   text('하지만 기술을 4개까지만 기억할 수 있다. 잊을 기술을 고르세요.', x + w / 2, y + 56, 11, '#aaa');
   let yy = y + 88;
-  blocks.forEach((b, i) => { const m = rows[i]; text(`${i + 1}.`, x + 20, yy, 11, '#fff', 'left'); b.forEach(l => { nameText(m, l, x + 40, yy, 11, m.legend ? '#fd6' : TYPE_COLOR[m.type]); yy += 16; }); yy += 8; });
-  text('5 / Esc. 배우지 않는다', x + 20, yy + 4, 11, '#ccc', 'left');
+  blocks.forEach((b, i) => { const m = rows[i]; taps.push({ x, y: yy - 14, w, h: b.length * 16 + 6, fn: () => decideLearn(i) }); text(`${i + 1}.`, x + 20, yy, 11, '#fff', 'left'); b.forEach(l => { nameText(m, l, x + 40, yy, 11, m.legend ? '#fd6' : TYPE_COLOR[m.type]); yy += 16; }); yy += 8; });
+  taps.push({ x, y: yy - 12, w, h: 22, fn: () => decideLearn(null) });
+  text(TOUCH ? '여기를 누르면 배우지 않는다' : '5 / Esc. 배우지 않는다', x + 20, yy + 4, 11, '#ccc', 'left');
   nl.forEach((l, i) => text(l, x + 40, yy + 24 + i * 16, 11, '#ccc', 'left'));
 }
 
 // ---------- 메뉴 (Esc): 원작처럼 도감, 포켓몬, 가방, 트레이너 카드 ----------
-const MENU = ['포켓몬 도감', '포켓몬', '가방', '트레이너 카드', '지도', '닫기', '그만두기'];
+const MENU = ['포켓몬 도감', '포켓몬', '가방', '트레이너 카드', '지도', '설정', '닫기', '그만두기'];
 const BAG_TABS = ['도구', '중요한 물건', '기술'];
 const DEX_COLS = 8, DEX_ROWS = 4;
 const openMenu = () => { menu = { screen: 'root', cursor: 0, tab: 0, sel: 0, confirm: false }; state = 'pause'; };
@@ -2738,15 +2887,22 @@ function menuKey(code) {
     menu.confirm = false;
     if (up) menu.cursor = (menu.cursor + MENU.length - 1) % MENU.length;
     if (down) menu.cursor = (menu.cursor + 1) % MENU.length;
+    if (up || down) sfx('menu');
     if (back) state = 'play';
     if (!ok) return;
     const item = MENU[menu.cursor];
     if (item === '닫기') state = 'play';
-    else if (item === '그만두기') { if (confirm) state = 'region'; else menu.confirm = true; }
+    else if (item === '그만두기') { if (confirm) { store.del(SAVE_KEY); state = 'region'; } else menu.confirm = true; }
     else Object.assign(menu, { screen: item, sel: 0, tab: 0 });
+    sfx('select');
     return;
   }
-  if (back || (ok && !['가방', '포켓몬 도감'].includes(menu.screen))) { menu.screen = 'root'; return; }
+  if (back || (ok && !['가방', '포켓몬 도감', '설정'].includes(menu.screen))) { menu.screen = 'root'; return; }
+  if (menu.screen === '설정') {
+    if (up || down) { menu.sel = (menu.sel + 1) % 2; sfx('menu'); }
+    const k = ['bgm', 'sfx'][menu.sel];
+    if (left || right) { VOL[k] = clamp(Math.round((VOL[k] + (right ? 0.1 : -0.1)) * 10) / 10, 0, 1); applyVolume(); sfx('menu'); }
+  }
   if (menu.screen === '가방') {
     if (left || right) { menu.tab = (menu.tab + (right ? 1 : 2)) % 3; menu.sel = 0; }
     if (up) menu.sel = Math.max(0, menu.sel - 1);
@@ -2778,15 +2934,27 @@ function drawMenu() {
   if (menu.screen === 'root') {
     const w = 210, h = 30 + MENU.length * 34, x = SIDE + W - w - 10, y = HUD + 10;
     menuBox(x, y, w, h);
-    MENU.forEach((m, i) => { plain(m, x + 40, y + 42 + i * 34, 16); if (i === menu.cursor) plain('▶', x + 18, y + 42 + i * 34, 16); });
-    if (menu.confirm) { menuBox(SIDE + 10, HUD + H - 92, W - 240, 82); plain('정말 그만둘까요? 지금까지의 모험이 사라집니다.', SIDE + 30, HUD + H - 54, 13); plain('한 번 더 고르면 지방 선택으로 돌아갑니다.', SIDE + 30, HUD + H - 30, 12, '#904040'); }
+    MENU.forEach((m, i) => { plain(m, x + 40, y + 42 + i * 34, 16); if (i === menu.cursor) plain('▶', x + 18, y + 42 + i * 34, 16); taps.push({ x, y: y + 20 + i * 34, w, h: 32, fn: () => { menu.cursor = i; menuKey('Enter'); } }); });
+    if (menu.confirm) { menuBox(SIDE + 10, HUD + H - 92, W - 240, 82); plain('정말 그만둘까요? 지금까지의 모험과 이어하기 기록이 사라집니다.', SIDE + 30, HUD + H - 54, 13); plain('한 번 더 고르면 지방 선택으로 돌아갑니다.', SIDE + 30, HUD + H - 30, 12, '#904040'); }
     return;
   }
   menuBox(SIDE + 8, HUD + 8, W - 16, H - 16);
   const x = SIDE + 30, y = HUD + 40;
   plain(menu.screen, x, y, 18, '#303060');
   plain('Esc 돌아가기', SIDE + W - 30, y, 11, '#707080', 'right');
-  ({ '포켓몬': drawPartyScreen, '가방': drawBagScreen, '포켓몬 도감': drawDexScreen, '트레이너 카드': drawCardScreen })[menu.screen](x, y);
+  ({ '포켓몬': drawPartyScreen, '가방': drawBagScreen, '포켓몬 도감': drawDexScreen, '트레이너 카드': drawCardScreen, '설정': drawSettingsScreen })[menu.screen](x, y);
+}
+
+function drawSettingsScreen(x, y) {
+  plain('↑ ↓ 고르기 · ← → 조절 · N 키 = 모든 소리 끄기/켜기', x + 20, y + 40, 12, '#707080');
+  [['배경음', 'bgm'], ['효과음', 'sfx']].forEach(([label, k], i) => {
+    const yy = y + 90 + i * 60, on = menu.sel === i;
+    if (on) plain('▶', x + 20, yy, 15);
+    plain(label, x + 44, yy, 15);
+    for (let j = 0; j < 10; j++) { ctx.fillStyle = j < Math.round(VOL[k] * 10) ? (on ? '#304080' : '#6070a0') : '#c8cce0'; ctx.fillRect(x + 150 + j * 30, yy - 16, 24, 20); }
+    plain(`${Math.round(VOL[k] * 100)}%`, x + 470, yy, 14, '#303060');
+  });
+  if (muted) plain('지금은 N 키로 소리를 꺼 둔 상태입니다', x + 44, y + 230, 12, '#904040');
 }
 
 function drawPartyScreen(x, y) {
@@ -2854,7 +3022,7 @@ function drawCardScreen(x, y) {
   ctx.fillStyle = '#e8eef8'; ctx.fillRect(x, y + 14, 650, 340);
   plain(`${region.name}지방 트레이너`, x + 20, y + 48, 16);
   [['함께하는 포켓몬', `${p.mon.name} Lv.${p.level}`], ['돈', `₽ ${p.money.toLocaleString()}`], ['도감', `${region.dex.filter(id => p.seen.has(id)).length}마리 발견`],
-   ['쓰러뜨린 포켓몬', `${kills}마리`], ['모험 시간', `${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`], ['전설 해금', `${loadUnlocked().length}마리`]]
+   ['쓰러뜨린 포켓몬', `${kills}마리`], ['모험 시간', `${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`], ['전설 해금', `${loadUnlocked().length}마리`], ['챔피언이 된 지방', `${CLEARED.size} / ${REGIONS.length}`], ['도전과제', `${ACHIEVED.size} / ${ACH.length}`]]
     .forEach(([k, v], i) => { plain(k, x + 20, y + 84 + i * 28, 13, '#505060'); plain(v, x + 300, y + 84 + i * 28, 13, '#202028', 'right'); });
   plain('배지', x + 340, y + 48, 14, '#303060');
   region.gyms.forEach((g, i) => {
@@ -2873,12 +3041,14 @@ function drawShop() {
   SHOP.forEach((s, i) => {
     const yy = y + 76 + i * 30;
     ctx.drawImage(IMG[s.id], x + 16, yy - 18, 26, 26);
+    taps.push({ x, y: yy - 20, w: 520, h: 28, fn: () => buy(i) });
     text(`${i + 1}. ${s.name}`, x + 48, yy, 13, '#fff', 'left'); text(s.desc, x + 210, yy, 11, '#aaa', 'left'); text(`₽${shopPrice(s)}`, x + 500, yy, 12, '#fd6', 'right');
   });
   const yy = y + 76 + SHOP.length * 30 + 6;
   if (sp) {
     const it = sp.kind === 'tm' ? sp.tm : sp.item;
     ctx.drawImage(IMG[sp.kind === 'tm' ? sp.tm.tm : sp.item.id], x + 16, yy - 18, 26, 26);
+    taps.push({ x, y: yy - 20, w: 520, h: 28, fn: () => buy(SHOP.length) });
     nameText(it, `9. ${sp.kind === 'tm' ? '기술머신 ' : ''}${it.name}`, x + 48, yy, 13, '#ff8'); text(it.desc, x + 260, yy, 10, '#aaa', 'left'); text(`₽${specialPrice(sp)}`, x + 500, yy, 12, '#fd6', 'right');
   } else text('9. (오늘의 특가는 팔렸습니다)', x + 48, yy, 12, '#666', 'left');
 }
@@ -2926,7 +3096,8 @@ function drawTrophy(x, y, on = true) {
 function drawAchList() {
   ctx.fillStyle = '#16161e'; ctx.fillRect(0, 0, CW, CH);
   text(`도전과제 ${ACHIEVED.size} / ${ACH.length}`, CW / 2, 40, 24, '#fd6');
-  text('T 또는 Esc = 돌아가기 · 보상이 있는 과제를 달성하면 그 포켓몬으로 시작할 수 있습니다', CW / 2, 64, 11, '#888');
+  text(`${TOUCH ? '화면을 누르면 돌아가기' : 'T 또는 Esc = 돌아가기'} · 보상이 있는 과제를 달성하면 그 포켓몬으로 시작할 수 있습니다`, CW / 2, 64, 11, '#888');
+  taps.push({ x: 0, y: 0, w: CW, h: CH, fn: () => state = 'region' });
   const cols = 2, cw = (CW - 48) / cols, rh = 36;
   ACH.forEach((a, i) => {
     const on = ACHIEVED.has(a.id), x = 16 + (i % cols) * (cw + 16), y = 80 + Math.floor(i / cols) * rh;
@@ -2945,6 +3116,14 @@ function drawRegionSelect() {
   text('포켓몬 던전 로그', CW / 2, 54, 32, '#ff8');
   text('모험할 지방을 고르세요 (1~9 키, 0 = 랜덤, 또는 클릭) · T = 도전과제', CW / 2, 90, 14, '#aaa');
   text(`도전과제 ${ACHIEVED.size} / ${ACH.length}`, CW - 20, 30, 12, '#fd6', 'right');
+  taps.push({ x: CW - 160, y: 10, w: 160, h: 30, fn: () => state = 'ach' });
+  const sv = loadSave();
+  if (sv) {
+    const sp = sv.player, x = CW / 2 - 300, y = 418;
+    taps.push({ x, y, w: 600, h: 30, fn: continueRun });
+    ctx.fillStyle = '#1e2a3a'; ctx.fillRect(x, y, 600, 30); ctx.strokeStyle = '#8cf'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, 598, 28);
+    glowText(`C · Enter = 이어하기: ${sv.region}지방 · ${sv.monName} Lv.${sp.level} · 배지 ${sp.beaten.length}개`, CW / 2, y + 20, 13, '#fff', '#8cf');
+  }
   [...REGIONS, null].forEach((rg, i) => {
     const c = regionCard(i), open = !rg || regionOpen(i), done = rg && CLEARED.has(rg.name);
     ctx.fillStyle = open ? '#23232e' : '#18181f'; ctx.fillRect(c.x, c.y, c.w, c.h);
@@ -2961,7 +3140,7 @@ function drawRegionSelect() {
     if (done) text('챔피언 달성', c.x + c.w / 2, c.y + 122, 11, '#8cf');
     if (!rg) text('열린 지방 중에서', c.x + c.w / 2, c.y + 98, 11, '#999');
   });
-  text(DEX.size ? `도감에 등록한 포켓몬 ${DEX.size}마리 중에서 스타팅을 고를 수 있습니다` : '쓰러뜨린 포켓몬은 도감에 등록되어 다음 판 스타팅이 됩니다 (전설은 상징 기술을 갖고 시작)', CW / 2, 455, 13, DEX.size ? '#8cf' : '#777');
+  text(loadSave() ? '새 지방을 고르면 이어하기 기록은 사라집니다' : `도감 ${DEX.size}마리 · 스타팅 계열이나 전설·환상의 포켓몬을 쓰러뜨리면 다음 판 스타팅으로 고를 수 있습니다`, CW / 2, 470, 12, loadSave() ? '#f99' : '#8cf');
 }
 
 // 스타팅 도감: 8x3 칸씩 페이지로 넘긴다. 오른쪽에 고른 포켓몬의 능력치와 시작 기술
@@ -2988,7 +3167,7 @@ function drawSelect() {
   });
   const pages = Math.ceil(ids.length / SEL_PAGE);
   if (pages > 1) text(`${Math.floor(selCur / SEL_PAGE) + 1} / ${pages} 페이지`, 324, 430, 12, '#888');
-  text(`도감 등록 ${DEX.size}마리 · 쓰러뜨린 포켓몬은 다음 판부터 고를 수 있습니다`, 324, 452, 11, '#777');
+  text(`도감 ${DEX.size}마리 · 스타팅 계열·전설·환상을 쓰러뜨리면 여기에 추가됩니다`, 324, 452, 11, '#777');
   // 오른쪽 상세
   const m = MON[ids[selCur]], st = baseOf(m), mv = moveDef(LEGEND_MOVE[m.id] ?? typeMove(m)), px = 760;
   ctx.fillStyle = '#23232e'; ctx.fillRect(650, 112, 220, 296);
@@ -3006,6 +3185,7 @@ function drawSelect() {
 
 function draw() {
   ctx.imageSmoothingEnabled = false;
+  taps = [];
   if (state === 'loading' || state === 'error') {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, CW, CH);
     return text(state === 'loading' ? '불러오는 중...' : loadError, CW / 2, CH / 2, 16);
@@ -3014,17 +3194,48 @@ function draw() {
   if (state === 'ach') return drawAchList(), drawToasts();
   if (state === 'select') return drawSelect();
   drawPlay();
+  if (state === 'play') drawTutorial();
   if (state === 'map') drawBigMap();
   if (state === 'pause') drawMenu();
   if (state === 'learn') drawLearn();
   if (state === 'shop') drawShop();
-  if (state === 'dead' || state === 'win') {
-    ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(0, 0, CW, CH);
-    text(state === 'win' ? `${region.name}지방 챔피언이 되었다!` : `${player.mon.name}는(은) 쓰러졌다...`, CW / 2, 220, 28, state === 'win' ? '#ff8' : '#f66');
-    text(`Lv.${player.level} · 배지 ${player.beaten.size}개 · 아이템 ${player.items.length}개 · R 키로 지방 선택으로`, CW / 2, 270, 15);
-    if (state === 'win' && player.unlockedNext) glowText(`새로운 지방이 열렸다: ${player.unlockedNext}지방`, CW / 2, 314, 18, '#8cf', '#4af');
-  }
+  if (state === 'dead' || state === 'win') drawResult();
   drawToasts();
+}
+
+// 판 결과: 제목 → 기록 → 이번 판에 얻은 것 → 다음 목표
+function drawResult() {
+  const p = player, win = state === 'win', t = Math.floor(p.time);
+  ctx.fillStyle = '#0c0c14'; ctx.fillRect(0, 0, CW, CH);
+  taps.push({ x: 0, y: 0, w: CW, h: CH, fn: () => state = 'region' });
+  win ? glowText(`${region.name}지방 챔피언이 되었다!`, CW / 2, 52, 28, '#ff8', '#fc4') : text(`${p.mon.name}는(은) 쓰러졌다...`, CW / 2, 52, 28, '#f66');
+  if (!win && p.cause) text(`${p.cause}에 쓰러졌다`, CW / 2, 80, 14, '#f99');
+  // 기록
+  const kills = Object.values(p.defeated).reduce((a, b) => a + b, 0), rw = p.rival ? [...p.rival.done].length : 0;
+  const rows = [['모험 시간', `${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`], ['레벨', `${p.mon.name} Lv.${p.level}`],
+    ['배지', `${p.beaten.size} / ${region.gyms.length}`], ['쓰러뜨린 포켓몬', `${kills}마리`], ['새로 도감 등록', `${p.newDex ?? 0}마리`], ['라이벌 승리', p.rival ? `${rw} / ${RIVAL_EVENTS.length}` : '-'],
+    ['모은 도구·기술', `${p.items.length}개`], ['가진 돈', `₽ ${p.money.toLocaleString()}`]];
+  ctx.fillStyle = '#1c1c28'; ctx.fillRect(40, 100, 380, 300);
+  text('이번 모험', 230, 126, 15, '#aaa');
+  rows.forEach(([k, v], i) => { text(k, 64, 160 + i * 30, 13, '#aaa', 'left'); text(v, 396, 160 + i * 30, 13, '#fff', 'right'); });
+  // 이번 판에 얻은 것
+  ctx.fillStyle = '#1c1c28'; ctx.fillRect(460, 100, 380, 300);
+  text('이번 판에 얻은 것', 650, 126, 15, '#aaa');
+  const got = [
+    ...(p.runAch ?? []).map(a => [`도전과제 · ${a.name}`, '#fd6']),
+    ...(p.newStarters ?? []).filter(id => MON[id]).map(id => [`스타팅 해금 · ${MON[id].name}`, '#8cf']),
+    ...(win && p.unlockedNext ? [[`새 지방 · ${p.unlockedNext}지방`, '#8cf']] : []),
+  ];
+  if (!got.length) text('이번에는 새로 얻은 것이 없다', 650, 170, 12, '#666');
+  got.slice(0, 7).forEach(([s, c], i) => glowText(s, 484, 164 + i * 28, 13, '#fff', c, 'left'));
+  if (got.length > 7) text(`외 ${got.length - 7}개`, 484, 164 + 7 * 28, 12, '#888', 'left');
+  // 다음 목표: 아직 못 한 도전과제 중 앞의 두 개와 다음 지방
+  const next = ACH.filter(a => !ACHIEVED.has(a.id)).slice(0, 2).map(a => `${a.name}: ${a.desc}`);
+  const ri = REGIONS.findIndex((_, i) => !regionOpen(i));
+  if (ri > 0) next.unshift(`${REGIONS[ri - 1].name}지방 챔피언이 되면 ${REGIONS[ri].name}지방이 열린다`);
+  text('다음 목표', CW / 2, 420, 12, '#888');
+  next.slice(0, 2).forEach((l, i) => text(l, CW / 2, 438 + i * 16, 11, '#bbb'));
+  text(TOUCH ? '화면을 누르면 지방 선택으로' : 'R 키 또는 클릭 = 지방 선택으로', CW / 2, 482, 11, '#777');
 }
 
 function renderBar() {
@@ -3038,7 +3249,7 @@ async function chooseRegion(i) {
   catch (e) { loadError = `로딩 실패: ${e.message}`; state = 'error'; }
 }
 const chooseStarter = i => { const id = starterIds()[i]; if (id) newRun(MON[id], selShiny && shinyOk(id)); };
-const shinyOk = id => [...SHINY].some(s => (BASE[s] ?? s) === id);
+const shinyOk = id => [...SHINY].some(s => (starterBase(s) ?? s) === id);
 const SEL_STEP = { ArrowLeft: -1, KeyA: -1, ArrowRight: 1, KeyD: 1, ArrowUp: -SEL_COLS, KeyW: -SEL_COLS, ArrowDown: SEL_COLS, KeyS: SEL_COLS };
 
 addEventListener('keydown', e => {
@@ -3046,7 +3257,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyN') muted = !muted;
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   const d = /^Digit[0-9]$/.test(e.code) ? +e.code.slice(5) : null;
-  if (state === 'region') { if (d !== null) chooseRegion(d - 1); else if (e.code === 'KeyT') state = 'ach'; }
+  if (state === 'region') { if (d !== null) chooseRegion(d - 1); else if (e.code === 'KeyT') state = 'ach'; else if (e.code === 'KeyC' || e.code === 'Enter') continueRun(); }
   else if (state === 'ach') { if (e.code === 'KeyT' || e.code === 'Escape') state = 'region'; }
   else if (state === 'select') {
     if (d) { const c = starterCards()[d - 1]; if (c) chooseStarter(c.i); }
@@ -3055,7 +3266,7 @@ addEventListener('keydown', e => {
     else if (e.code === 'KeyX') selShiny = !selShiny;
     else if (e.code === 'Escape') state = 'region';
   }
-  else if (state === 'play') { if (e.code === 'KeyE') talk(); else if (e.code === 'KeyM') state = 'map'; else if (e.code === 'Escape') openMenu(); }
+  else if (state === 'play') { if (e.code === 'Space') player.dashQ = true; if (e.code === 'KeyE') talk(); else if (e.code === 'KeyM') { state = 'map'; player.opened = true; } else if (e.code === 'Escape') { openMenu(); player.opened = true; } else if (e.code === 'KeyH') skipTutorial(); }
   else if (state === 'pause') menuKey(e.code);
   else if (state === 'map') { if (e.code === 'KeyM' || e.code === 'Escape') state = 'play'; }
   else if (state === 'learn') { if (d >= 1 && d <= player.moves.size) decideLearn(d - 1); else if (d === 5 || e.code === 'Escape') decideLearn(null); }
@@ -3063,13 +3274,64 @@ addEventListener('keydown', e => {
   else if ((state === 'dead' || state === 'win') && e.code === 'KeyR') state = 'region';
 });
 addEventListener('keyup', e => keys[e.code] = false);
+addEventListener('pagehide', () => saveRun());
+addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveRun(); });
 cv.addEventListener('click', e => {
   initAudio();
   const rect = cv.getBoundingClientRect(), x = (e.clientX - rect.left) / rect.width * CW, y = (e.clientY - rect.top) / rect.height * CH;
   const hit = c => x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h;
+  const tap = [...taps].reverse().find(hit);
+  if (tap) return tap.fn();
   if (state === 'region') { const i = [...REGIONS, null].findIndex((_, i) => hit(regionCard(i))); if (i >= 0) chooseRegion(i); }
   else if (state === 'select') { const c = starterCards().find(hit); if (c) c.i === selCur ? chooseStarter(c.i) : selCur = c.i; }
 });
+
+// ---------- 터치 조작: 스틱과 버튼은 키보드 키를 누른 것처럼 키 이벤트를 보낸다 ----------
+const sendKey = (code, down) => dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code }));
+function setupTouch() {
+  if (!TOUCH) return;
+  document.body.classList.add('touch');
+  // 스틱: 왼쪽은 WASD(8방향, 메뉴에서는 꾹 누르면 반복), 오른쪽은 방향키(공격, 4방향)
+  const stick = (el, codes, eight) => {
+    const knob = el.querySelector('i');
+    let id = null, held = [], rep = null;
+    const set = next => {
+      for (const c of held) if (!next.includes(c)) sendKey(c, false);
+      for (const c of next) if (!held.includes(c)) sendKey(c, true);
+      held = next;
+      clearInterval(rep);
+      if (next.length && eight) rep = setInterval(() => { if (state !== 'play') next.forEach(c => sendKey(c, true)); }, 260);
+    };
+    const move = e => {
+      const r = el.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2), d = Math.hypot(dx, dy), max = r.width / 2 - 18;
+      const k = Math.min(1, max / (d || 1));
+      knob.style.transform = `translate(${dx * k}px,${dy * k}px)`;
+      if (d < 18) return set([]);
+      const [U, D, L, R] = codes;
+      if (eight) { const out = []; if (dy < -d * 0.38) out.push(U); if (dy > d * 0.38) out.push(D); if (dx < -d * 0.38) out.push(L); if (dx > d * 0.38) out.push(R); set(out); }
+      else set([Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? L : R) : (dy < 0 ? U : D)]);
+    };
+    el.addEventListener('pointerdown', e => { initAudio(); id = e.pointerId; el.setPointerCapture(id); move(e); e.preventDefault(); });
+    el.addEventListener('pointermove', e => { if (e.pointerId === id) move(e); });
+    const end = e => { if (e.pointerId !== id) return; id = null; knob.style.transform = ''; set([]); };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  };
+  stick($('#stickL'), ['KeyW', 'KeyS', 'KeyA', 'KeyD'], true);
+  stick($('#stickR'), ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'], false);
+  // 버튼: 화면 상태에 따라 알맞은 키로 바꿔 보낸다
+  const btn = (el, codeFor) => {
+    let code = null;
+    el.addEventListener('pointerdown', e => { initAudio(); e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('on'); code = codeFor(); if (code) sendKey(code, true); });
+    const up = () => { el.classList.remove('on'); if (code) sendKey(code, false); code = null; };
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  };
+  const ended = () => state === 'dead' || state === 'win';
+  btn($('#bA'), () => ended() ? 'KeyR' : ['region', 'select'].includes(state) ? 'Enter' : 'KeyE');
+  btn($('#bB'), () => ended() ? 'KeyR' : 'Escape');
+  btn($('#bDash'), () => 'Space');
+  btn($('#bMap'), () => state === 'map' ? 'KeyM' : state === 'play' ? 'KeyM' : null);
+}
+setupTouch();
 
 // ---------- 배경음: 직접 작곡한 휴대용 게임기풍 곡을 Web Audio로 합성한다 (bgm 폴더에 mp3가 있으면 그쪽이 먼저) ----------
 // 곡 = intro(한 번) + loop(반복) 구간들. 구간마다:
@@ -3142,7 +3404,14 @@ function compileSection(sec) {
 }
 for (const s of Object.values(SONGS)) { s.seq = [s.intro, ...s.loop].filter(Boolean).map(compileSection); s.loopAt = s.intro ? 1 : 0; }
 
-let audio = null, master = null, noiseBuf = null, muted = false, music = { name: null, file: null };
+let audio = null, master = null, musicBus = null, sfxBus = null, noiseBuf = null, muted = false, music = { name: null, file: null };
+const VOL_KEY = 'pokemon-dungeon-volume', VOL = { bgm: 0.8, sfx: 0.8, ...(store.get(VOL_KEY) ?? {}) };
+function applyVolume() {
+  store.set(VOL_KEY, VOL);
+  if (musicBus) musicBus.gain.value = VOL.bgm;
+  if (sfxBus) sfxBus.gain.value = VOL.sfx;
+  for (const a of Object.values(BGM_FILES)) a.volume = 0.5 * VOL.bgm;
+}
 const PULSE = {};
 
 // 브라우저는 사용자가 키를 누르거나 클릭하기 전에는 소리를 못 낸다. 첫 입력 때 켠다
@@ -3155,6 +3424,9 @@ function initAudio() {
   comp.threshold.value = -14; comp.ratio.value = 3;
   master = audio.createGain(); master.gain.value = 0.35;
   master.connect(comp); comp.connect(audio.destination);
+  musicBus = audio.createGain(); musicBus.connect(master);
+  sfxBus = audio.createGain(); sfxBus.connect(master);
+  applyVolume();
   noiseBuf = audio.createBuffer(1, audio.sampleRate, audio.sampleRate);
   const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   // 펄스파: 듀티비 12.5%(가늘고 맑음), 25%(멜로디), 50%(네모파)
@@ -3206,7 +3478,7 @@ function makeBus(bpm) {
   const out = audio.createGain(), lead = audio.createGain(), delay = audio.createDelay(1), fb = audio.createGain(), wet = audio.createGain();
   delay.delayTime.value = Math.min(0.95, 45 / bpm); fb.gain.value = 0.28; wet.gain.value = 0.22;
   lead.connect(out); lead.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(out);
-  out.connect(master);
+  out.connect(musicBus);
   return { out, lead };
 }
 
@@ -3244,6 +3516,41 @@ function playStep(s, m, t, dur) {
   if (d && d !== '.') drum(d, t, out);
 }
 
+// ---------- 효과음: 배경음과 같은 합성 엔진. 같은 소리가 너무 촘촘히 겹치지 않게 최소 간격을 둔다 ----------
+const jingle = (t, notes, step, wave, vol, o = {}) => notes.forEach((n, i) => n && voice(sfxBus, wave, midiF(n), t + i * step, step * (o.hold ?? 0.9), vol, { sus: 0.8, ...o }));
+const SFX = {
+  shot: t => voice(sfxBus, PULSE[0.5], 1050, t, 0.05, 0.05, { slide: 520, sus: 1, rel: 0.015 }),
+  beam: t => { voice(sfxBus, 'sawtooth', 220, t, 0.35, 0.08, { slide: 880, sus: 1, lp: 2400 }); noise(t, 0.3, 0.08, sfxBus, 3000); },
+  hit: t => { noise(t, 0.04, 0.12, sfxBus, 2500); voice(sfxBus, PULSE[0.25], 330, t, 0.05, 0.07, { slide: 180, sus: 1 }); },
+  crit: t => { noise(t, 0.08, 0.2, sfxBus, 1800); voice(sfxBus, PULSE[0.5], 660, t, 0.1, 0.1, { slide: 200, sus: 1 }); },
+  hurt: t => { voice(sfxBus, PULSE[0.5], 420, t, 0.2, 0.16, { slide: 80, sus: 1 }); noise(t, 0.14, 0.16, sfxBus, 500, 3000); },
+  faint: t => voice(sfxBus, PULSE[0.25], 760, t, 0.32, 0.1, { slide: 100, sus: 1 }),
+  boss: t => { voice(sfxBus, 'triangle', 220, t, 0.7, 0.3, { slide: 40, sus: 1 }); noise(t, 0.6, 0.18, sfxBus, 200, 1500); jingle(t + 0.05, [76, 72, 67, 64, 60], 0.08, PULSE[0.25], 0.08); },
+  coin: t => jingle(t, [88, 93], 0.05, PULSE[0.5], 0.05),
+  dash: t => noise(t, 0.12, 0.09, sfxBus, 900, 4000),
+  item: t => jingle(t, [72, 76, 79, 84], 0.06, PULSE[0.25], 0.09),
+  rare: t => { jingle(t, [72, 76, 79, 84, 88, 91], 0.06, PULSE[0.25], 0.09); jingle(t + 0.36, [96, 100], 0.08, PULSE[0.125], 0.05); },
+  heal: t => jingle(t, [72, 76, 79, 76, 84], 0.11, PULSE[0.25], 0.1, { hold: 1 }),
+  level: t => { jingle(t, [67, 72, 76, 79], 0.07, PULSE[0.25], 0.1); jingle(t + 0.28, [84], 0.3, PULSE[0.25], 0.1); },
+  evolve: t => { voice(sfxBus, PULSE[0.125], 200, t, 1.2, 0.08, { slide: 1600, sus: 1 }); jingle(t + 1.2, [72, 76, 79, 84, 79, 84, 88], 0.1, PULSE[0.25], 0.11, { hold: 1 }); },
+  badge: t => { jingle(t, [72, 72, 72, 76, null, 79, 84], 0.09, PULSE[0.25], 0.11); jingle(t, [64, 64, 64, 67, null, 72, 76], 0.09, PULSE[0.125], 0.06); },
+  battle: t => { jingle(t, [64, 67, 70, 73, 76, 79, 82, 85], 0.035, PULSE[0.5], 0.07); noise(t + 0.28, 0.3, 0.14, sfxBus, 3000); },
+  legend: t => { voice(sfxBus, 'sawtooth', 55, t, 1.6, 0.18, { att: 0.3, sus: 1, lp: 400 }); jingle(t + 0.2, [66, 72, 66, 72], 0.25, PULSE[0.125], 0.06); },
+  ach: t => { jingle(t, [84, 91], 0.09, PULSE[0.25], 0.09); jingle(t + 0.18, [96], 0.4, PULSE[0.125], 0.06); },
+  menu: t => voice(sfxBus, PULSE[0.5], 1400, t, 0.03, 0.05, { sus: 1 }),
+  select: t => jingle(t, [84, 91], 0.04, PULSE[0.5], 0.06),
+  deny: t => jingle(t, [60, 55], 0.07, PULSE[0.5], 0.07),
+  save: t => jingle(t, [79, 84, 88], 0.07, PULSE[0.125], 0.07),
+};
+const SFX_GAP = { shot: 0.06, hit: 0.05, coin: 0.06, faint: 0.05 }, sfxLast = {};
+function sfx(name) {
+  if (!audio || muted || !sfxBus || audio.state !== 'running') return;
+  const t = audio.currentTime;
+  if (t - (sfxLast[name] ?? -1) < (SFX_GAP[name] ?? 0.02)) return;
+  sfxLast[name] = t;
+  SFX[name](t + 0.01);
+}
+
 // 지금 장소와 상대에 맞는 곡: 라이벌 > 전설 > 리그(챔피언) > 체육관 > 마을·숲·동굴·도로
 function bgmFor() {
   if (state === 'region' || state === 'select' || state === 'ach') return 'town';
@@ -3263,7 +3570,7 @@ function probeBgm(rg) {
   for (const n of Object.keys(SONGS)) {
     const tryUrl = ([url, ...rest]) => {
       if (!url) return;
-      const a = new Audio(url); a.loop = true; a.volume = 0.5; a.preload = 'auto';
+      const a = new Audio(url); a.loop = true; a.volume = 0.5 * VOL.bgm; a.preload = 'auto';
       a.addEventListener('canplaythrough', () => { if (rg === region) BGM_FILES[n] = a; }, { once: true });
       a.addEventListener('error', () => tryUrl(rest), { once: true });
     };
