@@ -776,6 +776,16 @@ const trainerEase = t => t >= TRAINER_HP_EARLY.length ? 1 : TRAINER_HP_EARLY[Mat
 // 체육관 구성: 트레이너 방 수와 트레이너 한 명의 포켓몬 수 [최소, 최대]. 앞쪽 EARLY_GYMS개 체육관은 적게
 const EARLY_GYMS = 3, GYM_ROOMS = { early: [1, 2], late: [2, 3] }, GYM_TRAINER_MONS = { early: [1, 2], late: [2, 3] };
 const rollRange = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
+// 화력 따라가기: 트레이너·관장·라이벌·전설과 싸울 때 실제로 넣은 초당 피해(p.dps)를 재서,
+// 그 단계에서 예상한 화력(base x growth^단계)보다 강하면 상대 체력을 (비율^follow)배 올린다. 예상보다 약하면 그대로(1배), 최대 max배
+const POWER = { base: 6, growth: 1.5, follow: 0.75, max: 6 };
+const powerScale = t => { const d = player?.dps; return d ? clamp((d / (POWER.base * POWER.growth ** t)) ** POWER.follow, 1, POWER.max) : 1; };
+// 한 승부가 끝날 때마다 그 승부의 초당 피해를 기록에 섞는다 (4초 넘게 싸운 승부만)
+function samplePower() {
+  const p = player;
+  if ((p.fT ?? 0) > 4) { const v = p.fD / p.fT; p.dps = p.dps ? p.dps * 0.6 + v * 0.4 : v; }
+  p.fT = p.fD = 0;
+}
 const hpMult = (rank, t) => rank === 'legend' ? 20 * 1.6 ** t : rank === 'boss' ? 10 * 1.6 ** t * bossEase(t) : rank === 'trainer' ? 2 * 1.5 ** t * trainerEase(t) : 2 * 1.5 ** t;
 
 function makePlayer(m) {
@@ -1126,6 +1136,7 @@ function spawnEnemy(m, x, y, rank, tier = 0) {
     flip: false, hit: 0, cd: 1 + Math.random(), turn: Math.random(), dir: randDir(), vx: 0, vy: 0, walk: 0, moving: false, burn: 0, burnTick: 0, slow: 0, stun: 0, frozen: 0,
     z: 0, fade: 0, act: null, lunge: 1 + Math.random() * 2, burst: 0, burstT: 0, shotStyle: pick(['single', 'fan', 'burst']), aggro: rank !== 'wild',
     moves: rank === 'wild' ? null : movesFor(m), speed: big ? 30 + s.speed * 0.6 : (40 + s.speed * 0.8) * (rank === 'wild' ? 1.15 : 1), shooter: !big && s['special-attack'] >= s.attack };
+  if (rank !== 'wild') { e.hp *= powerScale(tier); e.maxHp = e.hp; }
   if (rank === 'legend') e.aggro = false;  // 전설도 다가가야 덤빈다
   unstick(e); clampBody(e);
   return e;
@@ -1292,6 +1303,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
     * (has('dragon-claw') ? 1.2 : 1) * (has('moonblast') && big ? 1.3 : 1) * legendPow;
   const crit = Math.random() < p.crit + extraCrit + (has('aerial-ace') ? 0.15 : 0) + (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0);
   if (crit) d *= has('crunch') ? 2.2 : 1.5;
+  if (e.battle || e.rank === 'legend') p.fD = (p.fD ?? 0) + Math.min(d, Math.max(0, e.hp));
   e.hp -= d; e.hit = 0.1; e.aggro = true;
   if (!tick) sfx(crit ? 'crit' : 'hit');
   if (hasFx('drain') && (p.drain2 += d) >= 12) { p.drain2 -= 12; heal(1); }
@@ -1714,6 +1726,7 @@ function onKill(e) {
     const ids = loadUnlocked();
     if (!ids.includes(e.mon.id)) { store.set(LEGEND_KEY, [...ids, e.mon.id]); (p.newStarters ??= []).push(e.mon.id); }
     if (e.legend) { e.legend.done = true; e.legend.alive = false; }
+    samplePower();
     if (p.rival) p.rival.legend = true;
     ach('legend1');
     gainMoney(3000, e.x, e.y);
@@ -1895,7 +1908,7 @@ function updateBattle(dt) {
   if (!bt) return;
   // 트레이너에게서 멀리 도망치면 승부가 끝난다
   if (bt.npc && Math.hypot(p.x - bt.npc.x, p.y - bt.npc.y) > 750) {
-    map.enemies = map.enemies.filter(e => !e.battle); bt.npc.fighting = false; map.battle = null;
+    map.enemies = map.enemies.filter(e => !e.battle); bt.npc.fighting = false; map.battle = null; samplePower();
     return banner = { text: '승부에서 도망쳤다', t: 2 };
   }
   if (map.enemies.some(e => e.battle)) return;
@@ -1907,7 +1920,7 @@ function updateBattle(dt) {
     const line = bt.say?.(bt.sent = (bt.sent ?? -1) + 1, !bt.queue.length);
     if (line) dialog = { name: bt.who, text: line, t: 4.5, keep: true };
     banner = { text: `${bt.who}은(는) ${m.name}을(를) 내보냈다!`, t: 2 };
-  } else if (!bt.queue.length) { map.battle = null; bt.onWin(); }
+  } else if (!bt.queue.length) { map.battle = null; samplePower(); bt.onWin(); }
 }
 
 // ---------- NPC ----------
@@ -1983,6 +1996,7 @@ function update(dt) {
   if (p.winAt > 0 && (p.winAt -= dt) <= 0) { state = 'win'; return; }
   p.time += dt; p.hop -= dt;
   if (p.regen && (p.regenT -= dt) <= 0) { p.regenT = 12; heal(1); }
+  if (map.enemies.some(e => (e.battle || (e.rank === 'legend' && e.aggro)) && e.hp > 0)) p.fT = (p.fT ?? 0) + dt;
   if ((p.achT = (p.achT ?? 0) - dt) <= 0) { p.achT = 0.5; checkAch(); }
   tickTutorial();
 
@@ -3032,7 +3046,7 @@ function drawCardScreen(x, y) {
   ctx.fillStyle = '#e8eef8'; ctx.fillRect(x, y + 14, 650, 340);
   plain(`${region.name}지방 트레이너`, x + 20, y + 48, 16);
   [['함께하는 포켓몬', `${p.mon.name} Lv.${p.level}`], ['돈', `₽ ${p.money.toLocaleString()}`], ['도감', `${region.dex.filter(id => p.seen.has(id)).length}마리 발견`],
-   ['쓰러뜨린 포켓몬', `${kills}마리`], ['모험 시간', `${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`], ['전설 해금', `${loadUnlocked().length}마리`], ['챔피언이 된 지방', `${CLEARED.size} / ${REGIONS.length}`], ['도전과제', `${ACHIEVED.size} / ${ACH.length}`]]
+   ['쓰러뜨린 포켓몬', `${kills}마리`], ['모험 시간', `${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`], ['전설 해금', `${loadUnlocked().length}마리`], ['챔피언이 된 지방', `${CLEARED.size} / ${REGIONS.length}`], ['도전과제', `${ACHIEVED.size} / ${ACH.length}`], ['상대 강함 (화력 따라가기)', `x${powerScale(p.beaten.size).toFixed(1)}`]]
     .forEach(([k, v], i) => { plain(k, x + 20, y + 84 + i * 28, 13, '#505060'); plain(v, x + 300, y + 84 + i * 28, 13, '#202028', 'right'); });
   plain('배지', x + 340, y + 48, 14, '#303060');
   region.gyms.forEach((g, i) => {
