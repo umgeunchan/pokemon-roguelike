@@ -39,7 +39,7 @@ const TS = 48, CELL = 26, MARGIN = 14, TEAR_Z = 22, FLY_Z = 30, DAY = 300;
 const DIRS = [[0, -1], [0, 1], [-1, 0], [1, 0]];
 const DIRS8 = [...DIRS, [-1, -1], [1, -1], [-1, 1], [1, 1]];
 const LEGEND_KEY = 'pokemon-dungeon-legends', DEX_KEY = 'pokemon-dungeon-dex', SHINY_KEY = 'pokemon-dungeon-shiny', SHINY_RATE = 0.01, NAMES_KEY = 'pokemon-dungeon-names-v2', STARTER_KEY = 'pokemon-dungeon-starters';
-const MAX_MOVES = 4;
+const MAX_MOVES = 4, MAX_LEVEL = 100, HP_EVERY = 10;  // 최대 체력은 HP_EVERY레벨마다 1칸(2) 늘고, 레벨은 MAX_LEVEL까지
 
 // 체육관 관장 / 사천왕·챔피언: [이름, 트레이너 스프라이트, 타입, 엔트리(마지막이 에이스)]
 const G = (leader, sprite, type, team, mobs, title = '체육관 관장') => ({ leader, sprite, type, team, mobs, title });
@@ -78,7 +78,7 @@ const REGIONS = [
       V: ['상록시티', 'T', 7], N: ['무지개시티', 'T', 3], S: ['노랑시티', 'T', 5], 8: ['8번도로', 'R'], L: ['보라타운', 'T'], 1: ['1번도로', 'R'], Z: ['사이클링로드', 'R'],
       D: ['갈색시티', 'T', 2], 2: ['12번도로', 'R'], A: ['태초마을', 'T', 'start'], J: ['사파리존', 'F'], U: ['연분홍시티', 'T', 4], o: ['15번도로', 'R'],
       m: ['14번도로', 'R'], n: ['13번도로', 'R'], w: ['21번수로', 'W'], x: ['19번수로', 'W'], H: ['홍련섬', 'T', 6], I: ['쌍둥이섬', 'N', [144]], y: ['20번수로', 'W'] } },
-  // 포켓몬스터 골드의 성도지방 지도를 따른다: 연두마을(동쪽 끝) → 29번도로 → 무궁시티 → 30·31번도로 → 도라지시티 → 32번도로·연결동굴 → 고동마을 → 너도밤나무숲 →
+  // 성도지방 지도: 연두마을(동쪽 끝) → 29번도로 → 무궁시티 → 30·31번도로 → 도라지시티 → 32번도로·연결동굴 → 고동마을 → 너도밤나무숲 →
   // 금빛시티 → 자연공원 → 인주시티 → 담청시티 → 진청시티, 인주시티 → 42번도로 → 황토마을 → 얼음샛길 → 검은먹시티, 연두마을 동쪽 27·26번도로 → 챔피언로드 → 포켓몬리그
   { name: '성도', starters: [152, 155, 158], roam: [243, 244, 245], gyms: [
     G('비상', 'falkner', 'flying', [16, 17], [16, 163, 21, 41]),
@@ -126,22 +126,22 @@ const REGIONS = [
     league: [E('혁진', 'sidney', 'dark', [262, 332, 359]), E('회연', 'phoebe-gen3', 'ghost', [356, 354, 302]), E('미혜', 'glacia', 'ice', [362, 364, 365]),
       E('권수', 'drake-gen3', 'dragon', [372, 330, 334, 373]), E('성호', 'steven', 'steel', [227, 344, 306, 376], '챔피언')],
     map: [
-      'R-M-Q   T-g-L',
-      '|   |   |   |',
-      'w   J-d e   x-Y',
-      '|     | |   |',
-      'P-o-v-U-f k-S-H',
-      '  |   |       |',
-      '  m   z       G',
-      '  |   |',
-      '  A   K',
-      '      |',
-      '    O-y'],
-    places: { R: ['금탄시티', 'T', 0], M: ['유성의 폭포', 'C'], Q: ['굴뚝산', 'S', [383]], T: ['검방울시티', 'T', 5], g: ['120번도로', 'R'], L: ['해안 도시', 'T'],
-      w: ['104번도로', 'R'], J: ['용암마을', 'T', 3], d: ['111번도로 사막', 'D', [377, 378, 379]], e: ['119번도로', 'R'], x: ['124번수로', 'W'], Y: ['이끼시티', 'T', 6],
-      P: ['노말 체육관 마을', 'T', 4], o: ['102번도로', 'R'], v: ['117번도로', 'R'], U: ['보라시티', 'T', 2], f: ['118번도로', 'R'], k: ['하늘기둥', 'S', [384]],
-      S: ['루네시티', 'T', 7], H: ['해저동굴', 'W', [382]], G: ['포켓몬리그', 'T', 'league'], m: ['작은 마을', 'T'], z: ['110번도로', 'R'], A: ['미로마을', 'T', 'start'],
-      K: ['항구 도시', 'T'], y: ['107번수로', 'W'], O: ['무로마을', 'T', 1] } },
+      'A-B-C-D-E F-G',
+      '|       | | |',
+      'H   I-J-K L M-N-O-P',
+      '|       | | |   |',
+      'Q-R-S-T-U-V W   X-Y',
+      '|       |       | |',
+      'Z       a       b c',
+      '|       |',
+      'd-e-f-g-h',
+      '|   |   |',
+      'i   j   k',
+      '|   |   |',
+      'l   m   n   o',
+      '|       |   |',
+      'p-q-r-s-t-u-v'],
+    places: { A: ['유성의 폭포', 'C'], B: ['114번도로', 'R'], C: ['단풍마을', 'T'], D: ['113번도로', 'R'], E: ['111번도로 사막', 'D', [377, 378, 379]], F: ['검방울시티', 'T', 5], G: ['120번도로', 'R'], H: ['115번도로', 'R'], I: ['용암마을', 'T', 3], J: ['굴뚝산', 'S', [383]], K: ['112번도로', 'R'], L: ['119번도로', 'F'], M: ['121번도로', 'R'], N: ['해안시티', 'T'], O: ['124번수로', 'W'], P: ['이끼시티', 'T', 6], Q: ['금탄시티', 'T', 0], R: ['금잔터널', 'C'], S: ['잔디마을', 'T'], T: ['117번도로', 'R'], U: ['보라시티', 'T', 2], V: ['118번도로', 'R'], W: ['송화산', 'S'], X: ['루네시티', 'T', 7], Y: ['챔피언로드', 'C'], Z: ['104번도로', 'F'], a: ['110번도로', 'R'], b: ['해저동굴', 'W', [382]], c: ['포켓몬리그', 'T', 'league'], d: ['등화시티', 'T', 4], e: ['102번도로', 'R'], f: ['고도마을', 'T'], g: ['103번도로', 'R'], h: ['사이클링로드', 'R'], i: ['105번수로', 'W'], j: ['101번도로', 'R'], k: ['110번도로 남쪽', 'R'], l: ['106번수로', 'W'], m: ['미로마을', 'T', 'start'], n: ['잿빛시티', 'T'], o: ['하늘기둥', 'S', [384]], p: ['무로마을', 'T', 1], q: ['107번수로', 'W'], r: ['108번수로', 'W'], s: ['버려진 배', 'S'], t: ['109번수로', 'W'], u: ['132번수로', 'W'], v: ['황금마을', 'T'] } },
   { name: '신오', starters: [387, 390, 393], roam: [488], gyms: [
     G('강석', 'roark', 'rock', [74, 95, 408], [74, 408, 410, 41]),
     G('유채', 'gardenia', 'grass', [420, 387, 407], [406, 420, 455, 43]),
@@ -154,24 +154,26 @@ const REGIONS = [
     league: [E('충호', 'aaron', 'bug', [416, 214, 452]), E('들국화', 'bertha', 'ground', [195, 464, 450]), E('대엽', 'flint', 'fire', [392, 467, 136]),
       E('고길', 'lucian', 'psychic', [122, 437, 475]), E('난천', 'cynthia', 'dragon', [442, 445, 448, 350], '챔피언')],
     map: [
-      '      X-a',
-      '      |',
-      '    P-N',
-      '      |',
-      '  E-f-Z-H-o-V',
-      '  |   | |   |',
-      '  e   k m   t',
-      '  |   | |   |',
-      'C-J-q-O n-D-L',
-      '  |       |',
-      '  r       u-Y',
-      '  |         |',
-      'T-B         G'],
-    places: { X: ['선단시티', 'T', 6], a: ['예지호수', 'W', [480]], P: ['창기둥', 'S', [483, 484]], N: ['217번도로', 'N'], E: ['영원시티', 'T', 1], f: ['211번도로', 'R'],
-      Z: ['천관산', 'C', [487]], H: ['연고시티', 'T', 4], o: ['209번도로', 'R'], V: ['장막시티', 'T', 2], e: ['205번도로', 'R'], k: ['207번도로', 'R'],
-      m: ['212번도로', 'R'], t: ['214번도로', 'R'], C: ['운하시티', 'T', 5], J: ['축복시티', 'T'], q: ['203번도로', 'R'], O: ['무쇠시티', 'T', 0],
-      n: ['큰 습지', 'F'], D: ['들판시티', 'T', 3], L: ['입지호수', 'W', [482]], r: ['202번도로', 'R'], u: ['222번도로', 'R'], Y: ['물가시티', 'T', 7],
-      G: ['포켓몬리그', 'T', 'league'], T: ['진실호수', 'W', [481]], B: ['떡잎마을', 'T', 'start'] } },
+      '      A-B',
+      '        |',
+      '        C-D',
+      '        |',
+      '    E-F-G-H-I',
+      '    |   |   |',
+      '    J   K   L       M',
+      '    |   |   |       |',
+      '  N-O P-Q-R-S-T-U   V',
+      '    | | |       |   |',
+      '    W X Y       Z   a',
+      '    | | |       |   |',
+      'b   c d e-f-g-h-i-j-k',
+      '|   | |',
+      'l-m-n-o',
+      '    |',
+      '    p',
+      '    |',
+      'q-r-s'],
+    places: { A: ['예지호수', 'W', [480]], B: ['선단시티', 'T', 6], C: ['216·217번도로', 'N'], D: ['창기둥', 'S', [483, 484]], E: ['영원시티', 'T', 1], F: ['211번도로', 'R'], G: ['천관산', 'C', [487]], H: ['봉신마을', 'T'], I: ['210번도로', 'R'], J: ['영원의 숲', 'F'], K: ['208번도로', 'R'], L: ['210번도로 남쪽', 'R'], M: ['포켓몬리그', 'T', 'league'], N: ['골짜기발전소', 'S'], O: ['205번도로', 'R'], P: ['207번도로', 'R'], Q: ['연고시티', 'T', 4], R: ['209번도로', 'R'], S: ['신수마을', 'T'], T: ['215번도로', 'R'], U: ['장막시티', 'T', 2], V: ['챔피언로드', 'C'], W: ['꽃향기마을', 'T'], X: ['무쇠시티', 'T', 0], Y: ['212번도로', 'R'], Z: ['214번도로', 'R'], a: ['223번수로', 'W'], b: ['강철섬', 'C'], c: ['204번도로', 'R'], d: ['무쇠게이트', 'C'], e: ['212번도로 남쪽', 'R'], f: ['대습초원', 'F'], g: ['들판시티', 'T', 3], h: ['213번도로', 'R'], i: ['입지호수', 'W', [482]], j: ['222번도로', 'R'], k: ['물가시티', 'T', 7], l: ['운하시티', 'T', 5], m: ['218번도로', 'R'], n: ['축복시티', 'T'], o: ['203번도로', 'R'], p: ['202번도로', 'R'], q: ['진실호수', 'W', [481]], r: ['떡잎마을', 'T', 'start'], s: ['잔모래마을', 'T'] } },
   { name: '하나', starters: [495, 498, 501], roam: [641, 642], gyms: [
     G('덴트', 'cilan', 'grass', [506, 511], [506, 504, 511, 540]),
     G('알로에', 'lenora', 'normal', [507, 505], [504, 506, 519, 531]),
@@ -184,21 +186,32 @@ const REGIONS = [
     league: [E('망초', 'shauntal', 'ghost', [593, 609, 563]), E('블래리', 'grimsley', 'dark', [510, 553, 625]), E('카틀레야', 'caitlin', 'psychic', [579, 518, 576]),
       E('연무', 'marshal', 'fighting', [538, 539, 620]), E('노간주', 'alder', 'bug', [637, 626, 589], '챔피언')],
     map: [
-      'C-K-t-I-T-X',
-      '|       |',
-      'Q-M     O',
-      '  |     |',
-      '  d     G',
-      '  |',
-      '  H',
-      '  |',
-      '  B',
-      '  |',
-      '  F-N-s-S-r-A'],
-    places: { C: ['전기 동굴', 'C'], K: ['구름시티', 'T', 5], t: ['7번도로', 'R'], I: ['얼음 체육관 마을', 'T', 6], T: ['용나선탑', 'S', [643, 644]],
-      X: ['거대한 구멍', 'N', [646]], Q: ['땅 체육관 마을', 'T', 4], M: ['뇌문시티', 'T', 3], O: ['쌍용시티', 'T', 7], G: ['포켓몬리그', 'T', 'league'],
-      d: ['4번도로 사막', 'D', [645]], H: ['히운시티', 'T', 2], B: ['큰 다리', 'W'], F: ['바람개비숲', 'F'], N: ['노말 체육관 마을', 'T', 1], s: ['3번도로', 'R'],
-      S: ['풀 체육관 마을', 'T', 0], r: ['1번도로', 'R'], A: ['시작 마을', 'T', 'start'] } },
+      '    A     B',
+      '    |     |',
+      '  C D-E   F',
+      '  | | |   |',
+      'G-H-I J-K-L M',
+      '|       |   |',
+      'N       O-P-Q',
+      '|           |',
+      'R-S-T-U-V-W X',
+      '      |   | |',
+      '  Y-Z-a   b-c-d',
+      '      |',
+      '      e',
+      '      |',
+      '      f',
+      '      |',
+      '      g-h-i-j-k',
+      '            |',
+      '            l',
+      '            |',
+      '            m',
+      '            |',
+      '            n',
+      '            |',
+      '            o'],
+    places: { A: ['용나선탑', 'S', [643, 644]], B: ['포켓몬리그', 'T', 'league'], C: ['타워오브해븐', 'S'], D: ['설화시티', 'T', 6], E: ['8번도로', 'W'], F: ['챔피언로드', 'C'], G: ['궐수시티', 'T', 5], H: ['7번도로', 'R'], I: ['태엽산', 'C'], J: ['실린더브리지', 'R'], K: ['쌍용시티', 'T', 7], L: ['10번도로', 'R'], M: ['자이언트홀', 'N', [646]], N: ['전기돌동굴', 'C'], O: ['빌리지브리지', 'R'], P: ['보배마을', 'T'], Q: ['13번도로', 'R'], R: ['물풍경시티', 'T', 4], S: ['물풍경도개교', 'W'], T: ['5번도로', 'R'], U: ['뇌문시티', 'T', 3], V: ['16번도로', 'F'], W: ['15번도로', 'R'], X: ['물결마을', 'T'], Y: ['고대의 성', 'S'], Z: ['리조트데저트', 'D'], a: ['4번도로', 'D'], b: ['블랙시티', 'T'], c: ['14번도로', 'R'], d: ['풍요의 사당', 'S', [645]], e: ['구름시티', 'T', 2], f: ['스카이애로 브리지', 'W'], g: ['바람개비숲', 'F'], h: ['칠보시티', 'T', 1], i: ['3번도로', 'R'], j: ['성신시티', 'T', 0], k: ['꿈터', 'S'], l: ['2번도로', 'R'], m: ['넝쿨마을', 'T'], n: ['1번도로', 'R'], o: ['마름꽃마을', 'T', 'start'] } },
   { name: '칼로스', starters: [650, 653, 656], roam: [719], gyms: [
     G('비올라', 'viola', 'bug', [283, 666], [664, 665, 283, 13]),
     G('자크로', 'grant', 'rock', [698, 696], [74, 688, 299, 524]),
@@ -211,21 +224,22 @@ const REGIONS = [
     league: [E('파키라', 'malva', 'fire', [668, 324, 609]), E('즈미', 'siebold', 'water', [693, 689, 130]), E('간피', 'wikstrom', 'steel', [707, 476, 681]),
       E('드라세나', 'drasna', 'dragon', [715, 691, 334]), E('카르네', 'diantha', 'rock', [697, 699, 706, 282], '챔피언')],
     map: [
-      '      R-d-P-n',
-      '      |   | |',
-      'K-b-U-t   X W',
-      '|     |     |',
-      'c-G-a-L-Z   Y',
+      'A-B-C-D   E-F-G-H-I',
+      '|     |   |     | |',
+      'J K   L   M     N O P',
+      '| |   |   |       | |',
+      'Q R-S-T-U-V-W     X-Y',
+      '| |   |',
+      'Z a   b',
+      '| |   |',
+      'c-d-e f',
       '      |',
-      '      V',
+      '      g',
       '      |',
-      '      F',
+      '      h',
       '      |',
-      '      A'],
-    places: { R: ['페어리 체육관 마을', 'T', 5], d: ['15번도로', 'R'], P: ['에스퍼 체육관 마을', 'T', 6], n: ['17번도로', 'N'], K: ['격투 체육관 마을', 'T', 2],
-      b: ['12번도로', 'R'], U: ['풀 체육관 마을', 'T', 3], t: ['14번도로', 'F'], X: ['고대의 동굴', 'C', [716, 717]], W: ['얼음 체육관 마을', 'T', 7],
-      c: ['해안 동굴', 'C'], G: ['바위 체육관 마을', 'T', 1], a: ['5번도로', 'R'], L: ['미르시티', 'T', 4], Z: ['깊은 동굴', 'C', [718]], Y: ['포켓몬리그', 'T', 'league'],
-      V: ['벌레 체육관 마을', 'T', 0], F: ['2번도로 숲', 'F'], A: ['시작 마을', 'T', 'start'] } },
+      '      i'],
+    places: { A: ['사라시티', 'T', 2], B: ['12번도로', 'W'], C: ['비익시티', 'T', 3], D: ['13번도로', 'D'], E: ['버들비마을', 'T'], F: ['17번도로', 'N'], G: ['향전시티', 'T', 6], H: ['18번도로', 'R'], I: ['배롱마을', 'T'], J: ['비춤의 동굴', 'C'], K: ['파르팽 궁전', 'S'], L: ['칼로스발전소', 'S'], M: ['15번도로', 'R'], N: ['끝의 동굴', 'C', [718]], O: ['19번도로', 'R'], P: ['포켓몬리그', 'T', 'league'], Q: ['옥유마을', 'T'], R: ['고목내마을', 'T'], S: ['5번도로', 'R'], T: ['미르시티', 'T', 4], U: ['14번도로', 'F'], V: ['후늬시티', 'T', 5], W: ['황폐해진 호텔', 'S'], X: ['이설시티', 'T', 7], Y: ['챔피언로드', 'C'], Z: ['10번도로 열석', 'S', [716, 717]], a: ['땅이음의 동굴', 'C'], b: ['4번도로', 'R'], c: ['삼채시티', 'T', 1], d: ['가라마을', 'T'], e: ['반짝임의 동굴', 'C'], f: ['백단시티', 'T', 0], g: ['백단숲', 'F'], h: ['수미마을', 'T'], i: ['조아마을', 'T', 'start'] } },
   { name: '알로라', starters: [722, 725, 728], roam: [], gyms: [
     G('일리마', 'ilima', 'normal', [734, 735], [731, 734, 19, 506], '캡틴'),
     G('할라', 'hala', 'fighting', [56, 297, 739], [739, 701, 66, 56], '섬킹'),
@@ -238,24 +252,20 @@ const REGIONS = [
     league: [E('할라', 'hala', 'fighting', [297, 62, 760]), E('라이치', 'olivia', 'rock', [76, 745, 476]), E('아세로라', 'acerola', 'ghost', [354, 781, 302]),
       E('카히리', 'kahili', 'flying', [741, 227, 733]), E('쿠쿠이', 'kukui', 'rock', [745, 628, 143, 38], '챔피언')],
     map: [
-      'A-r-P',
+      'A-B',
       '  |',
-      'I-H-h N',
-      '    | |',
-      '    w-a-K',
-      '      | |',
-      '      L-M-T Q',
-      '        |   |',
-      '        x   O-E',
-      '        |   |',
-      '      G-U-S-y',
-      '        |',
-      '        R-Z'],
-    places: { A: ['시작 마을', 'T', 'start'], r: ['1번도로', 'R'], P: ['멜레멜레 유적', 'S', [785]], I: ['일리마의 시련장', 'C', 0], H: ['하우올리시티', 'T'],
-      h: ['할라의 대시련장', 'T', 1], N: ['라이치의 대시련장', 'T', 7], w: ['바닷길', 'W'], a: ['아칼라섬', 'T'], K: ['카키의 시련장', 'S', 3],
-      L: ['수련의 시련장', 'W', 2], M: ['마오의 시련장', 'F', 4], T: ['아칼라 유적', 'S', [786]], Q: ['포니 유적', 'S', [788]], x: ['바닷길', 'W'],
-      O: ['포니섬', 'T'], E: ['제단', 'S', [791, 792]], G: ['아세로라의 시련장', 'S', 6], U: ['울라울라섬', 'T'], S: ['마마네의 시련장', 'R', 5],
-      y: ['바닷길', 'W'], R: ['울라울라 유적', 'S', [787]], Z: ['포켓몬리그', 'T', 'league'] } },
+      '  C D       E',
+      '  | |       |',
+      '  F-G       H-I',
+      '    |         |',
+      '    J K     L M-N',
+      '    | |     | |',
+      '    O-P-Q R S-T',
+      '    |   | | |',
+      'U-V-W   X-Y-Z',
+      '| |',
+      'a b'],
+    places: { A: ['전쟁의 유적', 'S', [785]], B: ['릴리마을', 'T', 1], C: ['1번도로', 'R'], D: ['우거진 동굴', 'C', 0], E: ['포켓몬리그', 'T', 'league'], F: ['하우올리 외곽', 'T', 'start'], G: ['하우올리시티', 'T'], H: ['라나키라마운틴', 'C'], I: ['포마을', 'T'], J: ['멜레멜레 바닷길', 'W'], K: ['벨라화산공원', 'S', 3], L: ['호쿠라니큰산', 'S', 5], M: ['카푸마을', 'T'], N: ['풍요의 유적', 'S', [787]], O: ['환대시티', 'T'], P: ['오하나마을', 'T'], Q: ['잔잔한물가언덕', 'W', 2], R: ['생명의 유적', 'S', [786]], S: ['말리에시티', 'T'], T: ['슈퍼·메가싸네 철거지', 'S', 6], U: ['포니섬', 'C'], V: ['바다민족의 마을', 'T'], W: ['포니 바닷길', 'W'], X: ['셰이드정글', 'F', 4], Y: ['코니코니시티', 'T', 7], Z: ['울라울라 바닷길', 'W'], a: ['제단', 'S', [791, 792]], b: ['희망의 유적', 'S', [788]] } },
   { name: '가라르', starters: [810, 813, 816], roam: [], gyms: [
     G('아킬', 'milo', 'grass', [829, 830], [829, 819, 270, 840]),
     G('야청', 'nessa', 'water', [118, 833, 834], [833, 129, 846, 118]),
@@ -268,22 +278,28 @@ const REGIONS = [
     league: [E('호브', 'hop', 'normal', [823, 836, 812], '라이벌'), E('마리', 'marnie', 'dark', [861, 510, 877], '라이벌'), E('비트', 'bede', 'fairy', [858, 869, 303], '라이벌'),
       E('금랑', 'raihan', 'dragon', [884, 330, 526], '체육관 관장'), E('단델', 'leon', 'dragon', [887, 612, 537, 6], '챔피언')],
     map: [
-      '  Z-i-j',
+      '',
+      '',
+      '    A',
       '    |',
-      '  f-g-h',
-      '  |',
-      '  e-d',
+      'B   C',
+      '|   |',
+      'D   E   F-G',
+      '|   |   | |',
+      'H-I-J-K-L M',
       '    |',
-      '    c',
+      '    N-O P',
+      '    |   |',
+      'Q-R-S-T-U',
       '    |',
-      '  a-X-b',
+      '    V',
       '    |',
-      '  W-r',
+      '    W',
       '    |',
-      '    A'],
-    places: { Z: ['포켓몬리그', 'T', 'league'], i: ['드래곤 체육관 도시', 'T', 7], j: ['에너지 발전소', 'S', [890]], f: ['페어리 체육관 마을', 'T', 4], g: ['바위 체육관 마을', 'T', 5],
-      h: ['악 체육관 마을', 'T', 6], e: ['격투 체육관 마을', 'T', 3], d: ['광산', 'C'], c: ['불꽃 체육관 도시', 'T', 2], a: ['풀 체육관 마을', 'T', 0],
-      X: ['와일드에리어', 'R'], b: ['물 체육관 마을', 'T', 1], W: ['깊은 숲', 'F', [888, 889]], r: ['1번도로', 'R'], A: ['시작 마을', 'T', 'start'] } },
+      '    X',
+      '    |',
+      '  Y-Z'],
+    places: { A: ['포켓몬리그', 'T', 'league'], B: ['아라베스크마을', 'T', 4], C: ['슛시티', 'T'], D: ['루미너스메이즈숲', 'F'], E: ['10번도로', 'N'], F: ['키르쿠스마을', 'T', 5], G: ['9번도로', 'W'], H: ['래터럴마을', 'T', 3], I: ['6번도로', 'D'], J: ['너클시티', 'T', 7], K: ['7번도로', 'R'], L: ['8번도로', 'C'], M: ['스파이크마을', 'T', 6], N: ['와일드에리어 북부', 'R'], O: ['에너지플랜트', 'S', [890]], P: ['제2광산', 'C'], Q: ['터프마을', 'T', 0], R: ['가라르광산', 'C'], S: ['엔진시티', 'T', 2], T: ['5번도로', 'R'], U: ['바우마을', 'T', 1], V: ['와일드에리어 남부', 'R'], W: ['브래시마을', 'T'], X: ['1번도로', 'R'], Y: ['꾸벅졸음숲', 'F', [888, 889]], Z: ['펄롱마을', 'T', 'start'] } },
   { name: '팔데아', starters: [906, 909, 912], roam: [], gyms: [
     G('단풍', 'katy', 'bug', [919, 917, 216], [917, 919, 10, 415]),
     G('콜사', 'brassius', 'grass', [548, 928, 185], [928, 548, 187, 951]),
@@ -296,19 +312,22 @@ const REGIONS = [
     league: [E('칠리', 'rika', 'ground', [340, 323, 232, 980]), E('포피', 'poppy', 'steel', [879, 82, 959]), E('청목', 'larry', 'flying', [357, 334, 973]),
       E('하싸쿠', 'hassel', 'dragon', [841, 691, 998]), E('테사', 'geeta', 'psychic', [956, 673, 983, 970], '챔피언')],
     map: [
-      'S-N   H-I',
-      '| |   |',
-      'G c-Z-P',
-      '|   |',
-      'B-a-M-b-E',
-      '    | | |',
-      '    r L W',
-      '    |',
-      '    A'],
-    places: { S: ['봉인된 사당', 'S', [1001, 1002, 1003, 1004]], N: ['노말 체육관 마을', 'T', 4], H: ['고스트 체육관 마을', 'T', 5], I: ['얼음 체육관 마을', 'T', 7],
-      G: ['풀 체육관 마을', 'T', 1], c: ['북쪽 에리어', 'R'], Z: ['에리어 제로', 'S', [1007, 1008]], P: ['에스퍼 체육관 마을', 'T', 6], B: ['벌레 체육관 마을', 'T', 0],
-      a: ['서쪽 에리어', 'R'], M: ['테이블시티', 'T'], b: ['동쪽 에리어', 'R'], E: ['전기 체육관 마을', 'T', 2], r: ['남쪽 에리어', 'R'],
-      L: ['포켓몬리그', 'T', 'league'], W: ['물 체육관 마을', 'T', 3], A: ['시작 마을', 'T', 'start'] } },
+      '  A-B-C-D',
+      '  |   | |',
+      '  E   F G',
+      '  |   | |',
+      'H-I J-K L-M',
+      '  | | | |',
+      'N-O P Q R',
+      '  | |   |',
+      '  S-T-U-V-W',
+      '    | |',
+      '    X-Y',
+      '      |',
+      '      Z',
+      '      |',
+      '      a'],
+    places: { A: ['오야 호수', 'W'], B: ['나페산', 'N', 7], C: ['프리지마을', 'T', 5], D: ['피케마을', 'T'], E: ['참푸르마을', 'T', 4], F: ['북쪽 에리어', 'N'], G: ['동쪽 3번 에리어', 'R'], H: ['마리네이드마을', 'T'], I: ['카라프시티', 'T', 3], J: ['포켓몬리그', 'T', 'league'], K: ['북쪽 1번 에리어', 'R'], L: ['동쪽 2번 에리어', 'R'], M: ['누룩스시티', 'T', 2], N: ['봉인된 사당', 'S', [1001, 1002, 1003, 1004]], O: ['로스트 사막', 'D'], P: ['세르클마을', 'T', 1], Q: ['에리어 제로', 'S', [1007, 1008]], R: ['동쪽 1번 에리어', 'R'], S: ['보울마을', 'T', 0], T: ['남쪽 2번 에리어', 'R'], U: ['테이블시티', 'T'], V: ['남쪽 3번 에리어', 'R'], W: ['베이크마을', 'T', 6], X: ['플라토마을', 'T'], Y: ['남쪽 1번 에리어', 'R'], Z: ['티스푼 오솔길', 'R'], a: ['티스푼마을', 'T', 'start'] } },
 ];
 // 장소 종류: 바닥색, 장애물, 장애물 밀도, 잘 나오는 야생 포켓몬 타입
 const KINDS = {
@@ -543,7 +562,40 @@ const TMS = [
   { id: 'dragon-claw', tm: 'tm-dragon', name: '드래곤크루', type: 'dragon', desc: '모든 공격 위력 x1.2' },
   { id: 'moonblast', tm: 'tm-fairy', name: '문포스', type: 'fairy', desc: '관장·사천왕·전설에게 피해 x1.3' },
   { id: 'x-scissor', tm: 'tm-bug', name: '시저크로스', type: 'bug', desc: '공격이 적을 관통한다' },
+  { id: 'hydro-pump', tm: 'tm-water', name: '하이드로펌프', type: 'water', desc: '모든 공격 위력 x1.25' },
+  { id: 'blizzard', tm: 'tm-ice', name: '눈보라', type: 'ice', desc: '적중 시 10% 확률로 그 적과 주변 적을 얼림' },
+  { id: 'thunder', tm: 'tm-electric', name: '번개', type: 'electric', desc: '적중 시 15% 확률로 벼락이 떨어져 주변에 큰 피해' },
+  { id: 'energy-ball', tm: 'tm-grass', name: '에너지볼', type: 'grass', desc: '적중 시 20% 확률로 작은 폭발 (주변 피해)' },
+  { id: 'poison-jab', tm: 'tm-poison', name: '독찌르기', type: 'poison', desc: '적중 시 30% 확률로 독 (지속 피해)' },
+  { id: 'bug-buzz', tm: 'tm-bug', name: '벌레의야단법석', type: 'bug', desc: '5번째 적중마다 주변에 음파 (피해 + 밀어냄)' },
+  { id: 'air-slash', tm: 'tm-flying', name: '에어슬래시', type: 'flying', desc: '적중 시 25% 확률로 풀죽음' },
+  { id: 'close-combat', tm: 'tm-fighting', name: '인파이트', type: 'fighting', desc: '모든 공격 위력 x1.35, 연사 조금 느려짐' },
+  { id: 'play-rough', tm: 'tm-fairy', name: '치근거리기', type: 'fairy', desc: '급소 확률 +10%, 급소 피해 x1.2' },
+  { id: 'earth-power', tm: 'tm-ground', name: '대지의힘', type: 'ground', desc: '관장·사천왕·전설에게 피해 x1.25' },
 ];
+// 숨은 조합: 두 기술을 함께 기억하면 추가 효과가 조용히 켜진다 (화면에 알리지 않는다. 직접 찾아내는 재미)
+const COMBOS = [
+  { id: 'scorch', name: '작열', need: ['will-o-wisp', 'flamethrower'], desc: '화상·독에 걸린 적에게 피해 x1.4' },
+  { id: 'storm', name: '뇌우', need: ['thunderbolt', 'surf'], desc: '전기 튀김이 더 멀리, 피해 x2' },
+  { id: 'zero', name: '절대영도', need: ['icy-wind', 'ice-beam'], desc: '느려진 적은 30% 확률로 얼어붙는다' },
+  { id: 'toxic', name: '맹독', need: ['sludge-bomb', 'poison-jab'], desc: '독·화상 지속 피해 x2' },
+  { id: 'quake', name: '대지붕괴', need: ['earthquake', 'rock-slide'], desc: '관장·전설에게 피해 x1.35' },
+  { id: 'fang', name: '그림자 송곳니', need: ['shadow-ball', 'crunch'], desc: '급소 시 15% 확률로 체력 회복' },
+  { id: 'dragon', name: '용의 춤', need: ['dragon-claw', 'dragon-pulse'], desc: '모든 공격 위력 x1.25' },
+  { id: 'vine', name: '흡수 덩굴', need: ['giga-drain', 'razor-leaf'], desc: '체력 흡수가 두 배로 잦아진다' },
+  { id: 'mind', name: '정신 붕괴', need: ['psychic', 'dark-pulse'], desc: '풀죽은 적에게 피해 x1.5' },
+  { id: 'fortress', name: '강철 요새', need: ['flash-cannon', 'iron-head'], desc: '받는 공격을 20% 확률로 막아낸다' },
+  { id: 'gale', name: '질풍', need: ['aerial-ace', 'swift'], desc: '연사 x1.25' },
+  { id: 'steam', name: '증기 폭발', need: ['hydro-pump', 'flamethrower'], desc: '광선 피해 x1.4' },
+  { id: 'tempest', name: '천둥 폭풍', need: ['thunder', 'thunderbolt'], desc: '벼락 확률 15% → 30%' },
+  { id: 'prank', name: '요정의 장난', need: ['play-rough', 'dazzling-gleam'], desc: '빛 폭발이 3번째 공격마다' },
+];
+const combo = id => !!player?.combos?.has(id);
+function refreshCombos() {
+  const p = player;
+  p.combos = new Set(COMBOS.filter(c => c.need.every(id => p.moves.has(id))).map(c => c.id));
+}
+
 // 도감 스타팅이 갖고 시작하는 기술: 첫 번째 타입에 맞는 기술머신 (없으면 두 번째 타입). 타입마다 목록 맨 앞이 공격 기술이라 회복 기술로 시작하지 않는다
 const typeMove = m => m.types.map(t => TMS.find(x => x.type === t)).find(Boolean)?.id;
 // 전설의 기술: 전설의 포켓몬으로 시작하면 처음부터 갖고 있고, 아주 드물게 기술머신으로도 나온다. 일반 기술보다 확실히 강하다
@@ -757,7 +809,7 @@ async function loadCommon() {
 const eff = (atk, defTypes) => defTypes.reduce((m, t) => m * (CHART[atk]?.[t] ?? 1), 1);
 const has = id => player.moves.has(id);
 const hasFx = f => FX.has(f);
-const refreshFx = () => { FX = new Set([...player.moves].map(id => moveDef(id)?.fx).filter(Boolean)); legendPow = 1.5 ** [...player.moves].filter(id => moveDef(id)?.legend).length; };
+const refreshFx = () => { FX = new Set([...player.moves].map(id => moveDef(id)?.fx).filter(Boolean)); legendPow = 1.5 ** [...player.moves].filter(id => moveDef(id)?.legend).length; refreshCombos(); };
 const starterIds = () => [...new Set([...region.starters, 25, ...achRewards(), ...[...STARTERS].sort((a, b) => a - b), ...loadUnlocked()])].filter(id => MON[id]);
 const untargetable = e => e.z > 30 || e.fade > 0.5;
 const baseOf = m => ({ hp: Math.round(m.st.hp / 7.5), dmg: Math.max(m.st.attack, m.st['special-attack']) / 20, speed: 120 + m.st.speed * 1.5 });
@@ -845,7 +897,7 @@ function rollContent(rnd, { tm = 0, ltm = 0, c = 0.6, r = 0.35, l = 0.05 }) {
   return { kind: 'item', item: it };
 }
 
-// 골드 지도처럼: 장소마다 자유롭게 돌아다닐 수 있는 구역이 있고, 구역 사이는 곧게 뻗은 길로만 이어진다. 나머지는 숲·바위·바다로 막혀 있다
+// 원작 지도처럼: 장소마다 자유롭게 돌아다닐 수 있는 구역이 있고, 구역 사이는 곧게 뻗은 길로만 이어진다. 나머지는 숲·바위·바다로 막혀 있다
 function genWorld(seed) {
   const rnd = mulberry32(seed), noise = makeNoise(rnd), { cells, links } = parseMap(region);
   const cols = Math.max(...cells.map(c => c.x)) + 1, rows = Math.max(...cells.map(c => c.y)) + 1;
@@ -1044,7 +1096,7 @@ function makeIndoor(b) {
       pil.push([x, y], [mx, y]);
     }
     pil.forEach(([x, y]) => set(x, y, 1));
-    const r = { i, y0, y1, cx: (cx + 0.5) * TS, type: s.type, who: s.who, down: door(y1), up: i < specs.length - 1 ? door(y0) : [], cleared: false, started: false };
+    const r = { i, y0, y1, x0, x1: x0 + s.w - 1, cx: (cx + 0.5) * TS, type: s.type, who: s.who, down: door(y1), up: i < specs.length - 1 ? door(y0) : [], cleared: false, started: false };
     if (!s.who) { const [sprite, name] = pick(Object.values(TRAINERS).flat()); r.npc = { kind: 'gymtrainer', sprite, name, x: r.cx, y: (y0 + 1.8) * TS }; m.npcs.push(r.npc); }
     m.rooms.push(r);
     y1 = y0;
@@ -1104,6 +1156,21 @@ function moveBody(a, dx, dy) {
   a.y += dy; if (circleHitsSolid(a.x, a.y, a.r, a.flying, onLedge || (a === player && dy > 0))) a.y -= dy;
 }
 const clampBody = a => { a.x = clamp(a.x, a.r, map.tw * TS - a.r); a.y = clamp(a.y, a.r, map.th * TS - a.r); };
+// 체육관·리그 방 안 승부: 적은 지금 방의 벽 안쪽에만 있을 수 있다 (벽 너머 다음 방으로 끼어 들어가 진행이 막히는 것 방지)
+function keepInRoom(e) {
+  const r = map.kind === 'indoor' && map.room;
+  if (!r || r.x0 === undefined) return;
+  const rr = Math.min(e.r, TS * 1.5);
+  e.x = clamp(e.x, (r.x0 + 1) * TS + rr, r.x1 * TS - rr); e.y = clamp(e.y, (r.y0 + 1) * TS + rr, r.y1 * TS - rr);
+  if (!circleHitsSolid(e.x, e.y, e.r, e.flying)) return;
+  // 기둥에 겹쳤으면 방 안에서만 가장 가까운 빈자리를 찾는다
+  let best = null, bd = Infinity;
+  for (let ty = r.y0 + 1; ty < r.y1; ty++) for (let tx = r.x0 + 1; tx < r.x1; tx++) {
+    const x = clamp((tx + 0.5) * TS, (r.x0 + 1) * TS + rr, r.x1 * TS - rr), y = clamp((ty + 0.5) * TS, (r.y0 + 1) * TS + rr, r.y1 * TS - rr), d = Math.hypot(x - e.x, y - e.y);
+    if (d < bd && !circleHitsSolid(x, y, Math.min(e.r, TS), e.flying)) { bd = d; best = [x, y]; }
+  }
+  if (best) [e.x, e.y] = best;
+}
 
 function unstick(a) {
   if (!circleHitsSolid(a.x, a.y, a.r, a.flying)) return;
@@ -1128,6 +1195,7 @@ function movesFor(m) {
   return list;
 }
 
+const RAIN_NAME = { fire: '불꽃 비', water: '폭우', ice: '우박', electric: '낙뢰', rock: '낙석', ground: '낙석', grass: '씨앗 폭격', poison: '독 비', psychic: '사이코 유성', dragon: '용성군', fairy: '별빛 비' };
 // rank: wild(야생) / trainer(트레이너) / boss(관장·사천왕) / legend(전설)
 function spawnEnemy(m, x, y, rank, tier = 0) {
   const s = m.st, big = rank === 'boss' || rank === 'legend', w = m.box.x1 - m.box.x0;
@@ -1137,6 +1205,10 @@ function spawnEnemy(m, x, y, rank, tier = 0) {
     z: 0, fade: 0, act: null, lunge: 1 + Math.random() * 2, burst: 0, burstT: 0, shotStyle: pick(['single', 'fan', 'burst']), aggro: rank !== 'wild',
     moves: rank === 'wild' ? null : movesFor(m), speed: big ? 30 + s.speed * 0.6 : (40 + s.speed * 0.8) * (rank === 'wild' ? 1.15 : 1), shooter: !big && s['special-attack'] >= s.attack };
   if (rank !== 'wild') { e.hp *= powerScale(tier); e.maxHp = e.hp; }
+  e.lvl = rank === 'boss' ? (tier >= 6 ? 2 : tier >= 3 ? 1 : 0) : rank === 'legend' ? (tier >= 4 ? 2 : 1) : 0;
+  if (e.lvl >= 1) e.moves = [...e.moves, ['ring', '포위 탄막'], ['rain', RAIN_NAME[m.types[0]] ?? '유성우']];
+  if (e.lvl >= 2) e.moves.push(['cross', '십자 포화']);
+  if (rank === 'legend') e.moves.push(['summon', '동료 부르기']);
   if (rank === 'legend') e.aggro = false;  // 전설도 다가가야 덤빈다
   unstick(e); clampBody(e);
   return e;
@@ -1145,15 +1217,17 @@ function spawnEnemy(m, x, y, rank, tier = 0) {
 // ---------- 진행: 경험치, 레벨, 진화, 돈 ----------
 function gainExp(n) {
   const p = player;
+  if (p.level >= MAX_LEVEL) { p.exp = 0; return; }
   p.exp += Math.round(n * p.expMul);
-  while (p.exp >= expNeed(p.level)) { p.exp -= expNeed(p.level); levelUp(); }
+  while (p.level < MAX_LEVEL && p.exp >= expNeed(p.level)) { p.exp -= expNeed(p.level); levelUp(); }
+  if (p.level >= MAX_LEVEL) p.exp = 0;
 }
 
 function levelUp() {
   const p = player;
   p.level++;
-  withDelta(p => { p.dmg += 0.12; p.speed += 1; if (p.level % 3 === 0) { p.maxHp += 1; p.hp += 1; } });
-  say(`레벨 ${p.level}!`, p.x, p.y - 80, '#8ff'); sfx('level');
+  withDelta(p => { p.dmg += 0.12; p.speed += 1; if (p.level % HP_EVERY === 0) { p.maxHp += 2; p.hp += 2; } });
+  say(p.level >= MAX_LEVEL ? '최고 레벨 100 달성!' : p.level % HP_EVERY === 0 ? `레벨 ${p.level}! 최대 체력 1칸 증가` : `레벨 ${p.level}!`, p.x, p.y - 80, '#8ff'); sfx('level');
   if (p.evo[0] && p.level >= p.evo[0].level) evolve();
 }
 
@@ -1161,7 +1235,7 @@ function evolve() {
   const p = player, next = p.evo.shift(), m = MON[next.id];
   if (!m) return;
   const a = baseOf(p.mon), b = baseOf(m), old = p.mon.name;
-  withDelta(p => { p.maxHp += b.hp - a.hp; p.hp += Math.max(0, b.hp - a.hp); p.dmg += b.dmg - a.dmg; p.speed += b.speed - a.speed; });
+  withDelta(p => { p.dmg += b.dmg - a.dmg; p.speed += b.speed - a.speed; });
   p.mon = m; if (p.shiny) loadShiny(m);
   fx.push({ kind: 'evo', x: p.x, y: p.y, t: 1.2, max: 1.2 }); sfx('evolve');
   banner = { text: `축하합니다! ${old}는(은) ${m.name}(으)로 진화했다!`, t: 4 };
@@ -1274,6 +1348,7 @@ function hurt(type, amount = 1, src = null) {
   const p = player, who = src?.src ?? curEnemy, move = src?.move ?? who?.act?.name;
   if (p.inv > 0 || p.dash > 0 || p.vanish > 0 || state !== 'play') return;
   if (Math.random() < p.dodge) { p.inv = 0.5; return say('공격을 피했다!', p.x, p.y - 60, '#aef'); }
+  if (combo('fortress') && Math.random() < 0.2) { p.inv = 0.5; return say('강철 요새가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   const m = eff(type, p.mon.types);
   let d = m === 0 ? 0 : amount + (m > 1 ? 1 : 0);
   if (hasFx('bulwark') && d > 0) { d -= 1; if (d === 0 && Math.random() < 0.5) d = 1; if (d === 0) { p.inv = 0.5; return say('막아냈다!', p.x, p.y - 60, '#ccf'); } }
@@ -1300,9 +1375,12 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   let d = base * Math.max(raw, 0.25) * (raw > 1 && p.expert ? 1.3 : 1) * (p.metronome ? 1 + Math.min(p.streak, 20) * 0.03 : 1) * (e.frozen > 0 ? 1.5 : 1)
     * (hasFx('blade') ? 1.5 * (big ? 1.4 : 1) : 1) * (hasFx('drain') ? 1.2 : 1) * (hasFx('madness') && big ? 1.25 : 1)
     * (has('brick-break') && e.rank !== 'wild' ? 1.3 : 1) * (has('flash-cannon') ? 1.2 : 1) * (has('focus-blast') ? 1.6 : 1) * (has('iron-head') ? 1.15 : 1)
-    * (has('dragon-claw') ? 1.2 : 1) * (has('moonblast') && big ? 1.3 : 1) * legendPow;
-  const crit = Math.random() < p.crit + extraCrit + (has('aerial-ace') ? 0.15 : 0) + (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0);
-  if (crit) d *= has('crunch') ? 2.2 : 1.5;
+    * (has('dragon-claw') ? 1.2 : 1) * (has('moonblast') && big ? 1.3 : 1) * legendPow
+    * (has('hydro-pump') ? 1.25 : 1) * (has('close-combat') ? 1.35 : 1) * (has('earth-power') && big ? 1.25 : 1)
+    * (combo('scorch') && e.burn > 0 ? 1.4 : 1) * (combo('quake') && big ? 1.35 : 1) * (combo('dragon') ? 1.25 : 1) * (combo('mind') && e.stun > 0 ? 1.5 : 1);
+  const crit = Math.random() < p.crit + extraCrit + (has('aerial-ace') ? 0.15 : 0) + (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0) + (has('play-rough') ? 0.1 : 0);
+  if (crit) d *= (has('crunch') ? 2.2 : 1.5) * (has('play-rough') ? 1.2 : 1);
+  if (crit && combo('fang') && !tick && Math.random() < 0.15) heal(1);
   if (e.battle || e.rank === 'legend') p.fD = (p.fD ?? 0) + Math.min(d, Math.max(0, e.hp));
   e.hp -= d; e.hit = 0.1; e.aggro = true;
   if (!tick) sfx(crit ? 'crit' : 'hit');
@@ -1322,7 +1400,11 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   if ((has('dark-pulse') && Math.random() < 0.2 * proc) || (has('iron-head') && Math.random() < 0.15 * proc)) { e.stun = 0.6; say('풀죽었다!', e.x, e.y - 50, '#ccc'); }
   if (hasFx('freeze') && Math.random() < 0.35 * proc) { e.frozen = 1.5; say('얼어붙었다!', e.x, e.y - 50, '#aef'); }
   if (p.kingsRock && Math.random() < 0.1 * proc) { e.stun = 0.8; say('풀죽었다!', e.x, e.y - 50, '#ccc'); }
-  if (has('giga-drain') && (p.drain += d) >= 25) { p.drain -= 25; heal(1); say('체력을 흡수했다!', p.x, p.y - 60, '#8f8'); }
+  if (has('blizzard') && Math.random() < 0.1 * proc) { for (const o of [e, ...enemiesNear(e.x, e.y, 90, e)]) o.frozen = 1.2; say('눈보라에 얼어붙었다!', e.x, e.y - 50, '#aef'); }
+  if (has('poison-jab') && Math.random() < 0.3 * proc) e.burn = Math.max(e.burn, 3);
+  if (has('air-slash') && Math.random() < 0.25 * proc) { e.stun = 0.5; say('풀죽었다!', e.x, e.y - 50, '#ccc'); }
+  if (combo('zero') && e.slow > 0 && Math.random() < 0.3 * proc) { e.frozen = 1; say('얼어붙었다!', e.x, e.y - 50, '#aef'); }
+  if (has('giga-drain') && (p.drain += d) >= (combo('vine') ? 12 : 25)) { p.drain -= combo('vine') ? 12 : 25; heal(1); say('체력을 흡수했다!', p.x, p.y - 60, '#8f8'); }
   if (has('sludge-bomb') && Math.random() < 0.35 * proc) puddles.push({ x: e.x, y: e.y, r: 40, t: 2.5, tick: 0 });
   if (has('rock-slide') && Math.random() < 0.3 * proc) for (let i = 0; i < 3; i++) pstrikes.push({ x: e.x + Math.random() * 100 - 50, y: e.y + Math.random() * 100 - 50, t: 0.4 + i * 0.1 });
   if (has('earthquake') && Math.random() < proc * 0.6) {
@@ -1331,12 +1413,24 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   }
   if (tick) return;
   if (has('thunderbolt')) {
-    const o = nearestEnemy(e.x, e.y, e, 160);
-    if (o) { damage(o, p.dmg * 0.6, 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.15 }); }
+    const o = nearestEnemy(e.x, e.y, e, combo('storm') ? 260 : 160);
+    if (o) { damage(o, p.dmg * (combo('storm') ? 1.2 : 0.6), 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.15 }); }
   }
   if (has('dragon-pulse')) {
     fx.push({ kind: 'boom', x: e.x, y: e.y, r: 45, t: 0.2, max: 0.2, color: TYPE_COLOR.dragon });
     for (const o of enemiesNear(e.x, e.y, 45, e)) damage(o, p.dmg * 0.5, 'dragon', false, true);
+  }
+  if (has('thunder') && Math.random() < (combo('tempest') ? 0.3 : 0.15)) {
+    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 75, t: 0.3, max: 0.3, color: TYPE_COLOR.electric }); shake = 0.12;
+    for (const o of [e, ...enemiesNear(e.x, e.y, 75, e)]) damage(o, p.dmg * 1.5, 'electric', false, true);
+  }
+  if (has('energy-ball') && Math.random() < 0.2) {
+    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 50, t: 0.2, max: 0.2, color: TYPE_COLOR.grass });
+    for (const o of enemiesNear(e.x, e.y, 50, e)) damage(o, p.dmg * 0.6, 'grass', false, true);
+  }
+  if (has('bug-buzz') && (p.buzz = (p.buzz ?? 0) + 1) % 5 === 0) {
+    fx.push({ kind: 'ring', x: p.x, y: p.y, t: 0.35, max: 0.35 });
+    for (const o of enemiesNear(p.x, p.y, 120)) { damage(o, p.dmg * 0.5, 'bug', false, true); if (!isBig(o)) { const d2 = Math.hypot(o.x - p.x, o.y - p.y) || 1; moveBody(o, (o.x - p.x) / d2 * 50, (o.y - p.y) / d2 * 50); } }
   }
   // 전설의 기술 효과
   if (hasFx('smite') && Math.random() < 0.35) {
@@ -1416,8 +1510,8 @@ function attack(dt) {
   }
   waves(base);
   if (p.backShot && kind === 'tear') shootTear(base + Math.PI);
-  if (has('dazzling-gleam') && ++p.shots % 4 === 0) for (let i = 0; i < 8; i++) shootTear(i / 8 * Math.PI * 2, { type: 'fairy', mul: 0.6 });
-  p.cd = p.fireDelay * (kind === 'bomb' ? 1.8 : 1) * (has('bullet-seed') ? 0.5 : 1) * (has('focus-blast') ? 1.33 : 1);
+  if (has('dazzling-gleam') && ++p.shots % (combo('prank') ? 3 : 4) === 0) for (let i = 0; i < 8; i++) shootTear(i / 8 * Math.PI * 2, { type: 'fairy', mul: 0.6 });
+  p.cd = p.fireDelay * (kind === 'bomb' ? 1.8 : 1) * (has('bullet-seed') ? 0.5 : 1) * (has('focus-blast') ? 1.33 : 1) * (has('close-combat') ? 1.15 : 1) / (combo('gale') ? 1.25 : 1);
 }
 
 // 플레이어 광선은 장애물을 지나가고 건물/벽에서 멈춘다. 적의 광선은 장애물에도 막혀서 숨으면 피할 수 있다
@@ -1490,7 +1584,7 @@ function pathDir(e) {
 }
 
 const aimAt = (a, e) => { const p = player, d = Math.hypot(p.x - e.x, p.y - e.y) || 1; a.dx = (p.x - e.x) / d; a.dy = (p.y - e.y) / d; };
-const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) + Math.random() * 0.5;
+const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) + Math.random() * 0.5;
 const isBig = e => e.rank === 'boss' || e.rank === 'legend';
 
 function turnToward(cur, want, max) {
@@ -1503,10 +1597,14 @@ function startAct(e, [kind, name], opts = {}) {
   const p = player, type = e.mon.types[0];
   if (name) say(`${e.mon.name}의 ${name}!`, e.x, e.y - bodyH(e, e.scale) - 24, TYPE_COLOR[type]);
   const a = e.act = { kind, name, type, t: 0, phase: 0, ...opts };
-  if (kind === 'charge') { a.reps ??= name === '역린' ? 3 : 1; a.wind ??= 0.6; a.dur ??= 0.7; a.speed ??= e.rank === 'trainer' ? 380 : 470; aimAt(a, e); }
+  if (kind === 'charge') { a.reps ??= name === '역린' ? 3 : 1 + (e.lvl >= 2 ? 1 : 0); a.wind ??= 0.6; a.dur ??= 0.7; a.speed ??= e.rank === 'trainer' ? 380 : 470; aimAt(a, e); }
   if (kind === 'beam') a.ang = Math.atan2(p.y - e.y, p.x - e.x);
-  if (kind === 'strike') for (let i = 0; i < (e.rank === 'trainer' ? 2 : 4); i++) hazards.push({ kind: 'strike', type, r: 38, t: 0.9 + i * 0.15, src: e, move: name,
+  if (kind === 'summon') a.count = Math.min(e.lvl >= 2 ? 3 : 2, MAX_MINIONS - map.enemies.filter(o => o.summoner === e && o.hp > 0).length);
+  if (kind === 'strike') for (let i = 0; i < (e.rank === 'trainer' ? 2 : 4 + 2 * (e.lvl ?? 0)); i++) hazards.push({ kind: 'strike', type, r: 38, t: 0.9 + i * 0.15, src: e, move: name,
     x: p.x + (i ? Math.random() * 180 - 90 : 0), y: p.y + (i ? Math.random() * 180 - 90 : 0) });
+  // 비처럼 쏟아지는 공격: 플레이어 주변 넓은 범위에 낙하 지점이 차례로 찍힌다
+  if (kind === 'rain') for (let i = 0; i < (e.lvl >= 2 ? 11 : 7); i++) hazards.push({ kind: 'strike', type, r: 34, t: 0.8 + i * 0.11, src: e, move: name,
+    x: p.x + (i ? Math.random() * 480 - 240 : 0), y: p.y + (i ? Math.random() * 480 - 240 : 0) });
 }
 
 function land(e) {
@@ -1517,7 +1615,11 @@ function land(e) {
 }
 
 function updateAct(e, dt) {
-  const a = e.act, p = player, next = () => { a.phase++; a.t = 0; }, end = () => { e.act = null; e.cd = cooldown(e); };
+  const a = e.act, p = player, next = () => { a.phase++; a.t = 0; }, end = () => {
+    e.act = null; e.cd = cooldown(e);
+    // 2단계 보스는 가끔 기술을 끊지 않고 이어서 쓴다
+    if (e.lvl >= 2 && !a.chained && e.hp > 0 && Math.random() < 0.35) { startAct(e, pick(e.moves.filter(m => m[0] !== a.kind))); e.act.chained = true; }
+  };
   a.t += dt;
   if (a.kind === 'charge') {
     if (a.phase === 0) { if (a.t >= a.wind) next(); return; }
@@ -1549,14 +1651,43 @@ function updateAct(e, dt) {
     if (a.phase === 0) { if (a.t >= 0.35) { hazards.push({ kind: 'quake', x: e.x, y: e.y, R: e.r, type: a.type, hit: false, src: e, move: a.name }); shake = 0.25; next(); } }
     else if (a.t >= 0.4) end();
   } else if (a.kind === 'radial') {
-    if (a.t >= a.phase * 0.35) { const n = e.rank === 'trainer' ? 8 : 12, off = Math.random(); for (let i = 0; i < n; i++) enemyShot(e, (i / n + off) * Math.PI * 2, 170); a.phase++; }
-    if (a.phase >= 2) end();
+    if (a.t >= a.phase * 0.35) { const n = e.rank === 'trainer' ? 8 : 12 + 4 * (e.lvl ?? 0), off = Math.random(); for (let i = 0; i < n; i++) enemyShot(e, (i / n + off) * Math.PI * 2, 170); a.phase++; }
+    if (a.phase >= 2 + (e.lvl >= 1 ? 1 : 0)) end();
   } else if (a.kind === 'fan') {
-    if (a.t >= a.phase * 0.28) { const n = e.rank === 'trainer' ? 3 : 5, base = Math.atan2(p.y - e.y, p.x - e.x); for (let i = 0; i < n; i++) enemyShot(e, base + (i - (n - 1) / 2) * 0.22, 220); a.phase++; }
-    if (a.phase >= 3) end();
+    if (a.t >= a.phase * 0.28) { const n = e.rank === 'trainer' ? 3 : 5 + (e.lvl ?? 0), base = Math.atan2(p.y - e.y, p.x - e.x); for (let i = 0; i < n; i++) enemyShot(e, base + (i - (n - 1) / 2) * 0.22, 220); a.phase++; }
+    if (a.phase >= 3 + (e.lvl ?? 0)) end();
   } else if (a.kind === 'spiral') {
-    if ((a.next = (a.next ?? 0) - dt) <= 0) { a.next = 0.07; a.rot = (a.rot ?? Math.random() * 6) + 0.45; enemyShot(e, a.rot, 170); if (e.rank !== 'trainer') enemyShot(e, a.rot + Math.PI, 170); }
+    if ((a.next = (a.next ?? 0) - dt) <= 0) { a.next = 0.07; a.rot = (a.rot ?? Math.random() * 6) + 0.45; const arms = e.rank === 'trainer' ? 1 : 2 + (e.lvl ?? 0); for (let k = 0; k < arms; k++) enemyShot(e, a.rot + k * Math.PI * 2 / arms, 170); }
     if (a.t >= 1.6) end();
+  } else if (a.kind === 'ring') {
+    // 둘러싸는 탄막: 한쪽에만 틈이 있다. 틈은 플레이어 정면이 아니라 옆쪽이라 움직여야 빠져나간다
+    const waves = e.lvl >= 2 ? 2 : 1;
+    if (a.phase < waves && a.t >= 0.5 + a.phase * 0.6) {
+      const n = 30, toP = Math.atan2(p.y - e.y, p.x - e.x), gap = toP + (Math.random() < 0.5 ? -1 : 1) * (0.7 + Math.random() * 0.6);
+      for (let i = 0; i < n; i++) { const ang = i / n * Math.PI * 2; if (Math.abs(((ang - gap + Math.PI * 3) % (Math.PI * 2)) - Math.PI) > 0.42) enemyShot(e, ang, 150); }
+      a.phase++;
+    }
+    if (a.t >= 0.5 + waves * 0.6) end();
+  } else if (a.kind === 'summon') {
+    // 전설이 울부짖으면 같은 타입의 약한 포켓몬이 주위에 나타난다. 이미 많으면 부르지 않는다
+    if (a.count <= 0) return end();
+    if (a.phase === 0 && a.t >= 0.6) {
+      const n = nodeAt(e.x, e.y), pool = [...new Set(region.gyms.flatMap(g => g.mobs))].filter(id => MON[id] && MON[id].types.some(t => e.mon.types.includes(t)));
+      const ids = pool.length ? pool : wildPool(n);
+      for (let i = 0; i < a.count; i++) {
+        const ang = Math.random() * Math.PI * 2, m = spawnEnemy(MON[pick(ids)], e.x + Math.cos(ang) * (e.r + 50), e.y + Math.sin(ang) * (e.r + 50), 'wild', Math.max(0, e.tier - 1));
+        m.minion = true; m.summoner = e; m.aggro = true; m.leash = 0;
+        map.enemies.push(m); fx.push({ kind: 'poof', x: m.x, y: m.y, t: 0.3, max: 0.3 });
+      }
+      shake = 0.15; next();
+    }
+    if (a.phase === 1 && a.t >= 0.4) end();
+  } else if (a.kind === 'rain') {
+    if (a.t >= 1.3) end();
+  } else if (a.kind === 'cross') {
+    // 십자 → 대각선 → 십자로 돌아가며 쏜다
+    if (a.phase < 3 && a.t >= a.phase * 0.3) { a.rot = (a.rot ?? Math.random() * Math.PI) + Math.PI / 4; for (let k = 0; k < 8; k++) enemyShot(e, a.rot + k * Math.PI / 4, k % 2 ? 160 : 210); a.phase++; }
+    if (a.phase >= 3 && a.t >= 0.4) end();
   } else if (a.kind === 'teleport') {
     if (a.phase === 0) {
       e.fade = Math.min(1, a.t / 0.35);
@@ -1589,10 +1720,17 @@ function inTown(x, y) {
   return (n.kind === 'T' || !!n.gym || n.league) && Math.abs(tx - n.tx) <= n.hx + 1 && Math.abs(ty - n.ty) <= n.hy + 1;
 }
 
-let curEnemy = null;  // 지금 행동 중인 적: 그 사이에 맞으면 이 적이 때린 것
+let curEnemy = null, legendFight = false;
+const MAX_MINIONS = 4;  // 전설 하나가 한 번에 거느릴 수 있는 소환 포켓몬 수  // 지금 행동 중인 적: 그 사이에 맞으면 이 적이 때린 것
 function updateEnemy(e, dt) {
   const ox = e.x, oy = e.y;
+  if (e.lvl >= 1 && !e.enraged && e.hp > 0 && e.hp < e.maxHp * 0.5) {
+    e.enraged = true; e.speed *= 1.25; shake = 0.3; sfx('boss');
+    fx.push({ kind: 'ring', x: e.x, y: e.y, t: 0.5, max: 0.5 });
+    banner = { text: `${e.mon.name}의 분노! 공격이 거세진다`, t: 2.2, glow: '#f44' };
+  }
   curEnemy = e; updateEnemyInner(e, dt); curEnemy = null;
+  if (e.battle) keepInRoom(e);
   // 야생·전설이 마을 경계를 넘으려 하면 막고, 쫓기를 그만두고 제자리로 돌아가게 한다
   if ((e.rank === 'wild' || e.rank === 'legend') && !e.battle && inTown(e.x, e.y) && !inTown(ox, oy)) {
     e.x = ox; e.y = oy; e.aggro = false; e.leash = 2; e.act = null; e.vx = e.vy = 0;
@@ -1602,7 +1740,7 @@ function updateEnemy(e, dt) {
 function updateEnemyInner(e, dt) {
   const p = player;
   e.cd -= dt; e.hit -= dt; e.slow -= dt; e.stun -= dt;
-  if (e.burn > 0) { e.burn -= dt; if ((e.burnTick -= dt) <= 0) { e.burnTick = 0.5; damage(e, p.dmg * 0.3 * (e.holy ? 2 : 1), 'fire', true, true); } }
+  if (e.burn > 0) { e.burn -= dt; if ((e.burnTick -= dt) <= 0) { e.burnTick = 0.5; damage(e, p.dmg * 0.3 * (e.holy ? 2 : 1) * (combo('toxic') ? 2 : 1), 'fire', true, true); } }
   if (e.burst > 0 && (e.burstT -= dt) <= 0) { enemyShot(e, Math.atan2(p.y - e.y, p.x - e.x), 220); e.burst--; e.burstT = 0.15; }
   e.moving = false;
   if (e.frozen > 0) { e.frozen -= dt; return; }
@@ -1612,7 +1750,7 @@ function updateEnemyInner(e, dt) {
   const spd = e.speed * (e.slow > 0 ? 0.5 : 1), dx = p.x - e.x, dy = p.y - e.y, dist = Math.hypot(dx, dy) || 1;
   // 야생·전설은 가까이 오거나 맞기 전까지는 제 영역을 어슬렁거린다.
   // 플레이어가 멀어지거나 제 영역에서 너무 끌려 나오면 쫓기를 그만두고 돌아간다 (2초 동안은 다시 쫓지 않는다)
-  if ((e.rank === 'wild' || e.rank === 'legend') && ((map.battle && !e.battle) || inTown(p.x, p.y))) { e.aggro = false; e.leash = 2; e.act = null; }
+  if (((e.rank === 'wild' || e.rank === 'legend') && ((map.battle && !e.battle) || inTown(p.x, p.y))) || (legendFight && e.rank === 'wild' && !e.minion)) { e.aggro = false; e.leash = 2; e.act = null; }
   else if (e.rank === 'wild' || e.rank === 'legend') {
     if (dist > 750 || Math.hypot(e.x - e.hx, e.y - e.hy) > 900) { e.aggro = false; e.leash = 2; }
     else if ((e.leash = (e.leash ?? 0) - dt) <= 0 && dist < 520) e.aggro = true;
@@ -1656,7 +1794,7 @@ function updateEnemyInner(e, dt) {
 
 // 플레이어 주변에서 야생 포켓몬이 계속 다시 나타난다. 마을과 건물 안은 안전 지대
 function manageSpawns(dt) {
-  if (map.battle) return;  // 트레이너·라이벌과 승부하는 동안에는 야생이 새로 나오지 않는다
+  if (map.battle || legendFight) return;  // 트레이너·라이벌과 승부하는 동안에는 야생이 새로 나오지 않는다
   if ((spawnCd -= dt) > 0 || (spawnT -= dt) > 0) return;
   spawnT = 0.4;
   const p = player, wild = map.enemies.filter(e => e.rank === 'wild');
@@ -1715,7 +1853,7 @@ function onKill(e) {
   const t = e.tier;
   // 경험치도 단계마다 2배: 초반 잡몹은 4, 마지막 단계 잡몹은 500쯤
   gainExp(4 * 2 ** t * { wild: 1, trainer: 2.5, boss: 8, legend: 25 }[e.rank]);
-  if (e.rank === 'wild') {
+  if (e.rank === 'wild' && !e.minion) {
     spawnCd = 4;  // 잡고 나면 4초 동안은 새로 나오지 않는다
     gainMoney((5 + t * 6) * (0.6 + Math.random() * 0.8), e.x, e.y);
     const roll = Math.random();
@@ -1726,6 +1864,7 @@ function onKill(e) {
     const ids = loadUnlocked();
     if (!ids.includes(e.mon.id)) { store.set(LEGEND_KEY, [...ids, e.mon.id]); (p.newStarters ??= []).push(e.mon.id); }
     if (e.legend) { e.legend.done = true; e.legend.alive = false; }
+    for (const o of map.enemies) if (o.summoner === e) { o.gone = true; fx.push({ kind: 'poof', x: o.x, y: o.y, t: 0.3, max: 0.3 }); }
     samplePower();
     if (p.rival) p.rival.legend = true;
     ach('legend1');
@@ -1915,7 +2054,7 @@ function updateBattle(dt) {
   if (bt.queue.length && (bt.wait -= dt) <= 0) {
     const m = MON[bt.queue.shift()], ang = Math.atan2(p.y - bt.y, p.x - bt.x), e = spawnEnemy(m, bt.x + Math.cos(ang) * 50, bt.y + Math.sin(ang) * 50, bt.rank, bt.tier);
     if (!bt.queue.length && bt.rank === 'boss') { e.hp *= 1.3; e.maxHp = e.hp; }  // 마지막 에이스는 더 단단하게
-    e.battle = true;
+    e.battle = true; keepInRoom(e);
     map.enemies.push(e); bt.wait = 1.2;
     const line = bt.say?.(bt.sent = (bt.sent ?? -1) + 1, !bt.queue.length);
     if (line) dialog = { name: bt.who, text: line, t: 4.5, keep: true };
@@ -2040,6 +2179,14 @@ function update(dt) {
       curNode = n;
       if (!n.visited) { n.visited = true; banner = { text: n.name, t: 2 }; }
     }
+    // 전설과 싸우기 시작하면(전설이 덤벼들면) 주변 야생은 놀라 달아나고, 싸우는 동안 새로 나오지 않는다
+    const lf = map.enemies.some(e => e.rank === 'legend' && e.aggro && e.hp > 0 && Math.hypot(e.x - p.x, e.y - p.y) < 900);
+    if (lf && !legendFight) {
+      const near = map.enemies.filter(e => e.rank === 'wild' && !e.minion && Math.hypot(e.x - p.x, e.y - p.y) < 650);
+      for (const e of near) fx.push({ kind: 'poof', x: e.x, y: e.y, t: 0.3, max: 0.3 });
+      map.enemies = map.enemies.filter(e => !near.includes(e));
+    }
+    legendFight = lf;
     manageSpawns(dt);
     checkLegends();
     rivalCheck();
@@ -2098,7 +2245,7 @@ function update(dt) {
     const pts = beamPath(b);
     for (const e of enemies) {
       if (!pts.some(([x, y]) => Math.hypot(e.x - x, e.y - y) < b.w / 2 + e.r)) continue;
-      damage(e, p.dmg * 0.45 * bc.mul, bc.type, true, false, bc.crit);
+      damage(e, p.dmg * 0.45 * bc.mul * (combo('steam') ? 1.4 : 1), bc.type, true, false, bc.crit);
       if (has('blue-flare')) e.burn = 3;
       if (has('thunderbolt')) damage(e, p.dmg * 0.2, 'electric', true, true);
     }
@@ -2144,6 +2291,7 @@ function update(dt) {
   fx.forEach(f => f.t -= dt); fx = fx.filter(f => f.t > 0);
   texts.forEach(t => { t.t -= dt; t.y -= 30 * dt; }); texts = texts.filter(t => t.t > 0);
 
+  for (const k of map.pickups) if (!k.placed) placePickup(k);
   for (const k of [...map.pickups]) {
     const d = Math.hypot(p.x - k.x, p.y - k.y);
     if (k.declined) { if (d > 120) k.declined = false; continue; }
@@ -2151,6 +2299,28 @@ function update(dt) {
     if (k.kind === 'berry' && p.hp >= p.maxHp) continue;
     if (k.kind === 'tm' && p.moves.size >= MAX_MOVES) { learnTm = k; state = 'learn'; return; }
     takePickup(k);
+  }
+}
+
+// 새로 생긴 아이템이 벽·장애물 속이나 갈 수 없는 곳(절벽 너머, 닫힌 방)에 있으면 가장 가까운 갈 수 있는 칸으로 옮긴다
+function pickupOk(tx, ty) {
+  if (tx < 0 || ty < 0 || tx >= map.tw || ty >= map.th || solidAt(tx, ty)) return false;
+  if (map === world) return !!world.reach[ty * world.tw + tx];
+  const r = map.room ?? roomAt(ty);
+  return !r || (tx > r.x0 && tx < r.x1 && ty > r.y0 && ty < r.y1);
+}
+function placePickup(k) {
+  k.placed = true;
+  const cx = Math.floor(k.x / TS), cy = Math.floor(k.y / TS);
+  if (pickupOk(cx, cy) && !circleHitsSolid(k.x, k.y, 16)) return;
+  for (let rad = 1; rad < 14; rad++) {
+    let best = null, bd = Infinity;
+    for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== rad || !pickupOk(cx + dx, cy + dy)) continue;
+      const x = (cx + dx + 0.5) * TS, y = (cy + dy + 0.5) * TS, d = Math.hypot(x - k.x, y - k.y);
+      if (d < bd && !circleHitsSolid(x, y, 16)) { bd = d; best = [x, y]; }
+    }
+    if (best) { [k.x, k.y] = best; return; }
   }
 }
 
@@ -2167,7 +2337,7 @@ function takePickup(k) {
 function decideLearn(i) {
   const p = player, k = learnTm;
   learnTm = null; state = 'play';
-  if (i === null) { k.declined = true; return; }
+  if (i === null) { map.pickups = map.pickups.filter(o => o !== k); say(`${k.tm.name} 기술머신을 두고 왔다`, p.x, p.y - 90, '#ccc'); return; }
   const old = [...p.moves][i];
   p.moves.delete(old);
   p.items = p.items.filter(it => it.id !== old);
@@ -2583,9 +2753,9 @@ function drawPanel() {
   ctx.fillStyle = '#0c0c12'; ctx.fillRect(0, HUD, SIDE, H);
   text(`${region.name}지방`, 6, HUD + 16, 13, '#ff8', 'left');
   text(placeName(), 6, HUD + 32, 11, '#ddd', 'left');
-  text(`${p.mon.name} Lv.${p.level}`, 6, HUD + 50, 12, '#fff', 'left');
+  text(`${p.mon.name} ${p.level >= MAX_LEVEL ? 'Lv.MAX' : `Lv.${p.level}`}`, 6, HUD + 50, 12, p.level >= MAX_LEVEL ? '#fd6' : '#fff', 'left');
   ctx.fillStyle = '#222'; ctx.fillRect(6, HUD + 55, 146, 5);
-  ctx.fillStyle = '#4ac0ff'; ctx.fillRect(6, HUD + 55, 146 * Math.min(1, p.exp / expNeed(p.level)), 5);
+  ctx.fillStyle = '#4ac0ff'; ctx.fillRect(6, HUD + 55, 146 * (p.level >= MAX_LEVEL ? 1 : Math.min(1, p.exp / expNeed(p.level))), 5);
   text(`₽ ${p.money.toLocaleString()}`, 6, HUD + 76, 12, '#fd6', 'left');
   STATS.forEach(([label, icon, f, dg], i) => {
     const y = HUD + 84 + i * 30;
@@ -2626,7 +2796,7 @@ function drawRegionMap(ox, oy, sx, sy, big) {
     const [x, y] = pos(n), s = big ? 8 : 3;
     ctx.fillStyle = n.gym ? (p.beaten.has(region.gyms.indexOf(n.gym)) ? TYPE_COLOR[n.gym.type] : '#fff') : n.league ? '#c8f' : n.kind === 'T' ? '#b9a77a' : n.visited ? '#888' : '#444';
     ctx.fillRect(x - s, y - s, s * 2 + 2, s * 2 + 2);
-    if (big && (n.visited || p.townMap)) text(n.name, x + 1, y - 12, 10, '#ddd');
+    if (big && (n.visited || p.townMap) && (n.kind === 'T' || n.gym || n.league || n.legends.length || n === nodeAt(p.x, p.y))) text(n.name, x + 1, y - 12, 10, n === nodeAt(p.x, p.y) ? '#ff8' : '#ddd');
   }
   if (big) for (const l of world.legends) if (!l.done) { const [x, y] = pos(l.n); text('★', x + 14, y + 6, 14, Math.floor(now * 3) % 2 ? '#c8f' : '#fff'); }
   const [wx, wy] = map === world ? [p.x, p.y] : world.returnTo, px = ox + (wx / TS - MARGIN) / CELL * sx, py = oy + (wy / TS - MARGIN) / CELL * sy;
@@ -2679,6 +2849,7 @@ function drawBeam(b) {
 // 적 기술의 예고와 본체: 돌진 조준선, 점프 낙하 지점, 광선
 function drawTelegraphs(e, layer) {
   const a = e.act;
+  if (layer === 'ground' && e.enraged) { ctx.strokeStyle = `rgba(255,50,50,${0.35 + Math.abs(Math.sin(now * 6)) * 0.4})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r * 1.3, e.r * 0.6, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (!a) return;
   const c = TYPE_COLOR[a.type], pulse = 0.35 + Math.abs(Math.sin(now * 10)) * 0.35;
   if (layer === 'ground') {
@@ -2892,7 +3063,7 @@ function drawLearn() {
   let yy = y + 88;
   blocks.forEach((b, i) => { const m = rows[i]; taps.push({ x, y: yy - 14, w, h: b.length * 16 + 6, fn: () => decideLearn(i) }); text(`${i + 1}.`, x + 20, yy, 11, '#fff', 'left'); b.forEach(l => { nameText(m, l, x + 40, yy, 11, m.legend ? '#fd6' : TYPE_COLOR[m.type]); yy += 16; }); yy += 8; });
   taps.push({ x, y: yy - 12, w, h: 22, fn: () => decideLearn(null) });
-  text(TOUCH ? '여기를 누르면 배우지 않는다' : '5 / Esc. 배우지 않는다', x + 20, yy + 4, 11, '#ccc', 'left');
+  text(TOUCH ? '여기를 누르면 배우지 않는다 (기술머신은 사라진다)' : '5 / Esc. 배우지 않는다 (기술머신은 사라진다)', x + 20, yy + 4, 11, '#ccc', 'left');
   nl.forEach((l, i) => text(l, x + 40, yy + 24 + i * 16, 11, '#ccc', 'left'));
 }
 
@@ -3161,7 +3332,7 @@ function drawRegionSelect() {
       return;
     }
     text(rg ? `${rg.name}지방` : '랜덤 지방', c.x + c.w / 2, c.y + 68, 20, rg ? '#fff' : '#ff8');
-    if (rg) text(rg.name === '성도' ? '골드 지도' : `장소 ${Object.keys(rg.places).length}곳`, c.x + c.w / 2, c.y + 98, 11, rg.name === '성도' ? '#fd6' : '#999');
+    if (rg) text(`장소 ${Object.keys(rg.places).length}곳`, c.x + c.w / 2, c.y + 98, 11, '#999');
     if (done) text('챔피언 달성', c.x + c.w / 2, c.y + 122, 11, '#8cf');
     if (!rg) text('열린 지방 중에서', c.x + c.w / 2, c.y + 98, 11, '#999');
   });
