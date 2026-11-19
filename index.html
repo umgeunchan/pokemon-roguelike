@@ -617,7 +617,7 @@ const loadImg = src => cfetch(src).then(r => { if (!r.ok) throw new Error(`${r.s
   .then(b => new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => fail(new Error(src)); i.src = URL.createObjectURL(b); }));
 const TOUCH = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 && !matchMedia('(pointer: fine)').matches;
 let taps = [];  // 이번 프레임에 그린, 누를 수 있는 곳 (터치·클릭)
-const store = { get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+const store = { get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); onStoreChange(k); return true; } catch { return false; } },
   del: k => { try { localStorage.removeItem(k); } catch {} } };
 const loadUnlocked = () => store.get(LEGEND_KEY) ?? [];
 // 도감: 한 번이라도 쓰러뜨린 포켓몬. 판이 끝나도 남고, 다음 판 스타팅 후보가 된다
@@ -1164,7 +1164,7 @@ function gainMoney(n, x, y) {
 }
 
 function newRun(m, shiny = false) {
-  store.del(SAVE_KEY);
+  clearSave();
   taken = new Set(); texts = []; banner = null; dialog = null; fx = []; dayTime = 0;
   player = makePlayer(m); player.shiny = shiny; player.startId = m.id;
   // 전설의 포켓몬은 상징적인 기술을 갖고 시작한다
@@ -1183,6 +1183,7 @@ function newRun(m, shiny = false) {
 
 // ---------- 이어하기: 지도는 시드로 똑같이 다시 만들고, 그 위에 플레이어와 바뀐 것(주운 볼, 이긴 트레이너, 받은 선물...)만 덮어쓴다 ----------
 const SAVE_KEY = 'pokemon-dungeon-save';
+const clearSave = () => store.set(SAVE_KEY, { deleted: true, at: Date.now() });
 const loadSave = () => { const sv = store.get(SAVE_KEY); return sv?.v === 1 && REGIONS.some(r => r.name === sv.region) ? sv : null; };
 const packContent = k => k.kind === 'tm' ? { kind: 'tm', tm: k.tm.id } : k.kind === 'item' ? { kind: 'item', item: k.item.id } : { kind: k.kind };
 const unpackContent = k => k.kind === 'tm' ? { kind: 'tm', tm: moveDef(k.tm) } : k.kind === 'item' ? { kind: 'item', item: itemById(k.item) } : { kind: k.kind };
@@ -1273,7 +1274,7 @@ function hurt(type, amount = 1, src = null) {
   else p.hp -= d;
   if (m > 1) say('효과가 굉장했다!', p.x, p.y - 60, '#f66');
   if (p.hp <= 0 && p.revive) { p.revive = false; p.hp = p.maxHp; banner = { text: '무지개깃털이 빛나며 다시 일어섰다!', t: 3 }; }
-  if (p.hp <= 0) { p.cause = who ? `${who.rank === 'trainer' || who.rank === 'boss' ? '상대 ' : who.rank === 'legend' ? '전설의 포켓몬 ' : '야생 '}${who.mon.name}의 ${move ?? '공격'}` : `${TYPE_KO[type]} 타입 공격`; state = 'dead'; store.del(SAVE_KEY); ach('die'); checkAch(); }
+  if (p.hp <= 0) { p.cause = who ? `${who.rank === 'trainer' || who.rank === 'boss' ? '상대 ' : who.rank === 'legend' ? '전설의 포켓몬 ' : '야생 '}${who.mon.name}의 ${move ?? '공격'}` : `${TYPE_KO[type]} 타입 공격`; state = 'dead'; clearSave(); ach('die'); checkAch(); }
 }
 
 const nearestEnemy = (x, y, except, maxD) => map.enemies.filter(e => e !== except && e.hp > 0 && !untargetable(e) && Math.hypot(e.x - x, e.y - y) < maxD)
@@ -1874,7 +1875,7 @@ function startRoom(r) {
     say: champ && ((i, ace) => ace ? CHAMP_ACE : CHAMP_SAY[Math.min(i, CHAMP_SAY.length - 1)]), onWin: () => {
     open(); gainMoney(3000, at.x, at.y + 2 * TS);
     if (!champ) { heal(Math.ceil(p.maxHp / 2)); banner = { text: `${r.who.leader}에게 이겼다! 위쪽 방의 문이 열렸다`, t: 3 }; return; }
-    recordClear(); store.del(SAVE_KEY);
+    recordClear(); clearSave();
     dialog = { name: r.who.leader, text: '...졌다. 너와 네 포켓몬이라면 이 자리를 맡겨도 되겠어. 오늘부터 네가 새로운 챔피언이다!', t: 6, keep: true };
     banner = { text: `챔피언 ${r.who.leader}에게 이겼다! 새로운 챔피언의 탄생이다!`, t: 5 }; p.winAt = 6;
   } });
@@ -2901,7 +2902,7 @@ function menuKey(code) {
     if (!ok) return;
     const item = MENU[menu.cursor];
     if (item === '닫기') state = 'play';
-    else if (item === '그만두기') { if (confirm) { store.del(SAVE_KEY); state = 'region'; } else menu.confirm = true; }
+    else if (item === '그만두기') { if (confirm) { clearSave(); state = 'region'; } else menu.confirm = true; }
     else Object.assign(menu, { screen: item, sel: 0, tab: 0 });
     sfx('select');
     return;
@@ -3123,7 +3124,8 @@ const regionCard = i => ({ x: 20 + (i % 5) * (CW - 40) / 5, y: 120 + Math.floor(
 function drawRegionSelect() {
   ctx.fillStyle = '#16161e'; ctx.fillRect(0, 0, CW, CH);
   text('포켓몬 던전 로그', CW / 2, 54, 32, '#ff8');
-  text('모험할 지방을 고르세요 (1~9 키, 0 = 랜덤, 또는 클릭) · T = 도전과제', CW / 2, 90, 14, '#aaa');
+  text('모험할 지방을 고르세요 (1~9 키, 0 = 랜덤, 또는 클릭) · T = 도전과제 · Esc = 시작 화면', CW / 2, 90, 14, '#aaa');
+  text(acct.user && !acct.user.anon ? `${acct.user.name} 님 · 클라우드 저장` : '게스트 · 이 기기에 저장', 20, 30, 12, acct.user && !acct.user.anon ? '#8cf' : '#999', 'left');
   text(`도전과제 ${ACHIEVED.size} / ${ACH.length}`, CW - 20, 30, 12, '#fd6', 'right');
   taps.push({ x: CW - 160, y: 10, w: 160, h: 30, fn: () => state = 'ach' });
   const sv = loadSave();
@@ -3199,6 +3201,7 @@ function draw() {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, CW, CH);
     return text(state === 'loading' ? '불러오는 중...' : loadError, CW / 2, CH / 2, 16);
   }
+  if (state === 'title') return drawTitle(), drawToasts();
   if (state === 'region') return drawRegionSelect(), drawToasts();
   if (state === 'ach') return drawAchList(), drawToasts();
   if (state === 'select') return drawSelect();
@@ -3266,7 +3269,13 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyN') muted = !muted;
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   const d = /^Digit[0-9]$/.test(e.code) ? +e.code.slice(5) : null;
-  if (state === 'region') { if (d !== null) chooseRegion(d - 1); else if (e.code === 'KeyT') state = 'ach'; else if (e.code === 'KeyC' || e.code === 'Enter') continueRun(); }
+  if (state === 'title') {
+    const n = titleItems().length;
+    if (['ArrowUp', 'KeyW'].includes(e.code)) { titleCur = (titleCur + n - 1) % n; sfx('menu'); }
+    else if (['ArrowDown', 'KeyS'].includes(e.code)) { titleCur = (titleCur + 1) % n; sfx('menu'); }
+    else if (['Enter', 'Space', 'KeyE', 'KeyZ'].includes(e.code)) titleSelect(titleCur);
+  }
+  else if (state === 'region') { if (e.code === 'Escape') state = 'title'; else if (d !== null) chooseRegion(d - 1); else if (e.code === 'KeyT') state = 'ach'; else if (e.code === 'KeyC' || e.code === 'Enter') continueRun(); }
   else if (state === 'ach') { if (e.code === 'KeyT' || e.code === 'Escape') state = 'region'; }
   else if (state === 'select') {
     if (d) { const c = starterCards()[d - 1]; if (c) chooseStarter(c.i); }
@@ -3294,6 +3303,173 @@ cv.addEventListener('click', e => {
   if (state === 'region') { const i = [...REGIONS, null].findIndex((_, i) => hit(regionCard(i))); if (i >= 0) chooseRegion(i); }
   else if (state === 'select') { const c = starterCards().find(hit); if (c) c.i === selCur ? chooseStarter(c.i) : selCur = c.i; }
 });
+
+// ---------- 계정: Google 로그인 / 게스트. Firebase(인증 + Firestore)로 기록을 클라우드에 맞춰 둔다 ----------
+// Firebase 콘솔 → 프로젝트 설정 → 내 앱(웹)의 firebaseConfig 값을 그대로 붙여 넣는다. 공개돼도 되는 값이다(보안은 Firestore 규칙이 맡음)
+// 비어 있으면 Google 로그인 버튼이 꺼지고, 게스트(이 기기에만 저장)로만 할 수 있다
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyCuhPMTCGdzf3FRfWfTTLhsziAZG0L3JmQ',
+  authDomain: 'pokemon-roguelike.firebaseapp.com',
+  projectId: 'pokemon-roguelike',
+  storageBucket: 'pokemon-roguelike.firebasestorage.app',
+  messagingSenderId: '149034794320',
+  appId: '1:149034794320:web:cc93730b3318835a9dc055',
+};
+const FB_VER = '10.12.2', FB = `https://www.gstatic.com/firebasejs/${FB_VER}`;
+const GUEST_KEY = 'pokemon-dungeon-guest';
+// 클라우드로 맞추는 기록: 도감, 이로치, 전설, 스타팅, 클리어한 지방, 도전과제, 이어하기, 안내, 볼륨
+const SYNC_KEYS = () => [DEX_KEY, SHINY_KEY, LEGEND_KEY, STARTER_KEY, CLEAR_KEY, ACH_KEY, SAVE_KEY, TUT_KEY, VOL_KEY];
+let acct = { ready: !FIREBASE_CONFIG, user: null, status: '', busy: false }, fb = null, syncing = false, upT = null;
+
+function onStoreChange(k) {
+  if (syncing || !acct.user || !SYNC_KEYS().includes(k)) return;
+  clearTimeout(upT); upT = setTimeout(uploadAll, 3000);
+}
+
+async function initAccount() {
+  if (!FIREBASE_CONFIG) return;
+  try {
+    const [app, auth, fs] = await Promise.all(['app', 'auth', 'firestore'].map(m => import(`${FB}/firebase-${m}.js`)));
+    const a = app.initializeApp(FIREBASE_CONFIG);
+    fb = { ...auth, ...fs, auth: auth.getAuth(a), db: fs.getFirestore(a) };
+    await fb.getRedirectResult(fb.auth).catch(() => {});
+    fb.onAuthStateChanged(fb.auth, async u => {
+      acct.user = u && { uid: u.uid, name: u.displayName || (u.isAnonymous ? '게스트' : '트레이너'), anon: u.isAnonymous, photo: u.photoURL };
+      acct.ready = true;
+      if (u) await pullAndMerge();
+    });
+  } catch (e) { acct.ready = true; acct.status = `계정 서비스를 불러오지 못했다 (${e.message})`; }
+}
+
+// 클라우드와 이 기기의 기록을 합친다: 목록은 합집합, 이어하기는 더 최근 것, 안내는 둘 중 하나라도 끝났으면 끝
+function mergeValue(k, a, b) {
+  if (a == null) return b; if (b == null) return a;
+  if (k === SAVE_KEY) return (b.at ?? 0) > (a.at ?? 0) ? b : a;
+  if (k === TUT_KEY) return a || b;
+  if (k === VOL_KEY) return a;
+  if (Array.isArray(a) && Array.isArray(b)) return [...new Set([...a, ...b])];
+  return a;
+}
+async function pullAndMerge() {
+  acct.status = '기록을 맞추는 중...'; acct.busy = true;
+  try {
+    const snap = await fb.getDoc(fb.doc(fb.db, 'users', acct.user.uid)), cloud = snap.exists() ? snap.data().data ?? {} : {};
+    syncing = true;
+    for (const k of SYNC_KEYS()) {
+      const merged = mergeValue(k, store.get(k), cloud[k] != null ? JSON.parse(cloud[k]) : null);
+      if (merged != null) store.set(k, merged);
+    }
+    syncing = false;
+    reloadProgress();
+    await uploadAll();
+    acct.status = '클라우드에 기록이 저장된다';
+  } catch (e) { syncing = false; acct.status = `동기화 실패: ${e.code ?? e.message}`; }
+  acct.busy = false;
+}
+async function uploadAll() {
+  if (!fb || !acct.user) return;
+  const data = Object.fromEntries(SYNC_KEYS().map(k => [k, localStorage.getItem(k)]).filter(([, v]) => v != null));
+  try { await fb.setDoc(fb.doc(fb.db, 'users', acct.user.uid), { data, name: acct.user.name, updatedAt: fb.serverTimestamp() }); }
+  catch (e) { acct.status = `저장 실패: ${e.code ?? e.message}`; }
+}
+// 합친 기록을 게임이 들고 있는 값에 다시 반영
+function reloadProgress() {
+  const fill = (set, k) => { set.clear(); (store.get(k) ?? []).forEach(v => set.add(v)); };
+  fill(DEX, DEX_KEY); fill(SHINY, SHINY_KEY); fill(STARTERS, STARTER_KEY); fill(CLEARED, CLEAR_KEY); fill(ACHIEVED, ACH_KEY);
+  Object.assign(VOL, store.get(VOL_KEY) ?? {}); applyVolume();
+  tutDone = !!store.get(TUT_KEY);
+}
+
+async function googleLogin() {
+  if (!fb) return acct.status = 'Google 로그인이 아직 설정되지 않았다 (FIREBASE_CONFIG)';
+  const provider = new fb.GoogleAuthProvider(), cur = fb.auth.currentUser;
+  acct.busy = true; acct.status = 'Google 로그인 창을 여는 중...';
+  try {
+    // 게스트로 하던 기록은 Google 계정에 그대로 이어 붙인다
+    if (cur?.isAnonymous) {
+      try { await fb.linkWithPopup(cur, provider); await cur.reload(); acct.user = { ...acct.user, name: fb.auth.currentUser.displayName ?? '트레이너', anon: false }; await uploadAll(); acct.status = '게스트 기록을 Google 계정에 연결했다'; }
+      catch (e) {
+        if (e.code !== 'auth/credential-already-in-use') throw e;
+        await fb.signInWithCredential(fb.auth, fb.GoogleAuthProvider.credentialFromError(e));  // 이미 쓰던 Google 계정이면 그쪽으로 들어가서 합친다
+      }
+    } else await fb.signInWithPopup(fb.auth, provider);
+    store.del(GUEST_KEY);
+  } catch (e) {
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') return fb.signInWithRedirect(fb.auth, provider);
+    acct.status = e.code === 'auth/popup-closed-by-user' ? '로그인을 취소했다' : `로그인 실패: ${e.code ?? e.message}`;
+  } finally { acct.busy = false; }
+}
+async function guestLogin() {
+  store.set(GUEST_KEY, true);
+  if (fb && !fb.auth.currentUser) {
+    acct.busy = true;
+    try { await fb.signInAnonymously(fb.auth); } catch { acct.status = '게스트 기록은 이 기기에만 저장된다'; }
+    acct.busy = false;
+  }
+  state = 'region';
+}
+async function logout() {
+  await uploadAll();
+  if (fb) await fb.signOut(fb.auth);
+  store.del(GUEST_KEY); acct.user = null; acct.status = '로그아웃했다';
+}
+
+// ---------- 시작 화면 ----------
+let titleCur = FIREBASE_CONFIG || store.get(GUEST_KEY) ? 0 : 1, titleMons = [];
+const titleItems = () => {
+  const guest = acct.user?.anon || (!acct.user && store.get(GUEST_KEY));
+  if (acct.user && !acct.user.anon) return [['모험 시작', () => state = 'region'], ['로그아웃', logout]];
+  if (guest) return [['게스트로 계속하기', () => state = 'region'], ['Google 계정 연결', googleLogin], ...(acct.user ? [['로그아웃', logout]] : [])];
+  return [['Google로 시작하기', googleLogin], ['게스트로 시작하기', guestLogin]];
+};
+function titleSelect(i) { const it = titleItems()[i]; if (!it || acct.busy) return; sfx('select'); it[1](); }
+// 시작 화면을 걸어 다니는 스타팅들: 처음 한 번만 불러오고, 실패해도 화면은 그대로
+const loadTitleMons = () => Promise.all([1, 4, 7, 25].map(id => loadMon(id).then(() => MON[id]).catch(() => null))).then(ms => titleMons = ms.filter(Boolean));
+
+function drawTitle() {
+  // 하늘 → 먼 산 → 풀밭. 풀밭 줄무늬가 천천히 흘러간다
+  const sky = ctx.createLinearGradient(0, 0, 0, CH);
+  sky.addColorStop(0, '#1b2a5a'); sky.addColorStop(0.55, '#4f7fc0'); sky.addColorStop(0.56, '#5f9b45'); sky.addColorStop(1, '#3f7a3a');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, CW, CH);
+  ctx.fillStyle = '#35507e';
+  for (let i = 0; i < 9; i++) { const x = i * 120 - 40, h = 50 + (i * 37) % 60; ctx.beginPath(); ctx.moveTo(x, CH * 0.56); ctx.lineTo(x + 70, CH * 0.56 - h); ctx.lineTo(x + 140, CH * 0.56); ctx.fill(); }
+  for (let i = 0; i < 16; i++) { const x = ((i * 70 - now * 30) % (CW + 70) + CW + 70) % (CW + 70) - 70; ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(x, CH * 0.56, 34, CH); }
+  // 별
+  for (let i = 0; i < 40; i++) { const x = (i * 97) % CW, y = (i * 53) % 150, a = 0.3 + 0.3 * Math.sin(now * 2 + i); ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, 2, 2); }
+  // 걸어가는 포켓몬
+  titleMons.forEach((m, i) => {
+    const b = m.box, sc = 0.9, x = ((now * 40 + i * (CW / titleMons.length)) % (CW + 120)) - 60, y = CH * 0.78 + (i % 2) * 26, hop = Math.abs(Math.sin(now * 6 + i)) * 4;
+    drawShadow(x, y, 26, 0);
+    ctx.save(); ctx.translate(x, y - hop); ctx.scale(-1, 1); ctx.drawImage(m.img, -(b.x0 + b.x1) / 2 * sc, -b.y1 * sc, 96 * sc, 96 * sc); ctx.restore();
+  });
+  // 로고
+  const bob = Math.sin(now * 1.6) * 4;
+  glowText('포켓몬 던전 로그', CW / 2, 112 + bob, 54, '#ffe066', '#fa0');
+  text('9개 지방을 누비는 로그라이크 팬게임', CW / 2, 150 + bob, 14, '#dfe8ff');
+  // 메뉴
+  const items = titleItems(), w = 300, h = 40, x0 = CW / 2 - w / 2, y0 = 200;
+  titleCur = clamp(titleCur, 0, items.length - 1);
+  items.forEach(([label], i) => {
+    const y = y0 + i * (h + 12), on = i === titleCur, dis = label.startsWith('Google') && !FIREBASE_CONFIG;
+    ctx.fillStyle = on ? 'rgba(20,30,60,.92)' : 'rgba(10,14,30,.75)'; ctx.fillRect(x0, y, w, h);
+    ctx.strokeStyle = on ? '#ffe066' : 'rgba(255,255,255,.35)'; ctx.lineWidth = 2; ctx.strokeRect(x0 + 1, y + 1, w - 2, h - 2);
+    if (label.startsWith('Google')) drawGoogleG(x0 + 26, y + h / 2);
+    text(label, CW / 2 + (label.startsWith('Google') ? 10 : 0), y + 26, 16, dis ? '#777' : on ? '#ffe066' : '#fff');
+    taps.push({ x: x0, y, w, h, fn: () => { titleCur = i; titleSelect(i); } });
+  });
+  // 계정 상태
+  const who = acct.user ? (acct.user.anon ? '게스트 (클라우드 저장)' : `${acct.user.name} 님`) : store.get(GUEST_KEY) ? '게스트 (이 기기에만 저장)' : '로그인하지 않음';
+  text(who, CW / 2, y0 + items.length * (h + 12) + 18, 12, '#cfe');
+  const note = acct.status || (!FIREBASE_CONFIG ? 'Google 로그인은 아직 준비 중 · 게스트 기록은 이 기기의 브라우저에만 저장됩니다' : !acct.ready ? '계정 확인 중...' : 'Google로 로그인하면 다른 기기에서도 기록이 이어집니다');
+  text(acct.busy ? `${note} ${'.'.repeat(Math.floor(now * 3) % 4)}` : note, CW / 2, y0 + items.length * (h + 12) + 38, 11, '#9ab');
+  text(TOUCH ? '버튼을 누르세요' : '↑ ↓ 고르기 · Enter 결정', CW / 2, CH - 16, 11, 'rgba(255,255,255,.55)');
+}
+function drawGoogleG(x, y) {
+  ctx.save(); ctx.lineWidth = 4;
+  [['#ea4335', -2.4, -0.9], ['#fbbc05', 2.4, 3.6], ['#34a853', 0.9, 2.4], ['#4285f4', -0.9, 0.2]].forEach(([c, a0, a1]) => { ctx.strokeStyle = c; ctx.beginPath(); ctx.arc(x, y, 8, a0, a1); ctx.stroke(); });
+  ctx.fillStyle = '#4285f4'; ctx.fillRect(x, y - 2, 9, 4);
+  ctx.restore();
+}
 
 // ---------- 터치 조작: 스틱과 버튼은 키보드 키를 누른 것처럼 키 이벤트를 보낸다 ----------
 const sendKey = (code, down) => dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code }));
@@ -3335,7 +3511,7 @@ function setupTouch() {
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   };
   const ended = () => state === 'dead' || state === 'win';
-  btn($('#bA'), () => ended() ? 'KeyR' : ['region', 'select'].includes(state) ? 'Enter' : 'KeyE');
+  btn($('#bA'), () => ended() ? 'KeyR' : ['title', 'region', 'select'].includes(state) ? 'Enter' : 'KeyE');
   btn($('#bB'), () => ended() ? 'KeyR' : 'Escape');
   btn($('#bDash'), () => 'Space');
   btn($('#bMap'), () => state === 'map' ? 'KeyM' : state === 'play' ? 'KeyM' : null);
@@ -3562,7 +3738,7 @@ function sfx(name) {
 
 // 지금 장소와 상대에 맞는 곡: 라이벌 > 전설 > 리그(챔피언) > 체육관 > 마을·숲·동굴·도로
 function bgmFor() {
-  if (state === 'region' || state === 'select' || state === 'ach') return 'town';
+  if (state === 'title' || state === 'region' || state === 'select' || state === 'ach') return 'town';
   if (!['play', 'pause', 'map', 'learn', 'shop'].includes(state) || !map) return null;
   if (map.battle?.rival || map.npcs.some(n => n.rival && !n.defeated)) return 'rival';
   if (map.enemies.some(e => e.rank === 'legend' && Math.hypot(e.x - player.x, e.y - player.y) < 900)) return 'legend';
@@ -3638,7 +3814,7 @@ function selfCheck() {
 }
 
 state = 'loading';
-loadCommon().then(() => { selfCheck(); state = 'region'; }).catch(e => { loadError = `로딩 실패: ${e.message}`; state = 'error'; });
+loadCommon().then(() => { selfCheck(); state = 'title'; loadTitleMons(); initAccount(); }).catch(e => { loadError = `로딩 실패: ${e.message}`; state = 'error'; });
 requestAnimationFrame(loop);
 </script>
 </body>
