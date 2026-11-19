@@ -766,9 +766,9 @@ const expNeed = lv => Math.round(20 * 2 ** ((lv - 8) / 7));
 // 체력 배율: 잡몹·트레이너는 x2에 마을 단계(tier)마다 x1.5, 관장·사천왕은 x10에 체육관마다 x1.6(tier = 체육관 번호, 리그 8)
 // 전설은 x20에 나타난 곳의 단계마다 x1.6: 기본 체력이 관장의 2배라 같은 단계 관장 에이스의 약 4배, 관장 팀 전체보다 조금 더 단단하다
 // 플레이어 화력이 단계마다 1.5배쯤 크는 것(dps 시뮬레이션)에 맞춘 값
-// 관장·라이벌·사천왕 체력 보정: 체육관 번호(tier)별로 곱한다. 초반을 가볍게, 5번째 체육관부터는 원래대로
-// 0번째(첫 체육관) ~ 4번째까지 차례로. 숫자를 바꾸면 바로 반영된다
-const BOSS_HP_EARLY = [0.55, 0.64, 0.73, 0.82, 0.91];
+// 관장·라이벌·사천왕 체력 보정: 단계(tier = 들어갈 때 가진 배지 수)별로 곱한다. 초반을 가볍게, 배지 5개부터는 원래대로
+// 배지 0개(첫 체육관) ~ 4개까지 차례로. 숫자를 바꾸면 바로 반영된다
+const BOSS_HP_EARLY = [0.45, 0.55, 0.65, 0.75, 0.88];
 const bossEase = t => t >= BOSS_HP_EARLY.length ? 1 : BOSS_HP_EARLY[Math.max(0, Math.floor(t))];
 // 트레이너(체육관 트레이너·필드 트레이너) 체력: 야생의 TRAINER_HP배에, 단계별 보정을 곱한다. 5단계부터는 보정 없음
 const TRAINER_HP = 2.2, TRAINER_HP_EARLY = [0.6, 0.7, 0.8, 0.9];
@@ -1016,7 +1016,7 @@ function genWorld(seed) {
 function makeIndoor(b) {
   const league = b.kind === 'league', g = b.node.gym, last = region.league.length - 1;
   const specs = league ? region.league.map((who, i) => ({ w: i === last ? 31 : 21, h: i === last ? 19 : 13, who, type: who.type }))
-    : [...Array(rollRange(GYM_ROOMS[region.gyms.indexOf(g) < EARLY_GYMS ? 'early' : 'late'])).fill({ w: 21, h: 13, type: b.type }), { w: 23, h: 15, who: g, type: b.type }];
+    : [...Array(rollRange(GYM_ROOMS[player.beaten.size < EARLY_GYMS ? 'early' : 'late'])).fill({ w: 21, h: 13, type: b.type }), { w: 23, h: 15, who: g, type: b.type }];
   const tw = Math.max(...specs.map(s => s.w)), th = specs.reduce((a, s) => a + s.h - 1, 1), cx = Math.floor(tw / 2);
   const solid = new Uint8Array(tw * th).fill(4), voids = new Uint8Array(tw * th).fill(1), set = (x, y, v) => solid[y * tw + x] = v;
   const m = { kind: 'indoor', sub: b.kind, building: b, tw, th, solid, voids, rooms: [], npcs: [], pickups: [], enemies: [], buildings: [], signs: [], battle: null, type: b.type, furn: [], leader: g };
@@ -1838,6 +1838,7 @@ function enterBuilding(b) {
   if (b.kind === 'league' && p.rival && !p.rival.done.has('road')) return say('라이벌이 앞을 막고 있다!', p.x, p.y - 70, '#f88');
   world.returnTo = [b.doorX, b.doorY + p.r + 20];
   map = makeIndoor(b);
+  map.tier = p.beaten.size;  // 체육관 세기는 체육관 번호가 아니라 들어갈 때 가진 배지 수로 정한다 (리그는 8)
   resetCombat();
   p.x = map.rooms[0].cx; p.y = (map.th - 1.6) * TS;
 }
@@ -1849,20 +1850,22 @@ const CHAMP_ACE = '이게 마지막 한 마리다. 네가 챔피언이 될 자�
 
 // 방 안으로 걸어 들어서면 아래 문이 닫히고 승부가 시작된다. 이기면 아래·위 문이 열린다
 function startRoom(r) {
-  const p = player, b = map.building, gi = region.gyms.indexOf(map.leader), champ = r.who === region.league.at(-1), at = { x: r.cx, y: (r.y0 + 1.6) * TS };
+  const p = player, b = map.building, gi = region.gyms.indexOf(map.leader), gt = map.tier ?? gi, champ = r.who === region.league.at(-1), at = { x: r.cx, y: (r.y0 + 1.6) * TS };
   r.started = true; map.room = r;
   setDoors(r.down, false);
   const open = () => { r.cleared = true; setDoors(r.down, true); setDoors(r.up, true); };
-  if (r.npc) return startBattle({ who: r.npc.name, title: '체육관 트레이너', queue: Array.from({ length: rollRange(GYM_TRAINER_MONS[gi < EARLY_GYMS ? 'early' : 'late']) }, () => pick(map.leader.mobs)), x: r.npc.x, y: r.npc.y, rank: 'trainer', tier: gi, onWin: () => {
+  if (r.npc) return startBattle({ who: r.npc.name, title: '체육관 트레이너', queue: Array.from({ length: rollRange(GYM_TRAINER_MONS[gt < EARLY_GYMS ? 'early' : 'late']) }, () => pick(map.leader.mobs)), x: r.npc.x, y: r.npc.y, rank: 'trainer', tier: gt, onWin: () => {
     open(); r.npc.defeated = true;
-    gainMoney(200 + gi * 200, r.npc.x, r.npc.y);
+    gainMoney(200 + gt * 200, r.npc.x, r.npc.y);
     banner = { text: `${r.npc.name}에게 이겼다! 위쪽 문이 열렸다`, t: 2.5 };
     map.pickups.push({ kind: 'berry', x: r.cx, y: (r.y0 + r.y1) / 2 * TS });
   } });
   const hits0 = p.hits ?? 0;
-  if (b.kind === 'gym') return startBattle({ who: r.who.leader, title: r.who.title, queue: [...r.who.team], ...at, rank: 'boss', tier: gi, onWin: () => {
+  // 관장은 배지가 적을 때 엔트리 뒤쪽(에이스 포함) 몇 마리만 낸다: 배지 0~1개 2마리, 2~3개 3마리, 4개 이상 전부
+  const leaderTeam = r.who.team.slice(-clamp(2 + Math.floor(gt / 2), 2, r.who.team.length));
+  if (b.kind === 'gym') return startBattle({ who: r.who.leader, title: r.who.title, queue: leaderTeam, ...at, rank: 'boss', tier: gt, onWin: () => {
     open(); if ((p.hits ?? 0) === hits0) ach('perfect'); p.beaten.add(gi); map.portal = gymPortal(r);
-    gainMoney(1500 + gi * 600, at.x, at.y + 2 * TS);
+    gainMoney(1500 + gt * 600, at.x, at.y + 2 * TS);
     banner = { text: `${r.who.leader}에게 이겼다! 배지를 손에 넣었다 (${p.beaten.size}/${region.gyms.length})`, t: 3 }; sfx('badge');
     map.pickups.push({ ...rollContent(Math.random, { tm: 0.55, ltm: 0.12, c: 0, r: 0.7, l: 0.3 }), x: r.cx, y: (r.y0 + 4.5) * TS });
   } });
