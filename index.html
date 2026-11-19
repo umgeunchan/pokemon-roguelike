@@ -770,7 +770,13 @@ const expNeed = lv => Math.round(20 * 2 ** ((lv - 8) / 7));
 // 0번째(첫 체육관) ~ 4번째까지 차례로. 숫자를 바꾸면 바로 반영된다
 const BOSS_HP_EARLY = [0.55, 0.64, 0.73, 0.82, 0.91];
 const bossEase = t => t >= BOSS_HP_EARLY.length ? 1 : BOSS_HP_EARLY[Math.max(0, Math.floor(t))];
-const hpMult = (rank, t) => rank === 'legend' ? 20 * 1.6 ** t : rank === 'boss' ? 10 * 1.6 ** t * bossEase(t) : 2 * 1.5 ** t;
+// 트레이너(체육관 트레이너·필드 트레이너) 체력: 야생의 TRAINER_HP배에, 단계별 보정을 곱한다. 5단계부터는 보정 없음
+const TRAINER_HP = 2.2, TRAINER_HP_EARLY = [0.6, 0.7, 0.8, 0.9];
+const trainerEase = t => t >= TRAINER_HP_EARLY.length ? 1 : TRAINER_HP_EARLY[Math.max(0, Math.floor(t))];
+// 체육관 구성: 트레이너 방 수와 트레이너 한 명의 포켓몬 수 [최소, 최대]. 앞쪽 EARLY_GYMS개 체육관은 적게
+const EARLY_GYMS = 3, GYM_ROOMS = { early: [1, 2], late: [2, 3] }, GYM_TRAINER_MONS = { early: [1, 2], late: [2, 3] };
+const rollRange = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
+const hpMult = (rank, t) => rank === 'legend' ? 20 * 1.6 ** t : rank === 'boss' ? 10 * 1.6 ** t * bossEase(t) : rank === 'trainer' ? 2 * 1.5 ** t * trainerEase(t) : 2 * 1.5 ** t;
 
 function makePlayer(m) {
   const b = baseOf(m);
@@ -1010,7 +1016,7 @@ function genWorld(seed) {
 function makeIndoor(b) {
   const league = b.kind === 'league', g = b.node.gym, last = region.league.length - 1;
   const specs = league ? region.league.map((who, i) => ({ w: i === last ? 31 : 21, h: i === last ? 19 : 13, who, type: who.type }))
-    : [...Array(2 + Math.floor(Math.random() * 2)).fill({ w: 21, h: 13, type: b.type }), { w: 23, h: 15, who: g, type: b.type }];
+    : [...Array(rollRange(GYM_ROOMS[region.gyms.indexOf(g) < EARLY_GYMS ? 'early' : 'late'])).fill({ w: 21, h: 13, type: b.type }), { w: 23, h: 15, who: g, type: b.type }];
   const tw = Math.max(...specs.map(s => s.w)), th = specs.reduce((a, s) => a + s.h - 1, 1), cx = Math.floor(tw / 2);
   const solid = new Uint8Array(tw * th).fill(4), voids = new Uint8Array(tw * th).fill(1), set = (x, y, v) => solid[y * tw + x] = v;
   const m = { kind: 'indoor', sub: b.kind, building: b, tw, th, solid, voids, rooms: [], npcs: [], pickups: [], enemies: [], buildings: [], signs: [], battle: null, type: b.type, furn: [], leader: g };
@@ -1115,7 +1121,7 @@ function movesFor(m) {
 // rank: wild(야생) / trainer(트레이너) / boss(관장·사천왕) / legend(전설)
 function spawnEnemy(m, x, y, rank, tier = 0) {
   const s = m.st, big = rank === 'boss' || rank === 'legend', w = m.box.x1 - m.box.x0;
-  const base = { wild: s.hp / 8, trainer: s.hp / 8 * 2.2, boss: 20 + s.hp * 0.15, legend: 40 + s.hp * 0.3 }[rank], hp = base * hpMult(rank, tier);
+  const base = { wild: s.hp / 8, trainer: s.hp / 8 * TRAINER_HP, boss: 20 + s.hp * 0.15, legend: 40 + s.hp * 0.3 }[rank], hp = base * hpMult(rank, tier);
   const e = { mon: m, x, y, hx: x, hy: y, rank, tier, hp, maxHp: hp, scale: big ? 2 : 1, r: big ? clamp(w * 0.6, 30, 52) : clamp(w * 0.3, 12, 20), flying: m.flying, seed: Math.random() * 10,
     flip: false, hit: 0, cd: 1 + Math.random(), turn: Math.random(), dir: randDir(), vx: 0, vy: 0, walk: 0, moving: false, burn: 0, burnTick: 0, slow: 0, stun: 0, frozen: 0,
     z: 0, fade: 0, act: null, lunge: 1 + Math.random() * 2, burst: 0, burstT: 0, shotStyle: pick(['single', 'fan', 'burst']), aggro: rank !== 'wild',
@@ -1847,7 +1853,7 @@ function startRoom(r) {
   r.started = true; map.room = r;
   setDoors(r.down, false);
   const open = () => { r.cleared = true; setDoors(r.down, true); setDoors(r.up, true); };
-  if (r.npc) return startBattle({ who: r.npc.name, title: '체육관 트레이너', queue: Array.from({ length: 2 + Math.floor(Math.random() * 2) }, () => pick(map.leader.mobs)), x: r.npc.x, y: r.npc.y, rank: 'trainer', tier: gi, onWin: () => {
+  if (r.npc) return startBattle({ who: r.npc.name, title: '체육관 트레이너', queue: Array.from({ length: rollRange(GYM_TRAINER_MONS[gi < EARLY_GYMS ? 'early' : 'late']) }, () => pick(map.leader.mobs)), x: r.npc.x, y: r.npc.y, rank: 'trainer', tier: gi, onWin: () => {
     open(); r.npc.defeated = true;
     gainMoney(200 + gi * 200, r.npc.x, r.npc.y);
     banner = { text: `${r.npc.name}에게 이겼다! 위쪽 문이 열렸다`, t: 2.5 };
