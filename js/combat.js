@@ -25,7 +25,7 @@ function hurt(type, amount = 1, src = null) {
   if (hasFx('bulwark') && p.shieldUp) { p.shieldUp = false; p.shieldT = 8; p.inv = 0.6; fx.push({ kind: 'boom', x: p.x, y: p.y, r: 50, t: 0.25, max: 0.25, color: '#c8d4e8' }); sfx('crit'); return say('방패가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   if (combo('fortress') && Math.random() < 0.2) { p.inv = 0.5; return say('강철 요새가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   const m = eff(type, p.mon.types);
-  let d = m === 0 ? 0 : amount + (m > 1 ? 1 : 0) + (who?.awake ? 1 : 0);  // 각성한 상대의 공격은 반 칸 더
+  let d = m === 0 ? 0 : amount + (m > 1 ? 1 : 0) + (who?.awake ? (who.elite ? 2 : 1) : 0);  // 각성한 상대의 공격은 반 칸 더 (사천왕은 1칸 더)
   if (amount >= 2) d = Math.min(d, amount + 1);  // 필살기·큰 공격은 약점·각성이 겹쳐도 반 칸까지만 더
   // 쉬움 모드: 피해 절반 (반 칸 단위라 남는 반은 모아 두었다가 다음에 더한다)
   if (EASY && d > 0) { p.easyCarry = (p.easyCarry ?? 0) + d / 2; d = Math.floor(p.easyCarry); p.easyCarry -= d; if (d <= 0) { p.inv = p.invTime; return; } }
