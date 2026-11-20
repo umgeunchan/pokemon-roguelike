@@ -28,24 +28,43 @@ function update(dt) {
   if ((keys.Space || p.dashQ) && p.dashCd <= 0) {
     p.dashQ = false;
     sfx('dash'); p.dashed = true;
-    p.dash = 0.2; p.dashCd = hasFx('dashStrike') ? 0.45 : hasFx('vanish') ? 1 : 0.7; p.dashDir = vx || vy ? [vx, vy] : [p.flip ? 1 : -1, 0]; p.dashHit = new Set();
+    p.dash = hasFx('dashStrike') ? 0.26 : 0.2; p.dashCd = hasFx('dashStrike') ? 0.45 : hasFx('vanish') ? 1 : 0.7; p.dashDir = vx || vy ? [vx, vy] : [p.flip ? 1 : -1, 0]; p.dashHit = new Set();
     if (hasFx('vanish')) p.vanish = 0.6;
   }
   if (p.dash > 0) {
     p.dash -= dt; vx = p.dashDir[0] * 3; vy = p.dashDir[1] * 3;
-    if (hasFx('dashStrike')) for (const e of map.enemies) if (!p.dashHit.has(e) && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r + 8) {
-      p.dashHit.add(e); damage(e, p.dmg * 4, moveDef([...p.moves].find(id => moveDef(id).fx === 'dashStrike')).type);
-      fx.push({ kind: 'boom', x: e.x, y: e.y, r: 30, t: 0.2, max: 0.2, color: '#fff' });
+    // 돌진 기술(화룡점정·브레이브버드 계열·라이트닝드라이브): 지나가는 길 주변(몸 둘레 55px)을 휩쓸고, 끝나면 충격파
+    const dtype = hasFx('dashStrike') && moveDef([...p.moves].find(id => moveDef(id).fx === 'dashStrike')).type, dcol = dtype && TYPE_COLOR[dtype];
+    if (dtype) {
+      fx.push({ kind: 'trail', x: p.x, y: p.y, r: 30, t: 0.3, max: 0.3, color: dcol });
+      if (dtype === 'electric' && Math.random() < 0.6) { const a = Math.random() * Math.PI * 2; fx.push({ kind: 'zap', x: p.x, y: p.y, x2: p.x + Math.cos(a) * 60, y2: p.y + Math.sin(a) * 60, t: 0.12 }); }
+    }
+    if (dtype) for (const e of map.enemies) if (!p.dashHit.has(e) && e.hp > 0 && !untargetable(e) && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r + 55) {
+      p.dashHit.add(e); damage(e, p.dmg * 4, dtype);
+      fx.push({ kind: 'boom', x: e.x, y: e.y, r: 34, t: 0.2, max: 0.2, color: dcol });
       if (combo('stormdash') && e.hp > 0) {
         e.stun = Math.max(e.stun ?? 0, 1); say('마비되었다!', e.x, e.y - 50, '#ff8');
         for (const o of enemiesNear(e.x, e.y, 150, e).slice(0, 3)) { damage(o, p.dmg * 1.2, 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.15 }); }
       }
     }
   }
+  if (hasFx('dashStrike') && p.dashHit && p.dash <= 0 && !p.dashDone) {
+    p.dashDone = true;
+    const dtype = moveDef([...p.moves].find(id => moveDef(id).fx === 'dashStrike')).type, R = 95;
+    fx.push({ kind: 'boom', x: p.x, y: p.y, r: R, t: 0.25, max: 0.25, color: TYPE_COLOR[dtype] }); fx.push({ kind: 'ring', x: p.x, y: p.y, t: 0.3, max: 0.3 }); shake = Math.max(shake, 0.12);
+    for (const e of enemiesNear(p.x, p.y, R)) { p.dashHit.add(e); damage(e, p.dmg * 1.5, dtype, false, true); }
+    // 돌진은 적 사이로 파고드는 기술이라 맞히면 체력을 회복하고 잠깐 무적이 된다 (3마리 이상이면 1칸)
+    const n = [...p.dashHit].length;
+    if (n) { p.inv = Math.max(p.inv, 0.4); if (p.time >= (p.dashHealAt ?? 0)) { p.dashHealAt = p.time + 1.2; heal(n >= 3 ? 2 : 1); say('체력을 회복했다!', p.x, p.y - 60, '#8f8'); } }
+  }
+  if (p.dash > 0) p.dashDone = false;
+  if (hasFx('bulwark') && !p.shieldUp && (p.shieldT = (p.shieldT ?? 0) - dt) <= 0) p.shieldUp = true;
   if (p.vanish > 0 && (p.vanish -= dt) <= 0) {
     const R = combo('phantom') ? 160 : 100;
     fx.push({ kind: 'boom', x: p.x, y: p.y, r: R, t: 0.3, max: 0.3, color: TYPE_COLOR.ghost }); shake = 0.2;
+    const hitN = enemiesNear(p.x, p.y, R).length;
     for (const e of enemiesNear(p.x, p.y, R)) damage(e, p.dmg * 3 * (combo('phantom') ? 1.5 : 1), 'ghost');
+    if (hitN && p.time >= (p.dashHealAt ?? 0)) { p.dashHealAt = p.time + 1.5; heal(1); say('체력을 회복했다!', p.x, p.y - 60, '#8f8'); }
   }
   if (vx && !(keys.ArrowLeft || keys.ArrowRight)) p.flip = vx > 0;
   moveBody(p, vx * p.speed * dt, vy * p.speed * dt); clampBody(p);

@@ -21,6 +21,8 @@ function hurt(type, amount = 1, src = null) {
   const p = player, who = src?.src ?? curEnemy, move = src?.move ?? who?.act?.name;
   if (p.inv > 0 || p.dash > 0 || p.vanish > 0 || state !== 'play') return;
   if (Math.random() < p.dodge) { p.inv = 0.5; return say('공격을 피했다!', p.x, p.y - 60, '#aef'); }
+  // 거대방패: 8초마다 다시 차오르는 방패가 공격 한 번을 완전히 막는다
+  if (hasFx('bulwark') && p.shieldUp) { p.shieldUp = false; p.shieldT = 8; p.inv = 0.6; fx.push({ kind: 'boom', x: p.x, y: p.y, r: 50, t: 0.25, max: 0.25, color: '#c8d4e8' }); sfx('crit'); return say('방패가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   if (combo('fortress') && Math.random() < 0.2) { p.inv = 0.5; return say('강철 요새가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   const m = eff(type, p.mon.types);
   let d = m === 0 ? 0 : amount + (m > 1 ? 1 : 0);
@@ -60,7 +62,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   if (e.battle || e.rank === 'legend') p.fD = (p.fD ?? 0) + Math.min(d, Math.max(0, e.hp));
   e.hp -= d; e.hit = 0.1; e.aggro = true;
   if (!tick) sfx(crit ? 'crit' : 'hit');
-  if (hasFx('drain') && (p.drain2 += d) >= (combo('deathwing') ? 6 : 12)) { p.drain2 -= combo('deathwing') ? 6 : 12; heal(1); }
+  if (hasFx('drain') && (p.drain2 += d) >= (combo('deathwing') ? 6 : 12)) { p.drain2 -= combo('deathwing') ? 6 : 12; heal(1); fx.push({ kind: 'boom', x: p.x, y: p.y - 20, r: 26, t: 0.25, max: 0.25, color: '#e04050' }); }
   if (combo('vine') && (p.drain += d) >= 25) { p.drain -= 25; heal(1); say('체력을 흡수했다!', p.x, p.y - 60, '#8f8'); }
   if (!tick) {
     const msg = crit ? '급소에 맞았다!' : raw > 1 ? '효과가 굉장했다!' : raw === 0 ? '효과가 없는 것 같다...' : raw < 1 ? '효과가 별로인 듯하다' : null;
@@ -171,7 +173,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
     for (const o of enemiesNear(e.x, e.y, 40 * s, e)) damage(o, p.dmg * 0.5, 'steel', false, true);
   }
   if (combo('gaia') && p.surge > 0 && e.hp > 0) pstrikes.push({ x: e.x, y: e.y, t: 0.2, r: 45 * s, mul: 0.9, type: 'ground' });
-  if (hasFx('madness') && !big && e.hp > 0 && Math.random() < (combo('calamity') ? 0.35 : 0.2)) { e.hp /= 2; say('자연의 분노!', e.x, e.y - 60, '#f9c'); }
+  if (hasFx('madness') && !big && e.hp > 0 && Math.random() < (combo('calamity') ? 0.35 : 0.2)) { e.hp /= 2; say('자연의 분노!', e.x, e.y - 60, '#f9c'); fx.push({ kind: 'boom', x: e.x, y: e.y, r: e.r + 30, t: 0.35, max: 0.35, color: '#c04090' }); fx.push({ kind: 'ring', x: e.x, y: e.y, t: 0.35, max: 0.35 }); }
 }
 
 // 광선: 가장 최근에 배운 광선 기술의 타입으로 나가고, 위력·굵기·차징은 가진 광선 기술 중 센 쪽을 따른다

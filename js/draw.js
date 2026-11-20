@@ -683,6 +683,9 @@ function drawFx(f) {
     ctx.restore();
   }
   if (f.kind === 'wave') { ctx.strokeStyle = `rgba(80,150,255,${1 - k})`; ctx.lineWidth = 10 * (1 - k) + 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, 150 * k, 80 * k, 0, 0, Math.PI * 2); ctx.stroke(); }
+  // 돌진 잔상: 지나간 자리에 타입 색의 빛이 남았다가 옅어진다
+  if (f.kind === 'trail') { ctx.globalAlpha = (1 - k) * 0.55 * Math.min(1, k * 5); ctx.fillStyle = f.color; ctx.beginPath(); ctx.ellipse(f.x, f.y - 14, f.r * (1 - k * 0.5), f.r * 0.7 * (1 - k * 0.5), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = (1 - k) * 0.8 * Math.min(1, k * 5); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(f.x, f.y - 14, f.r * 0.35 * (1 - k), f.r * 0.25 * (1 - k), 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
   if (f.kind === 'ring') { ctx.strokeStyle = `rgba(224,192,104,${1 - k})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(f.x, f.y, 90 * k, 45 * k, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (f.kind === 'evo') { ctx.globalAlpha = 1 - k; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(f.x, f.y - 30, 30 + k * 120, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
   if (f.kind === 'slash') { ctx.fillStyle = `rgba(255,255,255,${1 - k})`; for (let i = -1; i <= 1; i++) { ctx.save(); ctx.translate(f.x + i * 30, f.y - 30); ctx.rotate(-0.8); ctx.fillRect(-60, -2, 120, 4); ctx.restore(); } }
@@ -768,6 +771,7 @@ function drawPlay() {
   for (const r of map.rooms ?? []) if (r.who) list.push({ y: (r.y0 + 1.6) * TS, draw: () => drawTrainerSprite(r.who.sprite, r.cx, (r.y0 + 1.6) * TS, false, r.cleared ? 0.7 : 1) });
   for (const n of map.npcs) if (inView(n.x, n.y)) list.push({ y: n.y, draw: () => drawTrainerSprite(n.sprite, n.x, n.y, n.flip, n.defeated ? 0.7 : 1, n.moving ? Math.abs(Math.sin(now * 10)) * 3 : 0) });
   for (const e of enemies) list.push({ y: e.y, draw: () => drawActor(e, e.scale, e.hit > 0 ? 0.4 : 1) });
+  if (hasFx('bulwark') && p.shieldUp) { ctx.strokeStyle = `rgba(200,212,232,${0.5 + Math.abs(Math.sin(now * 3)) * 0.3})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y - 16, 30, 34, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (p.surge > 0) { ctx.strokeStyle = `rgba(255,150,210,${0.4 + Math.abs(Math.sin(now * 8)) * 0.4})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y, 30, 14, 0, 0, Math.PI * 2); ctx.stroke(); }
   list.push({ y: p.y, draw: () => drawActor(p, p.warpS ?? 1, p.vanish > 0 ? 0.15 : p.warpS !== undefined ? p.warpS : p.inv > 0 && Math.floor(p.inv * 10) % 2 ? 0.3 : 1) });
   for (const t of tears) list.push({ y: t.y, draw: () => {
