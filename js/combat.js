@@ -762,7 +762,7 @@ function onKill(e) {
     if (shinyBonusIds().size > bonus0) say(`이로치 확률 +1%! (지금 ${+(shinyRate() * 100).toFixed(1)}%)`, e.x, e.y - 120, '#fd6');
     ach('shiny');
     banner = { text: sb || LEGEND_MOVE[e.mon.id] ? `색이 다른 ${e.mon.name}을(를) 쓰러뜨렸다! 다음 판부터 이로치로 시작할 수 있다` : `색이 다른 ${e.mon.name}을(를) 쓰러뜨렸다!`, t: 4 };
-    map.pickups.push({ ...rollContent(Math.random, { tm: 0.3, c: 0, r: 0.6, l: 0.4 }), x: e.x, y: e.y + 30, ball: true });
+    if (!e.hoopa) map.pickups.push({ ...rollContent(Math.random, { tm: 0.3, c: 0, r: 0.6, l: 0.4 }), x: e.x, y: e.y + 30, ball: true });  // 후파의 고리 전설은 판이 끝나므로 떨구지 않는다
   }
   if (p.bigRoot && Math.random() < 0.1) heal(1);
   if (p.shellBell && Math.random() < 0.15) heal(1);
@@ -797,8 +797,10 @@ function onKill(e) {
     banner = { text: `${e.mon.name}을(를) 쓰러뜨렸다! 다음 판부터 ${e.mon.name}(으)로 시작할 수 있다`, t: 4 };
     // 쓰러뜨린 전설의 상징 기술이 기술머신으로 떨어진다
     const sig = LTMS.find(t => t.id === LEGEND_MOVE[e.mon.id]);
-    if (sig && !taken.has(sig.id) && !p.moves.has(sig.id)) { taken.add(sig.id); map.pickups.push({ kind: 'tm', tm: sig, x: e.x - 40, y: e.y }); }
-    map.pickups.push({ ...rollContent(Math.random, { c: 0, r: 0, l: 1 }), x: e.x + 40, y: e.y });
+    if (!e.hoopa) {  // 후파의 고리에서 잡은 전설은 판이 바로 끝나므로 아무것도 떨구지 않는다
+      if (sig && !taken.has(sig.id) && !p.moves.has(sig.id)) { taken.add(sig.id); map.pickups.push({ kind: 'tm', tm: sig, x: e.x - 40, y: e.y }); }
+      map.pickups.push({ ...rollContent(Math.random, { c: 0, r: 0, l: 1 }), x: e.x + 40, y: e.y });
+    }
     if (e.hoopa) {
       p.hoopaWin = e.mon.name; p.winAt = 7; sfx('hoopa');
       banner = { text: `색이 다른 ${e.mon.name}을(를) 쓰러뜨렸다! 다음 판부터 이로치 ${e.mon.name}(으)로 시작할 수 있다`, t: 6, glow: '#c8f' };

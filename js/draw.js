@@ -433,7 +433,7 @@ function drawPanel() {
   ctx.fillStyle = '#222'; ctx.fillRect(6, HUD + 55, 146, 5);
   ctx.fillStyle = '#4ac0ff'; ctx.fillRect(6, HUD + 55, 146 * (p.level >= MAX_LEVEL ? 1 : Math.min(1, p.exp / expNeed(p.level))), 5);
   text(`₽ ${p.money.toLocaleString()}`, 6, HUD + 76, 12, '#fd6', 'left');
-  const ab = curAb(); if (ab) text(ab.ko, 152, HUD + 76, 11, ab.color ?? '#9cf', 'right');  // 특성
+  const ab = curAb(); if (ab) text(`${ab.ko}${ab.mul > 1 ? ` x${+ab.mul.toFixed(2)}` : ''}`, 152, HUD + 76, 11, isLegendMon() ? '#ffd060' : ab.color ?? '#9cf', 'right');  // 특성 (화력 배수도)
   STATS.forEach(([label, icon, f, dg], i) => {
     const y = HUD + 84 + i * 30;
     ctx.drawImage(IMG[icon], 2, y, 30, 30);

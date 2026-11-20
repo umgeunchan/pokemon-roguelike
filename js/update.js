@@ -1,7 +1,7 @@
 // 매 프레임 게임 진행: 이동, 충돌, 탄, 아이템 줍기
 // ---------- 메인 업데이트 ----------
 // 돌진 기술 위력 배수 = 이동 속도 (능력치 창의 속도 값, 기본 1 안팎)
-const dashSpd = () => player.speed * abStat('speed') / 200;
+const dashSpd = () => Math.max(2, player.speed * abStat('speed') / 200);  // 최소 2배
 function update(dt) {
   const p = player;
   refreshFx();

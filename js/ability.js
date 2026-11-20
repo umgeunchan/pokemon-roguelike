@@ -151,7 +151,27 @@ const abKill = () => { const a = curAb(); if (a?.moxie) player.moxT = player.tim
 const abFoes = e => { const a = curAb(); return a?.foes && Math.hypot(e.x - player.x, e.y - player.y) < 260 ? a.foes : 1; };
 
 // ---------- 이펙트 ----------
+// 전설·환상 전용 오라: 특성의 화력 증가를 보여 주는 금빛 빛무리 + 회전하는 빛줄기 + 떠오르는 빛가루
+function drawLegendAura(a) {
+  const pul = 0.75 + Math.sin(now * 2.4) * 0.25, cx = a.x, cy = a.y - 26;
+  const g = ctx.createRadialGradient(cx, cy, 6, cx, cy, 78);
+  g.addColorStop(0, `rgba(255,248,210,${0.55 * pul})`); g.addColorStop(0.45, `rgba(255,214,110,${0.28 * pul})`); g.addColorStop(1, 'rgba(255,200,80,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy, 78, 70, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.translate(cx, cy); ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 10; i++) {
+    const r = now * 0.5 + i * Math.PI / 5, len = 52 + Math.sin(now * 3 + i) * 10;
+    ctx.fillStyle = `rgba(255,236,170,${0.16 * pul})`; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(r - 0.07) * len, Math.sin(r - 0.07) * len); ctx.lineTo(Math.cos(r + 0.07) * len, Math.sin(r + 0.07) * len); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  ctx.strokeStyle = `rgba(255,220,120,${0.7 * pul})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(a.x, a.y, 34, 13, 0, 0, Math.PI * 2); ctx.stroke();
+}
+function drawLegendSparks(a, top, w) {
+  for (let i = 0; i < 7; i++) { const s = (Math.sin(i * 57.3) + 1) / 2, k = (now * 0.9 + s) % 1; ctx.globalAlpha = (1 - k) * 0.9; ctx.fillStyle = i % 2 ? '#fff6c8' : '#ffd060'; ctx.fillRect(Math.round(a.x - w / 2 - 6 + s * (w + 12)), Math.round(a.y - k * (a.y - top + 30)), 3, 3); }
+  ctx.globalAlpha = 1;
+}
+const isLegendMon = () => !!(player && LEGEND_MOVE[player.mon.id]);
 function drawAbilityBack(a) {
+  if (isLegendMon()) drawLegendAura(a);
   const ab = curAb(); if (!ab?.style) return;
   const c = ab.color, pul = 0.5 + Math.sin(now * 3) * 0.2;
   if (ab.style === 'aura' || ab.style === 'smoke') {
@@ -176,6 +196,7 @@ function drawAbilityBack(a) {
   }
 }
 function drawAbility(a, top, w) {
+  if (isLegendMon()) drawLegendSparks(a, top, w);
   const ab = curAb(), p = player; if (!ab) return;
   const c = ab.color, h = a.y - top, seed = i => (Math.sin(i * 91.7) + 1) / 2;
   // 위기 특성(맹화 등): 발동 중이면 몸에서 그 타입 색 불꽃
