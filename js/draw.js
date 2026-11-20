@@ -257,8 +257,9 @@ function drawSparkle(a, top, w) {
   ctx.fillStyle = '#fff6a0'; ctx.fillRect(x - 1, y - 6, 2, 12); ctx.fillRect(x - 6, y - 1, 12, 2); ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 2, y - 2, 4, 4);
 }
 function drawActor(a, scale, alpha = 1, battle = false) {
-  const art = a.shiny && a.mon.shinyArt || a.mon, b = a.mon.box, f = !battle && art.field, { lift, sx, sy } = pose(a, scale);
+  const art = a.megaArt ?? (a.shiny && a.mon.shinyArt || a.mon), b = art.box ?? a.mon.box, f = !battle && art.field, { lift, sx, sy } = pose(a, scale);
   const jitter = a.act?.phase === 0 && a.act.kind === 'charge' ? Math.sin(now * 70) * 2 : 0;
+  if (a === player) drawGimmickBack(a, scale);
   ctx.save();
   ctx.globalAlpha = alpha * (1 - (a.fade ?? 0));
   ctx.translate(Math.round(a.x + jitter), Math.round(a.y - lift));
@@ -284,6 +285,7 @@ function drawActor(a, scale, alpha = 1, battle = false) {
   if (a.slow > 0) dots('#aef');
   if (a.stun > 0) { ctx.fillStyle = '#ff8'; ctx.fillRect(Math.round(a.x - 8 + Math.sin(now * 8) * 10), Math.round(top - 6), 4, 4); }
   if (a.shiny) drawSparkle(a, top, w);
+  if (a === player) drawGimmick(a, top, w);
   if (a.rank && a.rank !== 'wild' && !isBig(a) && a.hp < a.maxHp) { ctx.fillStyle = '#000'; ctx.fillRect(a.x - 16, top - 10, 32, 5); ctx.fillStyle = '#e44'; ctx.fillRect(a.x - 15, top - 9, 30 * Math.max(0, a.hp / a.maxHp), 3); }
 }
 
@@ -427,7 +429,7 @@ function drawPanel() {
   ctx.fillStyle = '#0c0c12'; ctx.fillRect(0, HUD, SIDE, H);
   text(`${region.name}지방`, 6, HUD + 16, 13, '#ff8', 'left');
   text(placeName(), 6, HUD + 32, 11, '#ddd', 'left');
-  text(`${p.mon.name} ${p.level >= MAX_LEVEL ? 'Lv.MAX' : `Lv.${p.level}`}`, 6, HUD + 50, 12, p.level >= MAX_LEVEL ? '#fd6' : '#fff', 'left');
+  text(`${p.mega ? '메가' : ''}${p.mon.name} ${p.level >= MAX_LEVEL ? 'Lv.MAX' : `Lv.${p.level}`}`, 6, HUD + 50, 12, p.level >= MAX_LEVEL ? '#fd6' : '#fff', 'left');
   ctx.fillStyle = '#222'; ctx.fillRect(6, HUD + 55, 146, 5);
   ctx.fillStyle = '#4ac0ff'; ctx.fillRect(6, HUD + 55, 146 * (p.level >= MAX_LEVEL ? 1 : Math.min(1, p.exp / expNeed(p.level))), 5);
   text(`₽ ${p.money.toLocaleString()}`, 6, HUD + 76, 12, '#fd6', 'left');
@@ -446,7 +448,7 @@ function drawPanel() {
   text(`기술 ${p.moves.size}/${MAX_MOVES}`, 6, y, 12, '#ff8', 'left');
   const moves = [...p.moves];
   for (let i = 0; i < MAX_MOVES; i++) {
-    y += 15; const m = moveDef(moves[i]); nameText(m, m ? m.name : '-', 10, y, 11, m ? (m.legend ? '#fd6' : TYPE_COLOR[m.type]) : '#444');
+    y += 15; const m = moveDef(moves[i]); nameText(m, m ? `${moves[i] === p.zMove ? 'Z ' : ''}${m.name}` : '-', 10, y, 11, m ? (m.legend ? '#fd6' : TYPE_COLOR[m.type]) : '#444');
     if (m && p.stabTypes?.has(m.type)) text(`자속 x${STAB}`, 154, y, 9, '#fd6', 'right');  // 내 타입과 같은 기술: 그 타입 공격 1.5배
   }
   p.items.filter(i => i.r === 'k').forEach((it, i) => ctx.drawImage(IMG[it.id], 4 + i * 26, y + 6, 26, 26));
@@ -668,6 +670,7 @@ function drawHazard(h) {
 
 function drawFx(f) {
   const k = 1 - f.t / (f.max ?? f.t);
+  drawGimmickFx(f, k);
   if (f.kind === 'zap') {
     ctx.strokeStyle = '#fff36a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(f.x, f.y - TEAR_Z);
     for (let i = 1; i < 6; i++) ctx.lineTo(f.x + (f.x2 - f.x) * i / 6 + Math.random() * 12 - 6, f.y + (f.y2 - f.y) * i / 6 - TEAR_Z + Math.random() * 12 - 6);
@@ -773,7 +776,7 @@ function drawPlay() {
   for (const e of enemies) list.push({ y: e.y, draw: () => drawActor(e, e.scale, e.hit > 0 ? 0.4 : 1) });
   if (hasFx('bulwark') && p.shieldUp) { ctx.strokeStyle = `rgba(200,212,232,${0.5 + Math.abs(Math.sin(now * 3)) * 0.3})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y - 16, 30, 34, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (p.surge > 0) { ctx.strokeStyle = `rgba(255,150,210,${0.4 + Math.abs(Math.sin(now * 8)) * 0.4})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y, 30, 14, 0, 0, Math.PI * 2); ctx.stroke(); }
-  list.push({ y: p.y, draw: () => drawActor(p, p.warpS ?? 1, p.vanish > 0 ? 0.15 : p.warpS !== undefined ? p.warpS : p.inv > 0 && Math.floor(p.inv * 10) % 2 ? 0.3 : 1) });
+  list.push({ y: p.y, draw: () => drawActor(p, (p.warpS ?? 1) * (p.dmax ? 1.4 : 1), p.vanish > 0 ? 0.15 : p.warpS !== undefined ? p.warpS : p.inv > 0 && Math.floor(p.inv * 10) % 2 ? 0.3 : 1) });
   for (const t of tears) list.push({ y: t.y, draw: () => {
     const s = t.r * 2, x = Math.round(t.x - t.r), y = Math.round(t.y - TEAR_Z - t.r);
     // 불·독이 얹힌 탄: 뒤로 불씨·독방울이 흩날린다

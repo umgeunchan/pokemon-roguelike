@@ -271,7 +271,7 @@ const HOOPA_POOL = Object.keys(LEGEND_MOVE).map(Number);
 // 기술이 늘 주는 능력치 보너스(조건 없는 것만). 왼쪽 능력치 창과 실제 계산이 같은 값을 쓴다
 // 숨은 조합 보너스는 여기 넣지 않는다 (화면에 드러나면 숨은 효과가 아니게 된다)
 const moveDmgMul = () => (has('flash-cannon') ? 1.2 : 1) * (has('focus-blast') ? 1.6 : 1) * (has('dragon-claw') ? 1.2 : 1)
-  * (has('close-combat') ? 1.35 : 1) * (has('play-rough') ? 1.35 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * kindPow() * legendPow;
+  * (has('close-combat') ? 1.35 : 1) * (has('play-rough') ? 1.35 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * kindPow() * gimmickMul() * legendPow;
 const moveCrit = () => (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0);
 // 공격 사이 간격 배수 (작을수록 빠름): 구슬 하나마다 x1.2, 기합구슬은 더 느리다
 const moveRate = () => (has('bullet-seed') ? 0.5 : 1) * (has('air-slash') ? 0.8 : 1) * 1.2 ** orbCount() * (has('focus-blast') ? 1.15 : 1);
@@ -279,7 +279,7 @@ const moveShot = () => has('air-slash') ? 1.3 : 1;
 // 구슬: 구슬 기술 + 다른 기술이 하나라도 있으면 모든 효과(탄 크기·폭발·광선 굵기·원뿔 길이·범위)가 커지고 위력이 오른다. 구슬이 많을수록 더
 const orbCount = () => player ? ORBS.filter(id => player.moves.has(id)).length : 0;
 const orbBoost = () => { const n = orbCount(); return n && player.moves.size >= 2 ? n : 0; };
-const fxScale = () => { const n = orbBoost(); return (n ? 1.3 + 0.15 * (n - 1) : 1) * kindScale(); };
+const fxScale = () => { const n = orbBoost(); return (n ? 1.3 + 0.15 * (n - 1) : 1) * kindScale() * zScale(); };
 // 같은 종류 공명: 광선·레이저·원뿔 기술을 같은 종류로 2개 이상 가지면 범위(굵기·길이·폭발)와 위력이 오른다 (구슬은 위의 구슬 보너스가 같은 역할)
 // 전설의 광선 기술(에어로블라스트 등)도 광선으로 센다. 2개면 한 쌍, 3개면 두 쌍
 const MOVE_KINDS = [['광선', id => BEAMS.includes(id) || moveDef(id)?.fx === 'beam'], ['레이저', id => LASERS.includes(id)], ['원뿔', id => CONES.includes(id)]];
@@ -288,7 +288,8 @@ const kindScale = () => { const n = kindPairs(); return n ? 1.25 + 0.15 * (n - 1
 const kindPow = () => { const n = kindPairs(); return n ? 1.2 + 0.1 * (n - 1) : 1; };
 const orbPow = () => { const n = orbBoost(); return n ? 1.2 + 0.1 * (n - 1) : 1; };
 // 그 분류에서 가장 최근에 배운 기술
-const lastOf = list => [...player.moves].filter(id => list.includes(id)).at(-1);
+// 그 분류에서 가장 최근에 배운 기술 (Z기술이 그 분류에 있으면 Z기술이 우선: 공격 타입이 Z기술 타입이 된다)
+const lastOf = list => { const ms = [...player.moves].filter(id => list.includes(id)); return ms.includes(player.zMove) ? player.zMove : ms.at(-1); };
 // [이름, 아이콘, 값, 소수 자리]: 도구·도핑약·기술 보너스가 모두 들어간 실제 값
 const STATS = [
   ['공격', 'muscle-band', p => p.dmg * moveDmgMul() * stab(p.type), 2], ['연사', 'quick-claw', p => 1 / (p.fireDelay * moveRate()), 2], ['사거리', 'wide-lens', p => p.range * p.shotSpeed * moveShot() / TS, 1],

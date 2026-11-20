@@ -229,7 +229,7 @@ function sfx(name) {
 // 지금 장소와 상대에 맞는 곡: 라이벌 > 전설 > 리그(챔피언) > 체육관 > 마을·숲·동굴·도로
 function bgmFor() {
   if (state === 'title' || state === 'region' || state === 'select' || state === 'ach') return 'town';
-  if (!['play', 'pause', 'map', 'learn', 'shop'].includes(state) || !map) return null;
+  if (!['play', 'pause', 'map', 'learn', 'zpick', 'shop'].includes(state) || !map) return null;
   if (map.sub === 'rival') return 'rival';
   if (map.sub === 'hoopa') return map.enemies.some(e => e.hoopa) ? 'legend' : 'champion';
   if (map.battle?.rival || map.npcs.some(n => n.rival && !n.defeated)) return 'rival';

@@ -24,18 +24,20 @@ function makeNoise(rnd) {
 
 // 바닥에 놓인 볼의 종류로 내용물의 희귀도를 알린다: 흔한 도구·나무열매 < 희귀한 도구 < 기술머신·아주 희귀한 도구·중요한 물건 < 특별한 기술머신
 const BALLS = ['poke-ball', 'great-ball', 'ultra-ball', 'master-ball'];
-const ballGrade = k => k.kind === 'tm' ? (k.tm.legend ? 3 : 2) : k.kind === 'item' ? { c: 0, r: 1, l: 2, k: 2 }[k.item.r] ?? 0 : 0;
+const ballGrade = k => k.kind === 'tm' ? (k.tm.legend ? 3 : 2) : k.kind === 'item' ? { c: 0, r: 1, l: 2, k: 2, g: 3 }[k.item.r] ?? 0 : 0;
 // 상자 내용물. tm = 일반 기술머신 확률, 나머지(c·r·l)는 아이템 등급 비율
 // 전설의 기술머신(ltm)은 여기서 나오지 않는다: 전설의 포켓몬을 쓰러뜨리면 그 상징 기술머신이 떨어질 때만 얻는다 (ltm 값은 무시)
 // 흔한 도구(c: 능력치가 조금씩 오르는 도구)는 같은 것이 몇 번이고 나올 수 있다. 희귀 이상은 한 판에 한 번
-function rollContent(rnd, { tm = 0, c = 0.6, r = 0.35, l = 0.05 }) {
+function rollContent(rnd, { tm = 0, c = 0.6, r = 0.35, l = 0.05, g = 0.03 }) {
   const fromPool = list => { const pool = list.filter(t => !taken.has(t.id) && !player?.moves.has(t.id)); if (!pool.length) return null; const t = pool[Math.floor(rnd() * pool.length)]; taken.add(t.id); return { kind: 'tm', tm: t }; };
   const roll = rnd();
+  // 기믹 아이템(메가스톤·Z크리스탈·다이맥스밴드·테라피스): 드물게
+  if (g && (roll * 9973) % 1 < g) { const gi = rollGimmick(rnd); if (gi) return gi; }
   if (roll < tm) { const t = fromPool(TMS); if (t) return t; }
   const r2 = rnd() * (c + r + l), tier = r2 < c ? 'c' : r2 < c + r ? 'r' : 'l';
   if (tier === 'c') { const cs = ITEMS.filter(i => i.r === 'c'); return { kind: 'item', item: cs[Math.floor(rnd() * cs.length)] }; }
   let pool = ITEMS.filter(i => i.r === tier && !taken.has(i.id));
-  if (!pool.length) pool = ITEMS.filter(i => i.r !== 'k' && !taken.has(i.id));
+  if (!pool.length) pool = ITEMS.filter(i => i.r !== 'k' && i.r !== 'g' && !taken.has(i.id));
   if (!pool.length) return { kind: 'berry' };
   const it = pool[Math.floor(rnd() * pool.length)];
   taken.add(it.id);
@@ -141,7 +143,7 @@ function genWorld(seed) {
     if (n.kind !== 'T') continue;
     // 회복과 상점은 건물 없이 마을 한가운데 NPC에게 말을 건다 (연못은 중심 4칸 밖에만 생겨서 이 자리는 비어 있다)
     w.npcs.push({ id: npcId++, kind: 'nurse', sprite: 'nurse', name: '간호순', x: (n.tx - 2.5) * TS, y: (n.ty - 1.5) * TS });
-    w.npcs.push({ id: npcId++, kind: 'shop', sprite: 'clerk', name: '점원', x: (n.tx + 3.5) * TS, y: (n.ty - 1.5) * TS, special: rollContent(rnd, { tm: 0.35, c: 0, r: 0.7, l: 0.3 }) });
+    w.npcs.push({ id: npcId++, kind: 'shop', sprite: 'clerk', name: '점원', x: (n.tx + 3.5) * TS, y: (n.ty - 1.5) * TS, special: rollContent(rnd, { tm: 0.35, c: 0, r: 0.7, l: 0.3, g: 0.3 }) });
     // 첫 마을은 기술머신을, 다음 마을들은 중요한 물건(자전거 등)을, 나머지는 가끔 희귀한 도구를 준다
     const idx = towns.indexOf(n), key = idx > 0 ? KEY_ITEMS[idx - 1] : null;
     if (idx === 0 || key || rnd() < 0.5) {

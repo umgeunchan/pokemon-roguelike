@@ -146,18 +146,19 @@ async function loadCommon() {
     d.half_damage_to.forEach(x => CHART[t][x.name] = 0.5);
     d.no_damage_to.forEach(x => CHART[t][x.name] = 0);
   });
-  const sprites = new Set([...ITEMS.map(i => i.id), ...SHOP.map(s => s.id), ...TMS.map(t => t.tm), ...LTMS.map(t => t.tm), 'oran-berry', 'rare-candy', ...BALLS]);
-  await Promise.all([...sprites].map(async n => IMG[n] = await loadImg(`${SPR}/items/${n}.png`)));
+  // 그림 이름(icon)이 아이템 id와 다른 것(Z크리스탈 → z-ring)은 icon 그림을 id로 저장한다
+  const sprites = new Map([...ITEMS.map(i => [i.id, i.icon ?? i.id]), ...[...SHOP.map(s => s.id), ...TMS.map(t => t.tm), ...LTMS.map(t => t.tm), 'oran-berry', 'rare-candy', ...BALLS].map(n => [n, n])]);
+  await Promise.all([...sprites].map(async ([n, f]) => IMG[n] = await loadImg(`${SPR}/items/${f}.png`)));
   // 아이템/기술 한국어 이름: 처음 한 번 PokeAPI에서 받아 브라우저에 저장해 둔다
   let names = store.get(NAMES_KEY);
   if (!names) {
     names = {};
     const ko = j => j.names.find(n => n.language.name === 'ko')?.name;
-    await Promise.all([...ITEMS, ...SHOP].map(i => getJson(`${API}/item/${i.id}`).then(j => { if (ko(j)) names[i.id] = ko(j); }).catch(() => {})));
+    await Promise.all([...ITEMS.filter(i => i.r !== 'g'), ...SHOP].map(i => getJson(`${API}/item/${i.id}`).then(j => { if (ko(j)) names[i.id] = ko(j); }).catch(() => {})));
     await Promise.all([...TMS, ...LTMS].map(t => getJson(`${API}/move/${t.id}`).then(j => { if (ko(j)) names[t.id] = ko(j); }).catch(() => {})));
     store.set(NAMES_KEY, names);
   }
-  for (const it of [...ITEMS, ...SHOP, ...TMS, ...LTMS]) if (names[it.id]) it.name = names[it.id];
+  for (const it of [...ITEMS.filter(i => i.r !== 'g'), ...SHOP, ...TMS, ...LTMS]) if (names[it.id]) it.name = names[it.id];
 }
 
 const eff = (atk, defTypes) => defTypes.reduce((m, t) => m * (CHART[atk]?.[t] ?? 1), 1);
@@ -215,6 +216,7 @@ function learnMove(id) {
     p.moves.add(id);
     if (!p.items.includes(d)) p.items.push(d);
     d.onLearn?.(p);
+    if (p.zPending && state !== 'zpick') { p.zMove = id; p.zPending = false; }  // 기술이 없을 때 얻은 Z크리스탈은 처음 배우는 기술에
     refreshFx();
   });
   if (kindPairs() > kp) { const k = MOVE_KINDS.find(([, f]) => f(id))?.[0] ?? '기술'; banner = { text: `같은 종류(${k}) 기술이 공명한다! 범위·위력 증가`, t: 2.5, glow: '#ffd060' }; }

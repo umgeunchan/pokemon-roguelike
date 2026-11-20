@@ -104,7 +104,7 @@ function drawPartyScreen(x, y) {
   const moves = [...p.moves];
   for (let i = 0; i < MAX_MOVES; i++) {
     const d = moveDef(moves[i]), yy = y + 276 + i * 22;
-    nameText(d, d ? d.name : '-', x + 10, yy, 13, d ? (d.legend ? '#b08000' : mix(TYPE_COLOR[d.type], '#000000', 0.35)) : '#999', 'left', plain);
+    nameText(d, d ? `${moves[i] === p.zMove ? 'Z ' : ''}${d.name}` : '-', x + 10, yy, 13, d ? (d.legend ? '#b08000' : mix(TYPE_COLOR[d.type], '#000000', 0.35)) : '#999', 'left', plain);
     if (d) lines(d.desc, 470, 10).slice(0, 2).forEach((l, j) => plain(l, x + 180, yy - 5 + j * 11, 10, '#505060'));
   }
 }
@@ -188,7 +188,7 @@ function glowText(s, x, y, size, color, glow = color, align = 'center', draw = t
   ctx.restore();
 }
 // 아이템·기술 등급에 따른 빛 색: 희귀 금색, 아주 희귀·특별한 기술 보라
-const rareGlow = it => it?.legend || it?.r === 'l' ? '#c8f' : it?.r === 'r' ? '#fc4' : null;
+const rareGlow = it => it?.r === 'g' ? '#f8c' : it?.legend || it?.r === 'l' ? '#c8f' : it?.r === 'r' ? '#fc4' : null;
 function nameText(it, s, x, y, size, color, align = 'left', draw = text) {
   const g = rareGlow(it);
   g ? glowText(s, x, y, size, color, g, align, draw) : draw(s, x, y, size, color, align);
@@ -329,6 +329,7 @@ function draw() {
   if (state === 'map') drawBigMap();
   if (state === 'pause') drawMenu();
   if (state === 'learn') drawLearn();
+  if (state === 'zpick') drawZPick();
   if (state === 'shop') drawShop();
   if (state === 'dead' || state === 'win') drawResult();
   drawToasts();
@@ -372,7 +373,7 @@ function drawResult() {
 }
 
 function renderBar() {
-  $('#bar').innerHTML = player.items.map(i => `<img src="${SPR}/items/${i.tm ?? i.id}.png" title="${i.name}: ${i.desc}" alt="${i.name}">`).join('');
+  $('#bar').innerHTML = player.items.map(i => `<img src="${SPR}/items/${i.tm ?? i.icon ?? i.id}.png" title="${i.name}: ${i.desc}" alt="${i.name}">`).join('');
 }
 
 async function chooseRegion(i) {

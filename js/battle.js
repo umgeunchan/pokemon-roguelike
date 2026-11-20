@@ -122,6 +122,7 @@ function startRival(n) {
     banner = { text: `라이벌 ${n.name}에게 이겼다! 원래 자리로 돌아간다`, t: 3 };
     world.pickups.push({ ...rollContent(Math.random, { tm: 0.45, c: b ? 0 : 0.5, r: 0.6, l: b >= 5 ? 0.4 : 0.1 }), x: n.x, y: n.y + 40, ball: true });
     world.pickups.push({ kind: 'candy', x: n.x + 40, y: n.y + 40 });
+    if (Math.random() < 0.35) { const g = rollGimmick(Math.random); if (g) world.pickups.push({ ...g, x: n.x - 40, y: n.y + 40, ball: true }); }
     map.returnT = 3.5;
   } });
 }
@@ -166,6 +167,7 @@ function startRoom(r) {
     if (map.roadPortal) dialog = { name: r.who.leader, text: `배지 ${region.gyms.length}개를 다 모았구나. 저 고리를 타면 ${roadNode().name}까지 단숨에 갈 수 있어!`, t: 6, keep: true };
     map.pickups.push({ ...rollContent(Math.random, { tm: 0.55, c: 0, r: 0.7, l: 0.3 }), x: r.cx, y: (r.y0 + 4.5) * TS });
     map.pickups.push({ kind: 'candy', x: r.cx + 60, y: (r.y0 + 4.5) * TS });
+    if (Math.random() < 0.35) gimmickReward(r.cx - 60, (r.y0 + 4.5) * TS);
   } });
   // 사천왕 → 이기면 위쪽 방 문이 열린다. 마지막 방은 챔피언
   startBattle({ who: r.who.leader, title: r.who.title, queue: [...r.who.team], ...at, rank: 'boss', tier: 8, wait: champ ? 4 : 1,
@@ -326,7 +328,7 @@ function talk() {
 
 const shopPrice = s => Math.round(s.price * (s.grow ? 1.25 ** (player.bought[s.id] ?? 0) : 1));
 const shopSpecial = n => !n.sold && n.special.kind !== 'berry' ? n.special : null;
-const specialPrice = sp => sp.kind === 'tm' ? (sp.tm.legend ? 15000 : 5000) : sp.item.r === 'l' ? 12000 : 6000;
+const specialPrice = sp => sp.kind === 'tm' ? (sp.tm.legend ? 15000 : 5000) : sp.item.r === 'g' ? 15000 : sp.item.r === 'l' ? 12000 : 6000;
 
 function buy(i) {
   const p = player, n = shopNpc, s = SHOP[i], sp = i === SHOP.length ? shopSpecial(n) : null;

@@ -54,7 +54,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   let d = base * moveDmgMul() * Math.max(raw, 0.25) * (raw > 1 && p.expert ? 1.3 : 1) * (p.metronome ? 1 + Math.min(p.streak, 20) * 0.03 : 1) * (e.frozen > 0 ? 1.5 : 1)
     * (hasFx('blade') && big ? 1.4 : 1) * (hasFx('madness') && big ? (combo('calamity') ? 1.5 : 1.25) : 1) * (has('moonblast') && big ? 1.3 : 1) * (has('earth-power') && big ? 1.25 : 1)
     * (combo('scorch') && dot ? 1.4 : 1) * (combo('quake') && big ? 1.35 : 1) * (combo('dragon') ? 1.25 : 1) * (combo('mind') && e.stun > 0 ? 1.5 : 1)
-    * stab(type) * (has('close-combat') && near ? 1.4 : 1) * (has('play-rough') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1)
+    * stab(type) * zTypeMul(type) * (has('close-combat') && near ? 1.4 : 1) * (has('play-rough') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1)
     * (combo('inferno') && e.burn > 0 ? 1.5 : 1) * (combo('timewarp') && timeStop > 0 ? 2 : 1);
   const crit = Math.random() < p.crit + extraCrit + moveCrit() + (combo('venom') && e.psn > 0 ? 0.25 : 0);
   if (crit) d *= has('crunch') ? 2.2 : 1.5;

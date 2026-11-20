@@ -301,6 +301,7 @@ function decideLearn(i) {
     p.items = p.items.filter(it => it.id !== old);
     refreshFx();
     say(`${moveDef(old).name}을(를) 잊었다`, p.x, p.y - 90, '#ccc');
+    if (old === p.zMove) { p.zMove = k.tm.id; say('Z파워가 새 기술로 옮겨 갔다', p.x, p.y - 110, '#ffe060'); }
     takePickup(k);
   });
 }

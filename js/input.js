@@ -22,6 +22,7 @@ addEventListener('keydown', e => {
   else if (state === 'play') { if (e.code === 'Space') player.dashQ = true; if (e.code === 'KeyE') talk(); else if (e.code === 'KeyM') { state = 'map'; player.opened = true; } else if (e.code === 'Escape') { openMenu(); player.opened = true; } else if (e.code === 'KeyH') skipTutorial(); }
   else if (state === 'pause') menuKey(e.code);
   else if (state === 'map') { if (e.code === 'KeyM' || e.code === 'Escape') state = 'play'; }
+  else if (state === 'zpick') { if (d >= 1 && d <= player.moves.size) setZ([...player.moves][d - 1]); }
   else if (state === 'learn') { if (d >= 1 && d <= player.moves.size) decideLearn(d - 1); else if (d === 5 || e.code === 'Escape') decideLearn(null); }
   else if (state === 'shop') { if (d >= 1 && d <= 9) buy(d === 9 ? SHOP.length : d - 1); else if (e.code === 'Escape' || e.code === 'KeyE') state = 'play'; }
   else if ((state === 'dead' || state === 'win') && e.code === 'KeyR') state = 'region';
