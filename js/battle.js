@@ -206,6 +206,7 @@ function updateBattle(dt) {
   if (map.enemies.some(e => e.battle)) return;
   if (bt.queue.length && (bt.wait -= dt) <= 0) {
     const m = MON[bt.queue.shift()], ang = Math.atan2(p.y - bt.y, p.x - bt.x), e = spawnEnemy(m, bt.x + Math.cos(ang) * 50, bt.y + Math.sin(ang) * 50, bt.rank, bt.tier);
+    if (bt.rival) e.moves = pickPatterns(e, 'rival');
     if (!bt.queue.length && bt.rank === 'boss') { e.hp *= 1.3; e.maxHp = e.hp; }  // 마지막 에이스는 더 단단하게
     if (bt.hpMul) { e.hp *= bt.hpMul; e.maxHp = e.hp; }  // 라이벌 체력 보정 (첫 승부는 보스급이지만 체력은 낮게)
     bt.hpSum = (bt.hpSum ?? 0) + e.maxHp;

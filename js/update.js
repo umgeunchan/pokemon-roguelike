@@ -12,7 +12,7 @@ function update(dt) {
   if (p.warpIn > 0) p.warpIn -= dt;
   // 챔피언을 이기고 잠시 뒤 후파의 고리가 열린다
   if (map.hoopaT > 0 && (map.hoopaT -= dt) <= 0) openHoopaRing();
-  p.time += dt; p.hop -= dt;
+  p.time += dt; p.hop -= dt; if (p.webbed > 0) p.webbed -= dt;
   if (p.regen && (p.regenT -= dt) <= 0) { p.regenT = 12; heal(1); }
   // 지오컨트롤: 12초마다 4초 동안 대지의 힘이 넘친다
   if (hasFx('geo') && (p.geoT = (p.geoT ?? 6) - dt) <= 0) { p.geoT = combo('gaia') ? 8 : 12; p.surge = combo('gaia') ? 5 : 4; banner = { text: '대지의 힘이 넘쳐흐른다!', t: 1.5, glow: '#f9c' }; }
@@ -28,7 +28,10 @@ function update(dt) {
   if ((keys.Space || p.dashQ) && p.dashCd <= 0) {
     p.dashQ = false;
     sfx('dash'); p.dashed = true;
-    p.dash = hasFx('dashStrike') ? 0.26 : 0.2; p.dashCd = hasFx('dashStrike') ? 0.45 : hasFx('vanish') ? 1 : 0.7; p.dashDir = vx || vy ? [vx, vy] : [p.flip ? 1 : -1, 0]; p.dashHit = new Set();
+    // 구르기 대기 1초. 돌진 기술(화룡점정·라이트닝드라이브 등)은 0.25초에, 가까운 적에게 자동으로 돌진한다
+    p.dash = hasFx('dashStrike') ? 0.26 : 0.2; p.dashCd = hasFx('dashStrike') ? 0.25 : 1; p.dashDir = vx || vy ? [vx, vy] : [p.flip ? 1 : -1, 0]; p.dashHit = new Set(); p.dashAt = p.time;
+    const tg = hasFx('dashStrike') && nearestEnemy(p.x, p.y, null, 320);
+    if (tg) { const d = Math.hypot(tg.x - p.x, tg.y - p.y) || 1; p.dashDir = [(tg.x - p.x) / d, (tg.y - p.y) / d]; }
     if (hasFx('vanish')) p.vanish = 0.6;
   }
   if (p.dash > 0) {
@@ -53,9 +56,8 @@ function update(dt) {
     const dtype = moveDef([...p.moves].find(id => moveDef(id).fx === 'dashStrike')).type, R = 95;
     fx.push({ kind: 'boom', x: p.x, y: p.y, r: R, t: 0.25, max: 0.25, color: TYPE_COLOR[dtype] }); fx.push({ kind: 'ring', x: p.x, y: p.y, t: 0.3, max: 0.3 }); shake = Math.max(shake, 0.12);
     for (const e of enemiesNear(p.x, p.y, R)) { p.dashHit.add(e); damage(e, p.dmg * 1.5, dtype, false, true); }
-    // 돌진은 적 사이로 파고드는 기술이라 맞히면 체력을 회복하고 잠깐 무적이 된다 (3마리 이상이면 1칸)
-    const n = [...p.dashHit].length;
-    if (n) { p.inv = Math.max(p.inv, 0.4); if (p.time >= (p.dashHealAt ?? 0)) { p.dashHealAt = p.time + 1.2; heal(n >= 3 ? 2 : 1); say('체력을 회복했다!', p.x, p.y - 60, '#8f8'); } }
+    // 돌진은 적 사이로 파고드는 기술이라 맞히면 잠깐 무적 (회복은 돌진으로 쓰러뜨렸을 때: combat.js onKill)
+    if (p.dashHit.size) p.inv = Math.max(p.inv, 0.4);
   }
   if (p.dash > 0) p.dashDone = false;
   if (hasFx('bulwark') && !p.shieldUp && (p.shieldT = (p.shieldT ?? 0) - dt) <= 0) p.shieldUp = true;
@@ -67,7 +69,8 @@ function update(dt) {
     if (hitN && p.time >= (p.dashHealAt ?? 0)) { p.dashHealAt = p.time + 1.5; heal(1); say('체력을 회복했다!', p.x, p.y - 60, '#8f8'); }
   }
   if (vx && !(keys.ArrowLeft || keys.ArrowRight)) p.flip = vx > 0;
-  moveBody(p, vx * p.speed * dt, vy * p.speed * dt); clampBody(p);
+  moveBody(p, vx * p.speed * dt * (p.webbed > 0 ? 0.5 : 1), vy * p.speed * dt * (p.webbed > 0 ? 0.5 : 1)); clampBody(p);  // 실 장판 위에서는 느려진다
+  p.velX = (p.x - ox) / dt; p.velY = (p.y - oy) / dt;  // 라이벌의 읽어내기가 쓰는 이동 속도
   p.walk += Math.hypot(p.x - ox, p.y - oy); p.moving = p.x !== ox || p.y !== oy;
   if (vx || vy) p.face = faceRow(vx, vy);
   if (map === world && world.solid[Math.floor(p.y / TS) * world.tw + Math.floor(p.x / TS)] === 8 && vy > 0 && p.hop <= 0) p.hop = 0.35;
@@ -121,6 +124,7 @@ function update(dt) {
   }
 
   if (!frozenTime) for (const h of hazards) {
+    updatePatternHazard(h, dt);
     // 두 번째 필살 일격 표식은 터지기 직전까지 플레이어를 천천히 따라온다
     if (h.follow && h.t > 0.6) { const d = Math.hypot(p.x - h.x, p.y - h.y) || 1, v = Math.min(d, 120 * dt); h.x += (p.x - h.x) / d * v; h.y += (p.y - h.y) / d * v; }
     if (h.kind === 'strike' && (h.t -= dt) <= 0) {
@@ -212,8 +216,8 @@ function update(dt) {
     // 하늘 가르기: 사거리 절반에서 둘로 갈라진다
     if (t.split2 && t.life < t.life0 / 2) { t.split2 = false; const a = Math.atan2(t.vy, t.vx); for (const o of [-0.35, 0.35]) playerShot(t.x, t.y, a + o, { type: t.type, mul: t.mul, r: t.r, life: t.life, pierce: t.pierce, ghost: t.ghost, home: t.home, blade: t.blade, xs: t.xs, fire: t.fire, psn: t.psn, hit: new Set(t.hit), color: t.color, accent: t.accent }); }
     if (t.back) { const d = Math.hypot(p.x - t.x, p.y - t.y) || 1, sp = Math.hypot(t.vx, t.vy); t.vx = (p.x - t.x) / d * sp; t.vy = (p.y - t.y) / d * sp; if (d < 20) t.life = 0; }
-    t.x += t.vx * dt; t.y += t.vy * dt; t.life -= dt;
-    if (t.life > 0 && shotBlocked(Math.floor(t.x / TS), Math.floor(t.y / TS), t.ghost && t.from === 'p')) { t.life = 0; fx.push({ kind: 'splash', x: t.x, y: t.y, t: 0.2, max: 0.2, color: TYPE_COLOR[t.type] }); }
+    if (!(t.from === 'e' && moveEnemyShot(t, dt))) { t.x += t.vx * dt; t.y += t.vy * dt; t.life -= dt; }
+    if (t.life > 0 && shotBlocked(Math.floor(t.x / TS), Math.floor(t.y / TS), t.ghost && t.from === 'p') && !(t.from === 'e' && bounceShot(t, dt))) { t.life = 0; fx.push({ kind: 'splash', x: t.x, y: t.y, t: 0.2, max: 0.2, color: TYPE_COLOR[t.type] }); }
     if (t.life <= 0) continue;
     if (t.from === 'p') {
       for (const e of enemies) {

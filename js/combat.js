@@ -25,7 +25,7 @@ function hurt(type, amount = 1, src = null) {
   if (hasFx('bulwark') && p.shieldUp) { p.shieldUp = false; p.shieldT = 8; p.inv = 0.6; fx.push({ kind: 'boom', x: p.x, y: p.y, r: 50, t: 0.25, max: 0.25, color: '#c8d4e8' }); sfx('crit'); return say('방패가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   if (combo('fortress') && Math.random() < 0.2) { p.inv = 0.5; return say('강철 요새가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   const m = eff(type, p.mon.types);
-  let d = m === 0 ? 0 : amount + (m > 1 ? 1 : 0);
+  let d = m === 0 ? 0 : amount + (m > 1 ? 1 : 0) + (who?.awake ? 1 : 0);  // 각성한 상대의 공격은 반 칸 더
   if (hasFx('bulwark') && d > 0) { d -= 1; if (d === 0 && Math.random() < 0.5) d = 1; if (d === 0) { p.inv = 0.5; return say('막아냈다!', p.x, p.y - 60, '#ccf'); } }
   p.inv = p.invTime; p.streak = 0; p.hits = (p.hits ?? 0) + 1;
   if (p.balloon && d > 0) { p.balloon = p.flying = false; say('풍선이 터졌다!', p.x, p.y - 80, '#f88'); unstick(p); }
@@ -364,6 +364,7 @@ function explode(b) {
 // o: 탄 속성 덮어쓰기. x·y(쏘는 자리), r(크기), seek(이 시간 동안 플레이어를 따라감), split(이 시간 뒤 터지며 splitN발로 갈라짐)
 function enemyShot(e, a, speed, o = {}) {
   if (player.lagTail) speed *= 0.7;
+  if (e?.awake) { speed *= 1.15; if (o.go) o.go *= 1.15; }
   tears.push({ x: e.x, y: e.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 3, r: 6, from: 'e', type: e.mon.types[0], src: e, move: e.act?.name, ...o });
 }
 
@@ -417,10 +418,9 @@ function turnToward(cur, want, max) {
 }
 
 // 기술 시작: 이름을 띄우고 패턴별 준비를 한다. 모든 패턴은 피할 수 있도록 먼저 예고(조준선/낙하 지점/표식)를 보여준다
-function startAct(e, [kind, name], opts = {}) {
-  const p = player, type = e.mon.types[0];
+function startAct(e, [kind, name, mo], opts = {}) {
+  const p = player, a = e.act = { kind, name, type: e.mon.types[0], t: 0, phase: 0, ...mo, ...opts }, type = a.type;  // 타입 고유 기술은 그 기술의 타입으로
   if (name) say(`${e.mon.name}의 ${name}!`, e.x, e.y - bodyH(e, e.scale) - 24, TYPE_COLOR[type]);
-  const a = e.act = { kind, name, type, t: 0, phase: 0, ...opts };
   if (kind === 'charge') { a.reps ??= name === '역린' ? 3 : 1 + (e.lvl >= 2 ? 1 : 0); a.wind ??= 0.6; a.dur ??= 0.7; a.speed ??= e.rank === 'trainer' ? 380 : 470; aimAt(a, e); }
   if (kind === 'hbeam') { a.kind = 'beam'; a.heavy = true; }
   if (a.kind === 'beam') a.ang = Math.atan2(p.y - e.y, p.x - e.x);
@@ -440,16 +440,23 @@ function land(e) {
   const p = player;
   fx.push({ kind: 'ring', x: e.x, y: e.y, t: 0.35, max: 0.35 }); shake = 0.2;
   if (Math.hypot(p.x - e.x, p.y - e.y) < e.r + 55) hurt(e.mon.types[0], isBig(e) ? 2 : 1);
+  if (e.act?.quake) hazards.push({ kind: 'quake', x: e.x, y: e.y, R: e.r, hit: false, type: e.act.type, src: e, move: e.act.name });  // 드래곤다이브: 내려앉으며 충격파
   if (isBig(e)) for (let i = 0, off = Math.random(); i < 8; i++) enemyShot(e, (i / 8 + off) * Math.PI * 2, 160);
 }
 
 function updateAct(e, dt) {
   const a = e.act, p = player, next = () => { a.phase++; a.t = 0; }, end = () => {
     e.act = null; e.cd = cooldown(e);
+    // 관장의 지시: 다음 기술 두 개를 쉬지 않고 이어 쓴다
+    const nx = list => list.length ? pick(list) : null;
+    if (e.chainN > 0 && e.hp > 0) { e.chainN--; const m = nx(e.moves.filter(m => m[2]?.sig !== 'command')); if (m) { startAct(e, m); e.act.chained = true; return; } }
     // 2단계 보스와 전설은 가끔 기술을 끊지 않고 이어서 쓴다 (후파의 고리 너머 전설은 더 자주)
-    if ((e.lvl >= 2 || e.rank === 'legend') && !a.chained && e.hp > 0 && Math.random() < (e.hoopa ? 0.5 : 0.35)) { startAct(e, pick(e.moves.filter(m => m[0] !== a.kind))); e.act.chained = true; }
+    if ((e.lvl >= 2 || e.rank === 'legend') && !a.chained && e.hp > 0 && Math.random() < (e.hoopa ? 0.5 : 0.35)) { const m = nx(e.moves.filter(m => m[1] !== a.name)); if (m) { startAct(e, m); e.act.chained = true; } }
   };
+  if (e.awake) dt *= AWAKE_SPEED;  // 각성하면 모든 기술이 빨라진다
   a.t += dt;
+  // 타입·급 고유 기술 (patterns.js)
+  if (a.kind === 'sig') { if (SIG[a.sig](e, a, dt)) end(); return; }
   if (a.kind === 'charge') {
     if (a.phase === 0) { if (a.t >= a.wind) next(); return; }
     const ox = e.x, oy = e.y;
@@ -457,6 +464,7 @@ function updateAct(e, dt) {
     e.walk += a.speed * dt; e.moving = true; if (Math.abs(a.dx) > 0.1) e.flip = a.dx > 0;
     const blocked = Math.hypot(e.x - ox, e.y - oy) < a.speed * dt * 0.5;
     if (blocked || a.t >= a.dur) {
+      if (a.burst) for (let i = 0, off = Math.random(); i < 8; i++) enemyShot(e, (i / 8 + off) * Math.PI * 2, 180, { type: a.type });  // 라이벌 러시: 멈출 때마다 사방으로
       if (blocked && isBig(e)) { fx.push({ kind: 'poof', x: e.x, y: e.y, t: 0.3, max: 0.3 }); shake = 0.15; }
       if (--a.reps > 0) { aimAt(a, e); a.phase = 0; a.t = 0; a.wind = 0.3; } else end();
     }
@@ -586,10 +594,11 @@ let curEnemy = null, legendFight = false;
 const MAX_MINIONS = 4;  // 전설 하나가 한 번에 거느릴 수 있는 소환 포켓몬 수  // 지금 행동 중인 적: 그 사이에 맞으면 이 적이 때린 것
 function updateEnemy(e, dt) {
   const ox = e.x, oy = e.y;
-  if (e.lvl >= 1 && !e.enraged && e.hp > 0 && e.hp < e.maxHp * 0.5) {
-    e.enraged = true; e.speed *= 1.25; shake = 0.3; sfx('boss');
-    fx.push({ kind: 'ring', x: e.x, y: e.y, t: 0.5, max: 0.5 });
-    banner = { text: `${e.mon.name}의 분노! 공격이 거세진다`, t: 2.2, glow: '#f44' };
+  // 각성: 보스급은 체력이 절반 아래로 떨어지면 기술 둘이 새 기술로 바뀌고, 기술이 빨라지고 더 아파진다
+  if (isBig(e) && e.moves && !e.enraged && e.hp > 0 && e.hp < e.maxHp * 0.5) {
+    e.enraged = true; e.speed *= 1.25; shake = 0.4; sfx('boss'); awaken(e);
+    fx.push({ kind: 'ring', x: e.x, y: e.y, t: 0.5, max: 0.5 }); fx.push({ kind: 'boom', x: e.x, y: e.y, r: e.r + 60, t: 0.5, max: 0.5, color: '#ff3040' });
+    banner = { text: `${e.mon.name}이(가) 각성했다! 새로운 기술을 꺼낸다`, t: 2.5, glow: '#f44' };
   }
   curEnemy = e; updateEnemyInner(e, dt); curEnemy = null;
   if (e.battle) keepInRoom(e);
@@ -740,6 +749,8 @@ function onKill(e) {
   if (p.bigRoot && Math.random() < 0.1) heal(1);
   if (p.shellBell && Math.random() < 0.15) heal(1);
   if (hasFx('flare') && Math.random() < (combo('bloom') ? 0.4 : 0.2)) heal(1);
+  // 돌진 기술: 돌진(0.6초 안)으로 쓰러뜨리면 체력 1칸
+  if (hasFx('dashStrike') && p.dashHit?.has(e) && p.time - (p.dashAt ?? -9) < 0.6) { heal(2); say('체력을 회복했다!', p.x, p.y - 60, '#8f8'); }
   if (hasFx('holyBurn') && e.burn > 0) {
     const R = combo('inferno') ? 160 : 80;
     fx.push({ kind: 'boom', x: e.x, y: e.y, r: R, t: 0.3, max: 0.3, color: TYPE_COLOR.fire });

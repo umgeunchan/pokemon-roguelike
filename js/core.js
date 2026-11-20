@@ -158,7 +158,7 @@ async function loadCommon() {
     await Promise.all([...TMS, ...LTMS].map(t => getJson(`${API}/move/${t.id}`).then(j => { if (ko(j)) names[t.id] = ko(j); }).catch(() => {})));
     store.set(NAMES_KEY, names);
   }
-  for (const it of [...ITEMS.filter(i => i.r !== 'g'), ...SHOP, ...TMS, ...LTMS]) if (names[it.id]) it.name = names[it.id];
+  for (const it of [...ITEMS.filter(i => i.r !== 'g'), ...SHOP, ...TMS, ...LTMS]) if (names[it.id] && !(it.legend && LEGEND_KO[it.id])) it.name = names[it.id];
 }
 
 const eff = (atk, defTypes) => defTypes.reduce((m, t) => m * (CHART[atk]?.[t] ?? 1), 1);

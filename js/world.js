@@ -367,13 +367,9 @@ function spawnEnemy(m, x, y, rank, tier = 0) {
     moves: rank === 'wild' ? null : movesFor(m), speed: big ? 30 + s.speed * 0.6 : (40 + s.speed * 0.8) * (rank === 'wild' ? 1.15 : 1), shooter: !big && s['special-attack'] >= s.attack };
   if (rank !== 'wild') { e.hp *= powerScale(tier); e.maxHp = e.hp; }
   e.lvl = rank === 'boss' ? (tier >= 6 ? 2 : tier >= 3 ? 1 : 0) : rank === 'legend' ? (tier >= 4 ? 2 : 1) : 0;
-  if (e.lvl >= 1) e.moves = [...e.moves, ['ring', '포위 탄막'], ['rain', RAIN_NAME[m.types[0]] ?? '유성우']];
-  if (e.lvl >= 2) e.moves.push(['cross', '십자 포화']);
-  // 관장·사천왕·챔피언·전설은 강할수록 피하기 까다로운 기술이 늘어난다. 모두 예고(조준선·낙하 지점·부채꼴)가 있어 피할 수 있다
-  if (big) e.moves.push(...ADV_MOVES.slice(0, rank === 'legend' ? ADV_MOVES.length : [2, 4, 5][e.lvl]));
-  if (rank === 'legend') e.moves.push(['summon', '동료 부르기']);
-  // 후반(배지 4개~) 보스급은 필살기를 쓴다: 맞으면 체력 2칸(마지막 단계 3칸). 예고가 길고 크게 보인다
-  if (big && tier >= 4) e.moves.push(['smash', '필살 일격'], ['hbeam', '필살 광선']);
+  // 기술은 타입 고유·급 고유·공통 기술 중 4개만 무작위로 (patterns.js). 라이벌은 battle.js에서 라이벌 기술로 다시 고른다
+  // 후반(배지 4개~) 보스급은 필살기(체력 2~3칸)가 섞일 수 있다
+  if (rank !== 'wild') e.moves = pickPatterns(e, rank === 'legend' ? 'legend' : rank === 'boss' ? 'leader' : 'trainer');
   if (rank === 'legend') e.aggro = false;  // 전설도 다가가야 덤빈다
   unstick(e); clampBody(e);
   return e;

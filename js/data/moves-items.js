@@ -237,9 +237,9 @@ const LTMS = [
   L('origin-pulse', 'water', 'fan5', '공격할 때마다 관통하는 파동이 5갈래로'),
   L('precipice-blades', 'ground', 'erupt', '적중한 곳부터 앞으로 땅의 칼날이 솟는다'),
   L('thousand-arrows', 'ground', 'erupt', '적중한 곳부터 앞으로 땅의 칼날이 솟는다'),
-  L('dragon-ascent', 'flying', 'dashStrike', '구르기가 돌진이 된다 (위력 x4): 지나가는 길 주변을 휩쓸고 끝에서 충격파, 적을 맞히면 체력 회복, 구르기 대기 시간 감소'),
-  L('collision-course', 'fighting', 'dashStrike', '구르기 돌진(위력 x4): 길 주변을 휩쓸고 끝에서 충격파, 맞히면 체력 회복 + 배우는 순간 이동 속도 x1.15', p => p.speed *= 1.15),
-  L('electro-drift', 'electric', 'dashStrike', '구르기 돌진(위력 x4): 길 주변을 휩쓸고 끝에서 충격파, 맞히면 체력 회복 + 배우는 순간 이동 속도 x1.15', p => p.speed *= 1.15),
+  L('dragon-ascent', 'flying', 'dashStrike', '구르기가 돌진이 된다 (위력 x4): 가까운 적에게 자동으로, 길 주변을 휩쓸고 끝에서 충격파, 돌진으로 쓰러뜨리면 체력 1칸, 구르기 대기 0.25초'),
+  L('collision-course', 'fighting', 'dashStrike', '구르기 돌진(위력 x4): 가까운 적에게 자동으로, 끝에서 충격파, 돌진으로 쓰러뜨리면 체력 1칸, 구르기 대기 0.25초 + 이동 속도 x1.15', p => p.speed *= 1.15),
+  L('electro-drift', 'electric', 'dashStrike', '구르기 돌진(위력 x4): 가까운 적에게 자동으로, 끝에서 충격파, 돌진으로 쓰러뜨리면 체력 1칸, 구르기 대기 0.25초 + 이동 속도 x1.15', p => p.speed *= 1.15),
   L('roar-of-time', 'dragon', 'timeStop', '7초마다 1.8초 동안 시간을 멈춘다'),
   L('spacial-rend', 'dragon', 'rend', '적중 시 주변 공간째로 베어 범위 피해'),
   L('shadow-force', 'ghost', 'vanish', '구르면 사라졌다가(무적) 나타나며 주변에 큰 피해, 맞히면 체력 회복'),
@@ -255,6 +255,13 @@ const LTMS = [
   L('ruination', 'dark', 'madness', '일반 적은 20% 확률로 체력 절반, 보스 피해 x1.25'),
   L('diamond-storm', 'rock', 'shard', '배우는 순간 급소 +30%, 회피 +10% · 적중하면 30% 확률로 다이아 파편이 사방으로 튄다', p => { p.crit += 0.3; p.dodge += 0.1; }),
 ];
+// 전설 기술 한국어 이름 (PokeAPI에 한국어 이름이 없을 때 대신 쓴다)
+const LEGEND_KO = { psystrike: '사이코브레이크', 'mist-ball': '미스트볼', 'luster-purge': '러스터퍼지', aeroblast: '에어로블라스트', 'blue-flare': '푸른불꽃', 'moongeist-beam': '섀도레이',
+  eternabeam: '무한다이빔', 'sacred-fire': '성스러운불꽃', 'origin-pulse': '근원의파동', 'precipice-blades': '단애의칼', 'thousand-arrows': '사우전드애로', 'dragon-ascent': '화룡점정',
+  'collision-course': '액셀브레이크', 'electro-drift': '라이트닝드라이브', 'roar-of-time': '시간의포효', 'spacial-rend': '공간절단', 'shadow-force': '섀도다이브', 'fusion-bolt': '크로스썬더',
+  'sheer-cold': '절대영도', 'sunsteel-strike': '메테오드라이브', 'behemoth-blade': '거대검돌격', 'behemoth-bash': '거대방패돌격', geomancy: '지오컨트롤', 'oblivion-wing': '데스윙',
+  'seed-flare': '시드플레어', 'natures-madness': '자연의분노', ruination: '카타스트로피', 'diamond-storm': '다이아스톰' };
+for (const t of LTMS) t.name = LEGEND_KO[t.id] ?? t.name;
 // 전설의 포켓몬 → 상징적인 기술
 const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'fusion-bolt', 146: 'sacred-fire', 150: 'psystrike', 151: 'psystrike', 243: 'fusion-bolt', 244: 'sacred-fire', 245: 'origin-pulse',
   249: 'aeroblast', 250: 'sacred-fire', 251: 'seed-flare', 377: 'thousand-arrows', 378: 'sheer-cold', 379: 'behemoth-bash', 380: 'mist-ball', 381: 'luster-purge',

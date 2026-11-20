@@ -619,6 +619,7 @@ function drawTelegraphs(e, layer) {
     }
     return;
   }
+  drawSpinArms(e, a);
   if (a.kind === 'beam') {
     if (a.phase === 0) {
       const len = beamLen(e.x, e.y, Math.cos(a.ang), Math.sin(a.ang), true);
@@ -645,6 +646,7 @@ function drawTelegraphs(e, layer) {
 }
 
 function drawHazard(h) {
+  if (drawPatternHazard(h)) return;
   const c = TYPE_COLOR[h.type];
   if (h.kind === 'strike' && h.dmg > 1) {
     // 필살 일격: 굵은 붉은 이중 원과 느낌표
@@ -670,7 +672,7 @@ function drawHazard(h) {
 
 function drawFx(f) {
   const k = 1 - f.t / (f.max ?? f.t);
-  drawGimmickFx(f, k);
+  drawGimmickFx(f, k); drawPatternFx(f, k);
   if (f.kind === 'zap') {
     ctx.strokeStyle = '#fff36a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(f.x, f.y - TEAR_Z);
     for (let i = 1; i < 6; i++) ctx.lineTo(f.x + (f.x2 - f.x) * i / 6 + Math.random() * 12 - 6, f.y + (f.y2 - f.y) * i / 6 - TEAR_Z + Math.random() * 12 - 6);
