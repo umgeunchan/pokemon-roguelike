@@ -33,8 +33,8 @@ const TUT = [
   { key: '이동', pc: 'WASD로 걸어 보세요', touch: '왼쪽 스틱으로 걸어 보세요', done: p => p.walk > 240 },
   { key: '공격', pc: '방향키(↑↓←→)를 누르면 그 방향으로 기술을 쏩니다', touch: '오른쪽 스틱을 민 방향으로 기술을 쏩니다', done: p => p.fired },
   { key: '구르기', pc: 'Space로 구르기: 구르는 동안은 공격을 맞지 않습니다', touch: '구르기 버튼: 구르는 동안은 공격을 맞지 않습니다', done: p => p.dashed },
-  { key: '대화', pc: '사람 앞에서 E로 말 걸기 (간호순: 회복과 기록, 점원: 상점)', touch: '사람 앞에서 A 버튼으로 말 걸기 (간호순: 회복과 기록, 점원: 상점)', done: p => p.talked },
-  { key: '지도·메뉴', pc: 'M = 지도, Esc = 메뉴 (도감·가방·설정)', touch: '지도 버튼 = 지도, B 버튼 = 메뉴 (도감·가방·설정)', done: p => p.opened },
+  { key: '대화', pc: '사람 앞에서 E로 말 걸기 (간호순: 회복과 기록, 점원: 상점)', touch: '사람 앞에서 화면을 눌러 말 걸기 (간호순: 회복과 기록, 점원: 상점)', done: p => p.talked },
+  { key: '지도·메뉴', pc: 'M = 지도, Esc = 메뉴 (도감·가방·설정)', touch: '왼쪽 위 지도·메뉴 버튼 (메뉴: 도감·가방·설정)', done: p => p.opened },
   { key: '목표', pc: '풀숲에는 야생 포켓몬! 체육관 배지 8개를 모아 포켓몬리그의 챔피언이 되세요', touch: '풀숲에는 야생 포켓몬! 체육관 배지 8개를 모아 포켓몬리그의 챔피언이 되세요', done: p => p.time - (p.tutGoalAt ??= p.time) > 6 },
 ];
 const tutStep = () => tutDone || !player ? null : TUT.findIndex(s => !s.done(player));

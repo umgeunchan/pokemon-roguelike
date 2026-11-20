@@ -36,6 +36,11 @@ cv.addEventListener('click', e => {
   const hit = c => x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h;
   const tap = [...taps].reverse().find(hit);
   if (tap) return tap.fn();
+  // 휴대폰: A·B 버튼 대신 화면을 눌러 진행 (대화·다음, 결과 화면 닫기, 지도·상점 닫기)
+  if (TOUCH) {
+    const k = { play: 'KeyE', title: 'Enter', dead: 'KeyR', win: 'KeyR', map: 'KeyM', shop: 'Escape' }[state];
+    if (k) { dispatchEvent(new KeyboardEvent('keydown', { code: k })); dispatchEvent(new KeyboardEvent('keyup', { code: k })); return; }
+  }
   if (state === 'region') { const i = [...REGIONS, null].findIndex((_, i) => hit(regionCard(i))); if (i >= 0) chooseRegion(i); }
   else if (state === 'select') { const c = starterCards().find(hit); if (c) c.i === selCur ? chooseStarter(c.i) : selCur = c.i; }
 });

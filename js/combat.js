@@ -284,6 +284,20 @@ function fireAt(kind, a, o = {}) {
   else if (kind === 'bomb') { const d = p.range * p.shotSpeed * 0.5; bombs.push({ sx: p.x, sy: p.y, x: p.x, y: p.y, z: 0, t: 0, dur: 0.45, tx: p.x + Math.cos(a) * d, ty: p.y + Math.sin(a) * d, mini: mul < 1 }); }
 }
 
+// 휴대폰 조준 보정: 오른쪽 스틱 방향 ±70° 안의 가장 가까운 적(520px 안)을 정확히 겨눈다. 없으면 스틱 방향 그대로
+function touchAim(sd) {
+  const a0 = Math.atan2(sd[1], sd[0]);
+  if (!TOUCH) return a0;
+  const p = player;
+  let best = null, bd = 520;
+  for (const e of map.enemies) {
+    if (e.hp <= 0 || untargetable(e)) continue;
+    const d = Math.hypot(e.x - p.x, e.y - p.y), off = Math.abs(((Math.atan2(e.y - p.y, e.x - p.x) - a0 + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+    if (d < bd && off < 1.22) { bd = d; best = e; }
+  }
+  return best ? Math.atan2(best.y - p.y, best.x - p.x) : a0;
+}
+
 function attack(dt) {
   const p = player, kind = carrier();
   const sd = keys.ArrowUp ? [0, -1] : keys.ArrowDown ? [0, 1] : keys.ArrowLeft ? [-1, 0] : keys.ArrowRight ? [1, 0] : null;
@@ -312,7 +326,7 @@ function attack(dt) {
     if (sd) { p.charge = Math.min(p.charge + dt, chargeTime()); p.aim = sd; return; }
     if (p.charge >= chargeTime()) {
       // 광선은 누른 방향으로 나가서 휘어 들어간다(beamPath). 처음부터 적을 조준하면 곧은 선이 된다
-      const base = Math.atan2(p.aim[1], p.aim[0]), w = beamWidth();
+      const base = touchAim(p.aim), w = beamWidth();
       for (const off of spread()) beams.push({ a: base + off, t: 0.4, tick: 0, w, bounce: combo('psyflame') });
       if (p.backShot) beams.push({ a: base + Math.PI, t: 0.4, tick: 0, w, bounce: combo('psyflame') });
       sfx('beam'); p.fired = true;
@@ -323,7 +337,7 @@ function attack(dt) {
   }
   if (!sd || p.cd > 0) return;
   sfx('shot'); p.fired = true;
-  const base = kind === 'bomb' ? aimAngle(sd) : Math.atan2(sd[1], sd[0]);
+  const base = kind === 'bomb' ? aimAngle(sd) : touchAim(sd);
   if (kind === 'cone') fireCone(base);
   else for (const off of spread()) {
     const a = base + off;

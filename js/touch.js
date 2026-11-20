@@ -48,8 +48,8 @@ function setupTouch() {
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   };
   const ended = () => state === 'dead' || state === 'win';
-  btn($('#bA'), () => ended() ? 'KeyR' : ['title', 'region', 'select'].includes(state) ? 'Enter' : 'KeyE');
-  btn($('#bB'), () => ended() ? 'KeyR' : 'Escape');
+  // A·B 버튼은 없앴다: 진행은 화면 터치(input.js), 메뉴는 왼쪽 위 메뉴 버튼
+  btn($('#bMenu'), () => state === 'play' || state === 'pause' ? 'Escape' : null);
   btn($('#bDash'), () => 'Space');
   btn($('#bMap'), () => state === 'map' ? 'KeyM' : state === 'play' ? 'KeyM' : null);
 }

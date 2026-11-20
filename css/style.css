@@ -23,5 +23,8 @@ body.touch #touch{display:block;position:fixed;inset:0;pointer-events:none;z-ind
   display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none}
 .tbtn.on{background:rgba(255,255,255,.4)}
 body.touch #touch .stick,body.touch #touch .tbtn{opacity:.85}
-#bA{right:168px;bottom:96px}#bB{right:168px;bottom:30px}#bDash{left:168px;bottom:30px;width:72px;height:72px;font-size:15px;background:rgba(255,255,255,.22)}#bMap{left:168px;bottom:96px}
-@media (orientation:portrait){body.touch.portrait-ok .stick{bottom:28px}#bA{right:18px;bottom:184px}#bB{right:84px;bottom:184px}#bDash{left:18px;bottom:184px}#bMap{left:84px;bottom:184px}}
+#bA,#bB{display:none!important}
+/* 지도·메뉴는 왼쪽 위, 구르기는 오른쪽 공격 스틱 옆 */
+#bMap{left:10px;top:10px;width:46px;height:46px;font-size:12px}#bMenu{left:10px;top:64px;width:46px;height:46px;font-size:12px}
+#bDash{right:166px;bottom:34px;width:72px;height:72px;font-size:15px;background:rgba(255,255,255,.22)}
+@media (orientation:portrait){body.touch.portrait-ok .stick{bottom:28px}body.touch.portrait-ok #bDash{right:24px;bottom:184px}}
