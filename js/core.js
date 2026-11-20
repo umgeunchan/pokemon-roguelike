@@ -176,7 +176,7 @@ const expNeed = lv => Math.round(20 * 2 ** ((lv - 8) / 7));
 // 플레이어 화력이 단계마다 1.5배쯤 크는 것(dps 시뮬레이션)에 맞춘 값
 // 관장·라이벌·사천왕 체력 보정: 단계(tier = 들어갈 때 가진 배지 수)별로 곱한다. 초반을 가볍게, 배지 5개부터는 원래대로
 // 배지 0개(첫 체육관) ~ 4개까지 차례로. 숫자를 바꾸면 바로 반영된다
-const BOSS_HP_EARLY = [0.6, 0.68, 0.76, 0.84, 0.92];
+const BOSS_HP_EARLY = [0.6, 0.65, 0.7, 0.78, 0.88];  // v2.6: 2~4단계(가장 많이 막히던 구간)를 조금 낮춤
 const bossEase = t => t >= BOSS_HP_EARLY.length ? 1 : BOSS_HP_EARLY[Math.max(0, Math.floor(t))];
 // 트레이너(체육관 트레이너·필드 트레이너) 체력: 야생의 TRAINER_HP배에, 단계별 보정을 곱한다. 5단계부터는 보정 없음
 const TRAINER_HP = 2.2, TRAINER_HP_EARLY = [0.6, 0.7, 0.8, 0.9];
@@ -187,8 +187,9 @@ const rollRange = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
 // 화력 따라가기: 트레이너·관장·라이벌·전설과 싸울 때 실제로 넣은 초당 피해(p.dps)를 재서,
 // 그 단계에서 예상한 화력(base x growth^단계)보다 강하면 상대 체력을 (비율^follow)배 올린다. 예상보다 약하면 그대로(1배), 최대 max배
 // 예상 화력(base)은 자속(STAB배)을 넣은 값: 자속 때문에 화력이 오른 만큼은 따라가지 않는다 (DIFF_HP가 메워 준다)
-const POWER = { base: 6 * STAB, growth: 1.5, follow: 0.75, max: 6 };
-const powerScale = t => { const d = player?.dps; return d ? clamp((d / (POWER.base * POWER.growth ** t)) ** POWER.follow, 1, POWER.max) : 1; };
+// v2.6: 잘하는 사람을 덜 벌주고(최대 2.5배, 지수 0.5), 화력이 모자라면 상대 체력을 0.7배까지 낮춰 돕는다
+const POWER = { base: 6 * STAB, growth: 1.5, follow: 0.5, min: 0.7, max: 2.5 };
+const powerScale = t => { const d = player?.dps; return d ? clamp((d / (POWER.base * POWER.growth ** t)) ** POWER.follow, POWER.min, POWER.max) : 1; };
 // 한 승부가 끝날 때마다 그 승부의 초당 피해를 기록에 섞는다 (4초 넘게 싸운 승부만)
 function samplePower() {
   const p = player;
@@ -197,10 +198,10 @@ function samplePower() {
 }
 // 난이도: 단계(0~8 = 배지 수·지역 깊이)별로 상대 체력과 공격 빈도를 곱한다. 숫자를 바꾸면 바로 반영된다
 // 체력: 초반(0~3단계)은 자속 1.5배를 메울 만큼 단단하게, 후반은 일괄 1.5배를 빼서 너무 질기지 않게 (v1.9.1의 2.1배 → 1.4배)
-const DIFF_HP = [1.28, 1.35, 1.43, 1.5, 1.45, 1.4, 1.35, 1.35, 1.4];   // 단계별 체력 배율 (v1.9.0 이전 대비)
+const DIFF_HP = [1.28, 1.35, 1.43, 1.5, 1.45, 1.4, 1.6, 1.85, 2.0];  // v2.6: 적응 상한(2.5배)을 낮춘 만큼 6~8단계를 올려 후반은 어렵게 (봇 기준 후반 관장 에이스 30~45초)   // 단계별 체력 배율 (v1.9.0 이전 대비)
 const DIFF_CD = [1.2, 1.15, 1.1, 1, 1, 0.95, 0.9, 0.85, 0.8];  // 단계별 기술 대기 시간 배율 (작을수록 자주 공격)
 const diffAt = (arr, t) => arr[clamp(Math.round(t), 0, arr.length - 1)];
-const hpMult = (rank, t) => diffAt(DIFF_HP, t) * (rank === 'legend' ? 20 * 1.6 ** t : rank === 'boss' ? 10 * 1.6 ** t * bossEase(t) : rank === 'trainer' ? 2 * 1.5 ** t * trainerEase(t) : 2 * 1.5 ** t);
+const hpMult = (rank, t) => diffAt(DIFF_HP, t) * (rank === 'legend' ? 20 * 1.6 ** t * bossEase(t) : rank === 'boss' ? 10 * 1.6 ** t * bossEase(t) : rank === 'trainer' ? 2 * 1.5 ** t * trainerEase(t) : 2 * 1.5 ** t);
 
 function makePlayer(m) {
   const b = baseOf(m);

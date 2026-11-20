@@ -123,7 +123,7 @@ const TMS = [
   { id: 'ice-beam', tm: 'tm-ice', name: '냉동빔', type: 'ice', desc: '레이저: 가늘고 긴 얼음 레이저를 연사 (적을 모두 꿰뚫음), 15% 확률로 얼림 (언 적 피해 x1.5)' },
   { id: 'stone-edge', tm: 'tm-rock', name: '스톤에지', type: 'rock', desc: '급소 +20%, 급소가 나면 바위 칼날이 솟아 주변 피해' },
   { id: 'dark-pulse', tm: 'tm-dark', name: '악의파동', type: 'dark', desc: '적중 시 20% 확률로 풀죽음 (잠깐 멈춤)' },
-  { id: 'focus-blast', tm: 'tm-fighting', name: '기합구슬', type: 'fighting', desc: '구슬: 아주 큰 탄, 맞으면 폭발, 위력 x1.6, 연사 많이 느려짐' },
+  { id: 'focus-blast', tm: 'tm-fighting', name: '기합구슬', type: 'fighting', desc: '구슬: 아주 큰 탄, 맞으면 폭발, 위력 x1.35, 연사 많이 느려짐' },
   { id: 'dragon-claw', tm: 'tm-dragon', name: '드래곤크루', type: 'dragon', desc: '모든 공격 위력 x1.2, 맞힌 적과 바로 옆 적을 발톱으로 한 번 더 할퀸다' },
   { id: 'moonblast', tm: 'tm-fairy', name: '문포스', type: 'fairy', desc: '구슬: 아주 큰 달빛 탄, 맞으면 폭발, 관장·사천왕·전설 피해 x1.3, 20% 확률로 적의 공격이 뜸해짐' },
   { id: 'x-scissor', tm: 'tm-bug', name: '시저크로스', type: 'bug', desc: '공격이 적을 관통하고, 하나 꿰뚫을 때마다 피해 2배 (최대 16배)' },
@@ -133,8 +133,8 @@ const TMS = [
   { id: 'energy-ball', tm: 'tm-grass', name: '에너지볼', type: 'grass', desc: '구슬: 아주 큰 탄, 맞으면 넓게 폭발, 연사 느려짐' },
   { id: 'bug-buzz', tm: 'tm-bug', name: '벌레의야단법석', type: 'bug', desc: '원뿔: 멀리 닿는 음파로 피해 + 밀어냄' },
   { id: 'air-slash', tm: 'tm-flying', name: '에어슬래시', type: 'flying', desc: '날카로운 칼날을 던진다: 탄속·연사 증가, 25% 확률로 풀죽음' },
-  { id: 'close-combat', tm: 'tm-fighting', name: '인파이트', type: 'fighting', desc: '모든 공격 위력 x1.35, 가까운 적(2칸 안)에게는 x1.4 더' },
-  { id: 'play-rough', tm: 'tm-fairy', name: '치근거리기', type: 'fairy', desc: '모든 공격 위력 x1.35, 가까운 적(2칸 안)에게는 x1.4 더' },
+  { id: 'close-combat', tm: 'tm-fighting', name: '인파이트', type: 'fighting', desc: '모든 공격 위력 x1.2, 가까운 적(2칸 안)에게는 x1.4 더' },
+  { id: 'play-rough', tm: 'tm-fairy', name: '치근거리기', type: 'fairy', desc: '모든 공격 위력 x1.2, 가까운 적(2칸 안)에게는 x1.4 더' },
   { id: 'earth-power', tm: 'tm-ground', name: '대지의힘', type: 'ground', desc: '원뿔: 앞쪽 땅을 달군다, 관장·사천왕·전설 피해 x1.25, 맞은 적 발밑에서 25% 확률로 땅이 솟는다' },
 ];
 // 기술 분류. 공격 방식 우선순위: 알폭탄 > 광선 > 레이저 > 원뿔 > 보통 탄. 공격 방식이 되지 못한 기술도 적중 효과는 그대로 얹힌다
@@ -277,8 +277,8 @@ const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'fusion-bolt', 146: 'sacred-fire',
 const HOOPA_POOL = Object.keys(LEGEND_MOVE).map(Number);
 // 기술이 늘 주는 능력치 보너스(조건 없는 것만). 왼쪽 능력치 창과 실제 계산이 같은 값을 쓴다
 // 숨은 조합 보너스는 여기 넣지 않는다 (화면에 드러나면 숨은 효과가 아니게 된다)
-const moveDmgMul = () => (has('flash-cannon') ? 1.2 : 1) * (has('focus-blast') ? 1.6 : 1) * (has('dragon-claw') ? 1.2 : 1)
-  * (has('close-combat') ? 1.35 : 1) * (has('play-rough') ? 1.35 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * kindPow() * gimmickMul() * abMul() * legendPow;
+const moveDmgMul = () => (has('flash-cannon') ? 1.2 : 1) * (has('focus-blast') ? 1.35 : 1) * (has('dragon-claw') ? 1.2 : 1)
+  * (has('close-combat') ? 1.2 : 1) * (has('play-rough') ? 1.2 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * kindPow() * gimmickMul() * abMul() * legendPow;
 const moveCrit = () => (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0) + abStat('crit', 0);
 // 공격 사이 간격 배수 (작을수록 빠름): 구슬 하나마다 x1.2, 기합구슬은 더 느리다
 const moveRate = () => (has('bullet-seed') ? 0.5 : 1) * (has('air-slash') ? 0.8 : 1) * 1.2 ** orbCount() * (has('focus-blast') ? 1.15 : 1) * abStat('rate');
