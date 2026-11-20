@@ -340,6 +340,7 @@ function movesFor(m) {
   return list;
 }
 
+const ADV_MOVES = [['homing', '추적탄'], ['wall', '탄막 벽'], ['chase', '연속 낙하'], ['split', '분열탄'], ['sweep', '휩쓸기 광선']];
 const RAIN_NAME = { fire: '불꽃 비', water: '폭우', ice: '우박', electric: '낙뢰', rock: '낙석', ground: '낙석', grass: '씨앗 폭격', poison: '독 비', psychic: '사이코 유성', dragon: '용성군', fairy: '별빛 비' };
 // rank: wild(야생) / trainer(트레이너) / boss(관장·사천왕) / legend(전설)
 function spawnEnemy(m, x, y, rank, tier = 0) {
@@ -353,6 +354,8 @@ function spawnEnemy(m, x, y, rank, tier = 0) {
   e.lvl = rank === 'boss' ? (tier >= 6 ? 2 : tier >= 3 ? 1 : 0) : rank === 'legend' ? (tier >= 4 ? 2 : 1) : 0;
   if (e.lvl >= 1) e.moves = [...e.moves, ['ring', '포위 탄막'], ['rain', RAIN_NAME[m.types[0]] ?? '유성우']];
   if (e.lvl >= 2) e.moves.push(['cross', '십자 포화']);
+  // 관장·사천왕·챔피언·전설은 강할수록 피하기 까다로운 기술이 늘어난다. 모두 예고(조준선·낙하 지점·부채꼴)가 있어 피할 수 있다
+  if (big) e.moves.push(...ADV_MOVES.slice(0, rank === 'legend' ? ADV_MOVES.length : [2, 4, 5][e.lvl]));
   if (rank === 'legend') e.moves.push(['summon', '동료 부르기']);
   if (rank === 'legend') e.aggro = false;  // 전설도 다가가야 덤빈다
   unstick(e); clampBody(e);

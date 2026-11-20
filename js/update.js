@@ -9,6 +9,9 @@ function update(dt) {
   if (dialog && ((dialog.t -= dt) <= 0 || (map.battle && !dialog.keep))) dialog = null;
   p.deltas.forEach(d => d && (d.t -= dt));
   if (p.winAt > 0 && (p.winAt -= dt) <= 0) { state = 'win'; return; }
+  if (p.warpIn > 0) p.warpIn -= dt;
+  // 챔피언을 이기고 잠시 뒤 후파의 고리가 열린다
+  if (map.hoopaT > 0 && (map.hoopaT -= dt) <= 0) openHoopaRing();
   p.time += dt; p.hop -= dt;
   if (p.regen && (p.regenT -= dt) <= 0) { p.regenT = 12; heal(1); }
   if (map.enemies.some(e => (e.battle || (e.rank === 'legend' && e.aggro)) && e.hp > 0)) p.fT = (p.fT ?? 0) + dt;
@@ -44,7 +47,8 @@ function update(dt) {
 
   if (map.kind === 'indoor') {
     if (p.y > (map.th - 1) * TS + 10) return leaveBuilding();
-    if (map.portal && Math.hypot(p.x - map.portal.x, p.y - map.portal.y) < 28) return leaveBuilding();
+    if (map.portal && Math.hypot(p.x - map.portal.x, p.y - map.portal.y) < 28) { if (map.portal.win) { state = 'win'; return; } return leaveBuilding(); }
+    if (map.hoopa && Math.hypot(p.x - map.hoopa.x, p.y - map.hoopa.y) < 30) return enterHoopa();
     const r = roomAt(Math.floor(p.y / TS));
     if (r && !r.started && !map.battle && p.y < (r.y1 - 1.2) * TS) startRoom(r);
   } else {
@@ -139,6 +143,17 @@ function update(dt) {
 
   for (const t of tears) {
     if (t.from === 'e' && frozenTime) continue;
+    if (t.from === 'e') {
+      // 추적탄: 정해진 시간 동안만 천천히 플레이어 쪽으로 휜다
+      if (t.seek > 0) { t.seek -= dt; const na = turnToward(Math.atan2(t.vy, t.vx), Math.atan2(p.y - t.y, p.x - t.x), 1.7 * dt), sp = Math.hypot(t.vx, t.vy); t.vx = Math.cos(na) * sp; t.vy = Math.sin(na) * sp; }
+      // 분열탄: 시간이 되면 터져서 사방으로 갈라진다
+      if (t.split !== undefined && (t.split -= dt) <= 0) {
+        t.life = 0; fx.push({ kind: 'boom', x: t.x, y: t.y, r: 26, t: 0.2, max: 0.2, color: TYPE_COLOR[t.type] });
+        const off = Math.random();
+        for (let i = 0; i < t.splitN; i++) enemyShot(t.src, (i / t.splitN + off) * Math.PI * 2, 150, { x: t.x, y: t.y, move: t.move, type: t.type });
+        continue;
+      }
+    }
     if (t.home) {
       const e = nearestEnemy(t.x, t.y, null, t.home > 5 ? 380 : 260);
       if (e) { const na = turnToward(Math.atan2(t.vy, t.vx), Math.atan2(e.y - t.y, e.x - t.x), t.home * dt), sp = Math.hypot(t.vx, t.vy); t.vx = Math.cos(na) * sp; t.vy = Math.sin(na) * sp; }
@@ -226,8 +241,12 @@ function decideLearn(i) {
   learnTm = null; state = 'play';
   if (i === null) { map.pickups = map.pickups.filter(o => o !== k); say(`${k.tm.name} 기술머신을 두고 왔다`, p.x, p.y - 90, '#ccc'); return; }
   const old = [...p.moves][i];
-  p.moves.delete(old);
-  p.items = p.items.filter(it => it.id !== old);
-  say(`${moveDef(old).name}을(를) 잊었다`, p.x, p.y - 90, '#ccc');
-  takePickup(k);
+  // 잊은 기술의 보너스가 빠지고 새 기술의 보너스가 붙은 차이를 한 번에 보여 준다
+  withDelta(() => {
+    p.moves.delete(old);
+    p.items = p.items.filter(it => it.id !== old);
+    refreshFx();
+    say(`${moveDef(old).name}을(를) 잊었다`, p.x, p.y - 90, '#ccc');
+    takePickup(k);
+  });
 }

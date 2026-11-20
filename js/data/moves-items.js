@@ -207,10 +207,23 @@ const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'fusion-bolt', 146: 'sacred-fire',
   487: 'shadow-force', 488: 'psystrike', 641: 'aeroblast', 642: 'fusion-bolt', 643: 'blue-flare', 644: 'fusion-bolt', 645: 'thousand-arrows', 646: 'sheer-cold',
   716: 'geomancy', 717: 'oblivion-wing', 718: 'thousand-arrows', 719: 'diamond-storm', 785: 'natures-madness', 786: 'natures-madness', 787: 'natures-madness',
   788: 'natures-madness', 791: 'sunsteel-strike', 792: 'moongeist-beam', 888: 'behemoth-blade', 889: 'behemoth-bash', 890: 'eternabeam',
-  1001: 'ruination', 1002: 'ruination', 1003: 'ruination', 1004: 'ruination', 1007: 'collision-course', 1008: 'electro-drift' };
-// [이름, 아이콘, 값, 소수 자리]
+  1001: 'ruination', 1002: 'ruination', 1003: 'ruination', 1004: 'ruination', 1007: 'collision-course', 1008: 'electro-drift',
+  // 환상의 포켓몬: 지방 지도에는 없고 후파의 고리 너머에서만 만난다
+  385: 'psystrike', 386: 'psystrike', 490: 'origin-pulse', 491: 'ruination', 492: 'seed-flare', 493: 'geomancy', 494: 'blue-flare', 647: 'origin-pulse',
+  648: 'psystrike', 649: 'sunsteel-strike', 720: 'psystrike', 721: 'blue-flare', 801: 'sunsteel-strike', 802: 'shadow-force', 807: 'electro-drift', 893: 'seed-flare' };
+// 후파의 고리 너머에서 나올 수 있는 전설·환상의 포켓몬 전체
+const HOOPA_POOL = Object.keys(LEGEND_MOVE).map(Number);
+// 기술이 늘 주는 능력치 보너스(조건 없는 것만). 왼쪽 능력치 창과 실제 계산이 같은 값을 쓴다
+// 숨은 조합 보너스는 여기 넣지 않는다 (화면에 드러나면 숨은 효과가 아니게 된다)
+const moveDmgMul = () => (has('flash-cannon') ? 1.2 : 1) * (has('focus-blast') ? 1.6 : 1) * (has('iron-head') ? 1.15 : 1) * (has('dragon-claw') ? 1.2 : 1)
+  * (has('hydro-pump') ? 1.25 : 1) * (has('close-combat') ? 1.35 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * legendPow;
+const moveCrit = () => (has('aerial-ace') ? 0.15 : 0) + (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0) + (has('play-rough') ? 0.1 : 0);
+// 공격 사이 간격 배수 (작을수록 빠름)
+const moveRate = () => (has('bullet-seed') ? 0.5 : 1) * (has('focus-blast') ? 1.33 : 1) * (has('close-combat') ? 1.15 : 1);
+const moveShot = () => has('aerial-ace') ? 1.6 : 1;
+// [이름, 아이콘, 값, 소수 자리]: 도구·도핑약·기술 보너스가 모두 들어간 실제 값
 const STATS = [
-  ['공격', 'muscle-band', p => p.dmg, 2], ['연사', 'quick-claw', p => 1 / p.fireDelay, 2], ['사거리', 'wide-lens', p => p.range * p.shotSpeed / TS, 1],
-  ['탄속', 'zoom-lens', p => p.shotSpeed / 380, 2], ['속도', 'choice-scarf', p => p.speed / 200, 2], ['급소', 'scope-lens', p => p.crit * 100, 0],
+  ['공격', 'muscle-band', p => p.dmg * moveDmgMul(), 2], ['연사', 'quick-claw', p => 1 / (p.fireDelay * moveRate()), 2], ['사거리', 'wide-lens', p => p.range * p.shotSpeed * moveShot() / TS, 1],
+  ['탄속', 'zoom-lens', p => p.shotSpeed * moveShot() / 380, 2], ['속도', 'choice-scarf', p => p.speed / 200, 2], ['급소', 'scope-lens', p => (p.crit + moveCrit()) * 100, 0],
 ];
 const HEART = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];

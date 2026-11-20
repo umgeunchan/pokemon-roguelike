@@ -30,6 +30,9 @@ const ALL_STARTERS = REGIONS.flatMap(r => r.starters);
 const starterBase = id => ALL_STARTERS.find(s => id >= s && id <= s + 2) ?? null;
 // 예전 저장(도감 전체가 스타팅이던 때)에서 옮겨 올 때는 도감 속 스타팅 계열만 남긴다
 const STARTERS = new Set(store.get(STARTER_KEY) ?? [...DEX].map(starterBase).filter(Boolean));
+// 이로치 보너스: 이로치로 쓰러뜨린 전설·환상의 포켓몬과 스타팅(계열마다 하나)마다 다른 포켓몬의 이로치 확률 +1%
+const shinyBonusIds = () => new Set([...SHINY].map(id => starterBase(id) ?? (LEGEND_MOVE[id] ? id : null)).filter(Boolean));
+const shinyRate = () => SHINY_RATE + 0.01 * shinyBonusIds().size;
 const CLEARED = new Set(store.get(CLEAR_KEY) ?? []), ACHIEVED = new Set(store.get(ACH_KEY) ?? []);
 const itemById = id => ITEMS.find(i => i.id === id);
 const moveDef = id => TMS.find(t => t.id === id) ?? LTMS.find(t => t.id === id);
@@ -39,7 +42,7 @@ const hash = (x, y, s = 0) => { let h = Math.imul(x, 374761393) + Math.imul(y, 6
 
 let legendPow = 1, lastInfo = null, state = 'loading', MON = {}, CHART = {}, IMG = {}, TRAINER_IMG = {}, keys = {}, loadError = '', FX = new Set();
 let region, world, map, player, tears, beams, bombs, fx, hazards, puddles, pstrikes, texts, banner, taken, last, now = 0, textCd = 0, shake = 0;
-let dialog = null, dayTime = 0, spawnT = 0, spawnCd = 0, flowT = 0, timeStop = 0, learnTm = null, shopNpc = null, curNode = null;
+let warp = null, dialog = null, dayTime = 0, spawnT = 0, spawnCd = 0, flowT = 0, timeStop = 0, learnTm = null, shopNpc = null, curNode = null;
 let menu = { screen: 'root', cursor: 0, tab: 0, sel: 0, confirm: false };
 
 // ---------- 불러오기 ----------
@@ -199,10 +202,14 @@ function makePlayer(m) {
     dash: 0, dashCd: 0, dashDir: [1, 0], vanish: 0, stopCd: 3, eruptCd: 0, winAt: 0, regenT: 0 };
 }
 
+// 기술의 능력치 보너스(공격 x1.2, 급소 +20% 등)는 왼쪽 능력치 창에 바로 더해져 보인다
 function learnMove(id) {
   const p = player, d = moveDef(id);
-  p.moves.add(id);
-  if (!p.items.includes(d)) p.items.push(d);
-  if (d.onLearn) withDelta(d.onLearn);
-  refreshFx(); renderBar();
+  withDelta(() => {
+    p.moves.add(id);
+    if (!p.items.includes(d)) p.items.push(d);
+    d.onLearn?.(p);
+    refreshFx();
+  });
+  renderBar();
 }

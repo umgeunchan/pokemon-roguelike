@@ -62,7 +62,7 @@ const unpackContent = k => k.kind === 'tm' ? { kind: 'tm', tm: moveDef(k.tm) } :
 
 function saveRun() {
   const p = player;
-  if (!p || !world || p.hp <= 0 || !['play', 'pause', 'map', 'shop', 'learn'].includes(state)) return false;
+  if (!p || !world || p.hp <= 0 || p.champion || !['play', 'pause', 'map', 'shop', 'learn'].includes(state)) return false;  // 챔피언이 된 판은 끝난 판이라 저장하지 않는다
   if (map.battle && map === world) return false;  // 승부 중에는 저장하지 않는다 (도망치기 꼼수 방지)
   const prim = Object.fromEntries(Object.entries(p).filter(([, v]) => v === null || ['number', 'boolean', 'string'].includes(typeof v)));
   const [x, y] = map === world ? [p.x, p.y] : world.returnTo;

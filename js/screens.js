@@ -99,6 +99,7 @@ function drawPartyScreen(x, y) {
   plain(next ? `Lv.${next.level}에 ${MON[next.id]?.name}(으)로 진화` : '더 이상 진화하지 않는다', x + 220, y + 154, 12, '#506080');
   STATS.forEach(([label, , f, dg], i) => plain(`${label} ${f(p).toFixed(dg)}${label === '급소' ? '%' : ''}`, x + 450 + (i % 2) * 110, y + 40 + Math.floor(i / 2) * 22, 12));
   plain(`회피 ${Math.round(p.dodge * 100)}%`, x + 450, y + 110, 12);
+  plain(`이로치 확률 ${+(shinyRate() * 100).toFixed(1)}%`, x + 560, y + 110, 12, '#b08000');
   plain('기술', x, y + 252, 14, '#303060');
   const moves = [...p.moves];
   for (let i = 0; i < MAX_MOVES; i++) {
@@ -323,6 +324,7 @@ function draw() {
   if (state === 'ach') return drawAchList(), drawToasts();
   if (state === 'select') return drawSelect();
   drawPlay();
+  if (state === 'warp') drawWarp();
   if (state === 'play') drawTutorial();
   if (state === 'map') drawBigMap();
   if (state === 'pause') drawMenu();
@@ -339,6 +341,8 @@ function drawResult() {
   taps.push({ x: 0, y: 0, w: CW, h: CH, fn: () => state = 'region' });
   win ? glowText(`${region.name}지방 챔피언이 되었다!`, CW / 2, 52, 28, '#ff8', '#fc4') : text(`${p.mon.name}는(은) 쓰러졌다...`, CW / 2, 52, 28, '#f66');
   if (!win && p.cause) text(`${p.cause}에 쓰러졌다`, CW / 2, 80, 14, '#f99');
+  if (win && p.hoopaWin) glowText(`후파의 고리 너머에서 색이 다른 ${p.hoopaWin}을(를) 쓰러뜨렸다!`, CW / 2, 82, 14, '#fff', '#c8f');
+  if (win && p.hoopaLost) text(`후파의 고리 너머의 ${p.hoopaLost}에게는 아쉽게 졌다`, CW / 2, 82, 14, '#c9a8ff');
   // 기록
   const kills = Object.values(p.defeated).reduce((a, b) => a + b, 0), rw = p.rival ? [...p.rival.done].length : 0;
   const rows = [['모험 시간', `${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`], ['레벨', `${p.mon.name} Lv.${p.level}`],

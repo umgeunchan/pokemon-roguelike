@@ -3,6 +3,7 @@ function loop(t) {
   const dt = Math.min((t - (last ?? t)) / 1000, 0.05);
   last = t;
   if (state === 'play') update(dt);
+  if (state === 'warp') updateWarp(dt);
   toasts.slice(0, 3).forEach(o => o.t += dt); toasts = toasts.filter(o => o.t < 5);
   draw(); tickMusic();
   requestAnimationFrame(loop);

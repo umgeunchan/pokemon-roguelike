@@ -150,12 +150,16 @@ function startRoom(r) {
   } });
   // 사천왕 → 이기면 위쪽 방 문이 열린다. 마지막 방은 챔피언
   startBattle({ who: r.who.leader, title: r.who.title, queue: [...r.who.team], ...at, rank: 'boss', tier: 8, wait: champ ? 4 : 1,
-    say: champ && ((i, ace) => ace ? CHAMP_ACE : CHAMP_SAY[Math.min(i, CHAMP_SAY.length - 1)]), onWin: () => {
+    say: champ && ((i, ace) => ace ? CHAMP_ACE : CHAMP_SAY[Math.min(i, CHAMP_SAY.length - 1)]), onWin: bt => {
     open(); gainMoney(3000, at.x, at.y + 2 * TS);
     if (!champ) { heal(Math.ceil(p.maxHp / 2)); banner = { text: `${r.who.leader}에게 이겼다! 위쪽 방의 문이 열렸다`, t: 3 }; return; }
-    recordClear(); clearSave();
+    recordClear(); clearSave(); p.champion = true;
+    p.champHp = bt.hpSum;  // 챔피언 포켓몬 전원의 체력 합: 후파의 고리 너머 전설의 체력 기준
     dialog = { name: r.who.leader, text: '...졌다. 너와 네 포켓몬이라면 이 자리를 맡겨도 되겠어. 오늘부터 네가 새로운 챔피언이다!', t: 6, keep: true };
-    banner = { text: `챔피언 ${r.who.leader}에게 이겼다! 새로운 챔피언의 탄생이다!`, t: 5 }; p.winAt = 6;
+    banner = { text: `챔피언 ${r.who.leader}에게 이겼다! 새로운 챔피언의 탄생이다!`, t: 5 };
+    // 밖으로 나가는 고리를 밟으면 모험이 끝나고, 잠시 뒤 열리는 후파의 고리로 들어가면 전설·환상의 포켓몬과 싸운다
+    map.portal = { ...gymPortal(r), win: true, label: '모험 끝내기' };
+    map.hoopaT = 3; map.hoopaRoom = r;
   } });
   if (champ) dialog = { name: r.who.leader, text: `기다리고 있었어. 나는 ${region.name}지방의 챔피언 ${r.who.leader}. 이 방에 들어온 이상, 자격을 증명해야 해.`, t: 4, keep: true };
 }
@@ -180,12 +184,74 @@ function updateBattle(dt) {
   if (bt.queue.length && (bt.wait -= dt) <= 0) {
     const m = MON[bt.queue.shift()], ang = Math.atan2(p.y - bt.y, p.x - bt.x), e = spawnEnemy(m, bt.x + Math.cos(ang) * 50, bt.y + Math.sin(ang) * 50, bt.rank, bt.tier);
     if (!bt.queue.length && bt.rank === 'boss') { e.hp *= 1.3; e.maxHp = e.hp; }  // 마지막 에이스는 더 단단하게
+    bt.hpSum = (bt.hpSum ?? 0) + e.maxHp;
     e.battle = true; keepInRoom(e);
     map.enemies.push(e); bt.wait = 1.2;
     const line = bt.say?.(bt.sent = (bt.sent ?? -1) + 1, !bt.queue.length);
     if (line) dialog = { name: bt.who, text: line, t: 4.5, keep: true };
     banner = { text: `${bt.who}은(는) ${m.name}을(를) 내보냈다!`, t: 2 };
-  } else if (!bt.queue.length) { map.battle = null; samplePower(); bt.onWin(); }
+  } else if (!bt.queue.length) { map.battle = null; samplePower(); bt.onWin(bt); }
+}
+
+// ---------- 후파의 고리: 챔피언을 이긴 뒤 열리는 보너스 보스전 ----------
+// 고리 너머에는 반드시 이로치인 전설·환상의 포켓몬이 있다. 아직 해금하지 못한 포켓몬이 남아 있으면 그중에서만 나온다
+// 체력은 방금 쓰러뜨린 챔피언 포켓몬 전원의 체력 합 x HOOPA_HP
+const HOOPA_HP = 1.5, WARP_TIME = 2.4;
+function openHoopaRing() {
+  const r = map.hoopaRoom;
+  map.hoopa = { x: r.cx, y: (r.y1 - 6.5) * TS, born: now };  // 밖으로 나가는 고리 바로 위: 둘이 한 화면에 보인다
+  shake = 0.3; sfx('ring');
+  banner = { text: '어디선가 후파의 고리가 나타났다!', t: 3.5, glow: '#c8f' };
+  dialog = { name: '???', text: '...고리 너머에서 무언가가 이쪽을 보고 있다. 들어가 볼까?', t: 5 };
+}
+
+function enterHoopa() {
+  const p = player, owned = new Set(loadUnlocked()), left = HOOPA_POOL.filter(id => !owned.has(id));
+  map.hoopa.used = true;
+  warp = { t: 0, x: map.hoopa.x, y: map.hoopa.y, px: p.x, py: p.y, id: pick(left.length ? left : HOOPA_POOL), ready: false };
+  state = 'warp'; dialog = null; banner = null; sfx('hoopa');
+  const w = warp;
+  // 불러오기는 빨려 들어가는 연출 동안 한다. 실패하면 이미 불러 둔 전설 중에서 고른다
+  loadMon(w.id).catch(() => { const have = HOOPA_POOL.filter(id => MON[id]); w.id = pick(have.filter(id => !owned.has(id)).length ? have.filter(id => !owned.has(id)) : have); })
+    .then(() => loadShiny(MON[w.id])).then(() => w.ready = true);
+}
+
+function updateWarp(dt) {
+  const w = warp, p = player;
+  w.t += dt;
+  // 고리 쪽으로 빨려 들어가며 빙글빙글 돌고 작아진다
+  const k = clamp(w.t / 0.9, 0, 1);
+  p.x = w.px + (w.x - w.px) * k * k; p.y = w.py + (w.y - w.py) * k * k;
+  p.warpS = Math.max(0.05, 1 - k); p.face = Math.floor(w.t * 14) % 8; p.moving = false;
+  if (w.t >= WARP_TIME && w.ready) enterHoopaStage(MON[w.id]);
+}
+
+// 전용 보스 스테이지: 별이 뜬 이공간 위의 둥근 결투장. 지진을 피할 기둥이 몇 개 있다
+function makeHoopaArena() {
+  const tw = 27, th = 19, cx = Math.floor(tw / 2), cy = Math.floor(th / 2);
+  const solid = new Uint8Array(tw * th).fill(4), voids = new Uint8Array(tw * th).fill(1);
+  for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+    const d = ((x - cx) / (cx + 0.5)) ** 2 + ((y - cy) / (cy + 0.5)) ** 2;
+    if (d <= 1.12) voids[y * tw + x] = 0;
+    if (d <= 0.82) solid[y * tw + x] = 0;
+  }
+  for (const [dx, dy] of [[-6, -3], [6, -3], [-8, 2], [8, 2], [-3, 5], [3, 5]]) solid[(cy + dy) * tw + cx + dx] = 1;
+  const room = { i: 0, y0: 0, y1: th - 1, x0: 0, x1: tw - 1, cx: (cx + 0.5) * TS, type: 'ghost', down: [], up: [], cleared: true, started: true };
+  return { kind: 'indoor', sub: 'hoopa', building: null, tw, th, solid, voids, rooms: [room], room, npcs: [], pickups: [], enemies: [], buildings: [], signs: [], battle: null, type: 'ghost', furn: [], leader: null };
+}
+
+function enterHoopaStage(m) {
+  const p = player;
+  warp = null; p.warpS = undefined; p.warpIn = 1;
+  map = makeHoopaArena(); resetCombat();
+  const r = map.room;
+  p.x = r.cx; p.y = (map.th - 4) * TS; p.hp = p.maxHp; p.inv = 1.5; p.fT = p.fD = 0;  // 챔피언을 이긴 상으로 체력을 모두 회복
+  const e = spawnEnemy(m, r.cx, 5 * TS, 'legend', 8);
+  e.hp = e.maxHp = (p.champHp || e.maxHp) * HOOPA_HP;
+  Object.assign(e, { shiny: true, hoopa: true, arena: true, aggro: true, leash: 0, cd: 2.5 });
+  map.enemies.push(e);
+  state = 'play'; shake = 0.4; sfx('legend');
+  banner = { text: `앗! 색이 다른 ${m.name}이(가) 나타났다!`, t: 3.5, glow: '#c8f' };
 }
 
 // ---------- NPC ----------

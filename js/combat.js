@@ -7,9 +7,13 @@ function say(text, x, y, color = '#fff') {
 
 const heal = n => player.hp = Math.min(player.maxHp, player.hp + n);
 
+// 능력치가 바뀌면 왼쪽 창에 ▲▼로 잠깐 보여 준다. 안쪽에서 또 부르면(기술을 잊고 새로 배울 때 등) 바깥에서 한 번에 합쳐 보여 준다
+let deltaDepth = 0;
 function withDelta(fn) {
   const p = player, before = STATS.map(s => s[2](p));
-  fn(p);
+  deltaDepth++;
+  try { fn(p); } finally { deltaDepth--; }
+  if (deltaDepth) return;
   STATS.forEach((s, i) => { const d = s[2](p) - before[i]; if (Math.abs(d) > 1e-6) p.deltas[i] = { v: d, t: 3 }; });
 }
 
@@ -29,6 +33,7 @@ function hurt(type, amount = 1, src = null) {
   else p.hp -= d;
   if (m > 1) say('효과가 굉장했다!', p.x, p.y - 60, '#f66');
   if (p.hp <= 0 && p.revive) { p.revive = false; p.hp = p.maxHp; banner = { text: '무지개깃털이 빛나며 다시 일어섰다!', t: 3 }; }
+  if (p.hp <= 0 && map.sub === 'hoopa') { p.hoopaLost = who?.mon.name ?? '전설의 포켓몬'; state = 'win'; return; }  // 챔피언은 이미 됐다: 져도 챔피언 결과 화면으로
   if (p.hp <= 0) { p.cause = who ? `${who.rank === 'trainer' || who.rank === 'boss' ? '상대 ' : who.rank === 'legend' ? '전설의 포켓몬 ' : '야생 '}${who.mon.name}의 ${move ?? '공격'}` : `${TYPE_KO[type]} 타입 공격`; state = 'dead'; clearSave(); ach('die'); checkAch(); }
 }
 
@@ -41,13 +46,12 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   if (e.hp <= 0 || untargetable(e)) return;
   const p = player, raw = eff(type, e.mon.types), big = isBig(e);
   // shortcut: 면역(0배)도 0.25배로 처리해서 못 잡는 적이 없게 함. 기술을 골라 쓰게 되면 원작대로 0배로
-  let d = base * Math.max(raw, 0.25) * (raw > 1 && p.expert ? 1.3 : 1) * (p.metronome ? 1 + Math.min(p.streak, 20) * 0.03 : 1) * (e.frozen > 0 ? 1.5 : 1)
-    * (hasFx('blade') ? 1.5 * (big ? 1.4 : 1) : 1) * (hasFx('drain') ? 1.2 : 1) * (hasFx('madness') && big ? 1.25 : 1)
-    * (has('brick-break') && e.rank !== 'wild' ? 1.3 : 1) * (has('flash-cannon') ? 1.2 : 1) * (has('focus-blast') ? 1.6 : 1) * (has('iron-head') ? 1.15 : 1)
-    * (has('dragon-claw') ? 1.2 : 1) * (has('moonblast') && big ? 1.3 : 1) * legendPow
-    * (has('hydro-pump') ? 1.25 : 1) * (has('close-combat') ? 1.35 : 1) * (has('earth-power') && big ? 1.25 : 1)
+  // 늘 붙는 기술 보너스는 moveDmgMul(능력치 창의 공격에 보이는 값), 여기서는 조건이 붙는 것만 더 곱한다
+  let d = base * moveDmgMul() * Math.max(raw, 0.25) * (raw > 1 && p.expert ? 1.3 : 1) * (p.metronome ? 1 + Math.min(p.streak, 20) * 0.03 : 1) * (e.frozen > 0 ? 1.5 : 1)
+    * (hasFx('blade') && big ? 1.4 : 1) * (hasFx('madness') && big ? 1.25 : 1)
+    * (has('brick-break') && e.rank !== 'wild' ? 1.3 : 1) * (has('moonblast') && big ? 1.3 : 1) * (has('earth-power') && big ? 1.25 : 1)
     * (combo('scorch') && e.burn > 0 ? 1.4 : 1) * (combo('quake') && big ? 1.35 : 1) * (combo('dragon') ? 1.25 : 1) * (combo('mind') && e.stun > 0 ? 1.5 : 1);
-  const crit = Math.random() < p.crit + extraCrit + (has('aerial-ace') ? 0.15 : 0) + (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0) + (has('play-rough') ? 0.1 : 0);
+  const crit = Math.random() < p.crit + extraCrit + moveCrit();
   if (crit) d *= (has('crunch') ? 2.2 : 1.5) * (has('play-rough') ? 1.2 : 1);
   if (crit && combo('fang') && !tick && Math.random() < 0.15) heal(1);
   if (e.battle || e.rank === 'legend') p.fD = (p.fD ?? 0) + Math.min(d, Math.max(0, e.hp));
@@ -142,7 +146,7 @@ function aimAngle(sd) {
 }
 
 function shootTear(a, extra = {}) {
-  const p = player, sp = p.shotSpeed * (has('aerial-ace') ? 1.6 : 1), big = has('shadow-ball') || has('surf'), psy = hasFx('psy');
+  const p = player, sp = p.shotSpeed * moveShot(), big = has('shadow-ball') || has('surf'), psy = hasFx('psy');
   tears.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: p.range, life0: p.range, r: ((big ? 11 : 7) + (hasFx('blade') ? 3 : 0)) * shotScale(), from: 'p', type: p.type,
     pierce: big || has('psychic') || psy || has('x-scissor'), ghost: has('shadow-ball') || p.ghostShot, boom: has('psychic'), home: psy ? 9 : has('swift') ? 5 : 0, hit: new Set(),
     mul: (has('bullet-seed') ? 0.55 : 1) * (psy ? 1.4 : 1) * (has('razor-leaf') && !has('pin-missile') ? 0.7 : 1), ...extra });
@@ -180,7 +184,7 @@ function attack(dt) {
   waves(base);
   if (p.backShot && kind === 'tear') shootTear(base + Math.PI);
   if (has('dazzling-gleam') && ++p.shots % (combo('prank') ? 3 : 4) === 0) for (let i = 0; i < 8; i++) shootTear(i / 8 * Math.PI * 2, { type: 'fairy', mul: 0.6 });
-  p.cd = p.fireDelay * (kind === 'bomb' ? 1.8 : 1) * (has('bullet-seed') ? 0.5 : 1) * (has('focus-blast') ? 1.33 : 1) * (has('close-combat') ? 1.15 : 1) / (combo('gale') ? 1.25 : 1);
+  p.cd = p.fireDelay * (kind === 'bomb' ? 1.8 : 1) * moveRate() / (combo('gale') ? 1.25 : 1);
 }
 
 // 플레이어 광선은 장애물을 지나가고 건물/벽에서 멈춘다. 적의 광선은 장애물에도 막혀서 숨으면 피할 수 있다
@@ -211,9 +215,10 @@ function explode(b) {
   if (has('flamethrower') || has('hyper-beam') || hasFx('beam')) for (let i = 0; i < 4; i++) beams.push({ ox: b.x, oy: b.y, a: i * Math.PI / 2, t: 0.3, tick: 0, w: 16 });
 }
 
-function enemyShot(e, a, speed) {
+// o: 탄 속성 덮어쓰기. x·y(쏘는 자리), r(크기), seek(이 시간 동안 플레이어를 따라감), split(이 시간 뒤 터지며 splitN발로 갈라짐)
+function enemyShot(e, a, speed, o = {}) {
   if (player.lagTail) speed *= 0.7;
-  tears.push({ x: e.x, y: e.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 3, r: 6, from: 'e', type: e.mon.types[0], src: e, move: e.act?.name });
+  tears.push({ x: e.x, y: e.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 3, r: 6, from: 'e', type: e.mon.types[0], src: e, move: e.act?.name, ...o });
 }
 
 // 플레이어 주변 41x29칸만 BFS 거리 지도를 만든다. 땅 위의 적은 거리가 줄어드는 칸으로 걸어서 장애물을 돌아간다
@@ -253,7 +258,7 @@ function pathDir(e) {
 }
 
 const aimAt = (a, e) => { const p = player, d = Math.hypot(p.x - e.x, p.y - e.y) || 1; a.dx = (p.x - e.x) / d; a.dy = (p.y - e.y) / d; };
-const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) + Math.random() * 0.5;
+const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) * (e.hoopa ? 0.85 : 1) + Math.random() * 0.5;
 const isBig = e => e.rank === 'boss' || e.rank === 'legend';
 
 function turnToward(cur, want, max) {
@@ -272,6 +277,8 @@ function startAct(e, [kind, name], opts = {}) {
   if (kind === 'strike') for (let i = 0; i < (e.rank === 'trainer' ? 2 : 4 + 2 * (e.lvl ?? 0)); i++) hazards.push({ kind: 'strike', type, r: 38, t: 0.9 + i * 0.15, src: e, move: name,
     x: p.x + (i ? Math.random() * 180 - 90 : 0), y: p.y + (i ? Math.random() * 180 - 90 : 0) });
   // 비처럼 쏟아지는 공격: 플레이어 주변 넓은 범위에 낙하 지점이 차례로 찍힌다
+  // 휩쓸기 광선: 플레이어 한쪽 옆에서 시작해 반대쪽으로 부채꼴을 쓸고 지나간다. 부채꼴 밖으로 나가거나, 기둥 뒤에 숨거나, 구르기로 넘는다
+  if (kind === 'sweep') { a.dir = Math.random() < 0.5 ? 1 : -1; a.span = e.lvl >= 2 ? 2.2 : 1.9; a.ang0 = Math.atan2(p.y - e.y, p.x - e.x) - a.dir * a.span / 2; a.ang = a.ang0; }
   if (kind === 'rain') for (let i = 0; i < (e.lvl >= 2 ? 11 : 7); i++) hazards.push({ kind: 'strike', type, r: 34, t: 0.8 + i * 0.11, src: e, move: name,
     x: p.x + (i ? Math.random() * 480 - 240 : 0), y: p.y + (i ? Math.random() * 480 - 240 : 0) });
 }
@@ -286,8 +293,8 @@ function land(e) {
 function updateAct(e, dt) {
   const a = e.act, p = player, next = () => { a.phase++; a.t = 0; }, end = () => {
     e.act = null; e.cd = cooldown(e);
-    // 2단계 보스는 가끔 기술을 끊지 않고 이어서 쓴다
-    if (e.lvl >= 2 && !a.chained && e.hp > 0 && Math.random() < 0.35) { startAct(e, pick(e.moves.filter(m => m[0] !== a.kind))); e.act.chained = true; }
+    // 2단계 보스와 전설은 가끔 기술을 끊지 않고 이어서 쓴다 (후파의 고리 너머 전설은 더 자주)
+    if ((e.lvl >= 2 || e.rank === 'legend') && !a.chained && e.hp > 0 && Math.random() < (e.hoopa ? 0.5 : 0.35)) { startAct(e, pick(e.moves.filter(m => m[0] !== a.kind))); e.act.chained = true; }
   };
   a.t += dt;
   if (a.kind === 'charge') {
@@ -357,6 +364,37 @@ function updateAct(e, dt) {
     // 십자 → 대각선 → 십자로 돌아가며 쏜다
     if (a.phase < 3 && a.t >= a.phase * 0.3) { a.rot = (a.rot ?? Math.random() * Math.PI) + Math.PI / 4; for (let k = 0; k < 8; k++) enemyShot(e, a.rot + k * Math.PI / 4, k % 2 ? 160 : 210); a.phase++; }
     if (a.phase >= 3 && a.t >= 0.4) end();
+  } else if (a.kind === 'homing') {
+    // 추적탄: 1.3초 동안만 천천히 방향을 틀고 그 뒤로는 곧게 간다. 다가올 때 옆으로 비키면 빗나간다
+    const n = 2 + (e.lvl ?? 0) + (e.rank === 'legend' ? 1 : 0);
+    if (a.phase < 2 && a.t >= 0.3 + a.phase * 0.7) { const base = Math.atan2(p.y - e.y, p.x - e.x); for (let i = 0; i < n; i++) enemyShot(e, base + (i - (n - 1) / 2) * 0.5, 150, { r: 9, seek: 1.3 }); a.phase++; }
+    if (a.phase >= 2 && a.t >= 0.8) end();
+  } else if (a.kind === 'wall') {
+    // 탄막 벽: 가로로 길게 늘어선 탄이 밀려온다. 틈은 한 곳뿐이고 플레이어 정면이 아니라 옆쪽이라 옆으로 움직여야 빠져나간다
+    const waves = 2 + (e.lvl >= 2 ? 1 : 0);
+    if (a.phase < waves && a.t >= 0.45 + a.phase * 0.75) {
+      const base = Math.atan2(p.y - e.y, p.x - e.x), vx = -Math.sin(base), vy = Math.cos(base), gap = (Math.random() < 0.5 ? -1 : 1) * (50 + Math.random() * 130);
+      for (let s = -340; s <= 340; s += 26) if (Math.abs(s - gap) > 48) enemyShot(e, base, 140, { x: e.x + vx * s, y: e.y + vy * s });
+      a.phase++;
+    }
+    if (a.phase >= waves && a.t >= 0.45 + waves * 0.75) end();
+  } else if (a.kind === 'chase') {
+    // 연속 낙하: 지금 서 있는 자리에 차례로 떨어진다. 멈추지 않고 움직이면 피한다
+    const n = 4 + 2 * (e.lvl ?? 0);
+    if (a.phase < n && a.t >= 0.2 + a.phase * 0.3) { hazards.push({ kind: 'strike', type: a.type, r: 40, t: 0.75, src: e, move: a.name, x: p.x, y: p.y }); a.phase++; }
+    if (a.phase >= n && a.t >= 0.2 + n * 0.3 + 0.6) end();
+  } else if (a.kind === 'split') {
+    // 분열탄: 큰 탄이 날아가다 터지며 사방으로 갈라진다. 큰 탄에서 멀리 떨어지면 갈라진 탄 사이가 넓어진다
+    const n = 2 + (e.lvl >= 1 ? 1 : 0);
+    if (a.phase === 0 && a.t >= 0.4) { const base = Math.atan2(p.y - e.y, p.x - e.x); for (let i = 0; i < n; i++) enemyShot(e, base + (i - (n - 1) / 2) * 0.45, 210, { r: 11, split: 0.65 + i * 0.08, splitN: 8 + 2 * (e.lvl ?? 0) }); a.phase++; }
+    if (a.t >= 1.4) end();
+  } else if (a.kind === 'sweep') {
+    if (a.phase === 0) { if (a.t >= 0.8) next(); return; }
+    const dur = 1.1;
+    a.ang = a.ang0 + a.dir * a.span * Math.min(1, a.t / dur);
+    if (a.t >= dur) return end();
+    const dx = Math.cos(a.ang), dy = Math.sin(a.ang), rx = p.x - e.x, ry = p.y - e.y, s = rx * dx + ry * dy;
+    if (s > 0 && s < beamLen(e.x, e.y, dx, dy, true) && Math.abs(rx * dy - ry * dx) < 14 + p.r) hurt(a.type);
   } else if (a.kind === 'teleport') {
     if (a.phase === 0) {
       e.fade = Math.min(1, a.t / 0.35);
@@ -420,7 +458,7 @@ function updateEnemyInner(e, dt) {
   // 야생·전설은 가까이 오거나 맞기 전까지는 제 영역을 어슬렁거린다.
   // 플레이어가 멀어지거나 제 영역에서 너무 끌려 나오면 쫓기를 그만두고 돌아간다 (2초 동안은 다시 쫓지 않는다)
   if (((e.rank === 'wild' || e.rank === 'legend') && ((map.battle && !e.battle) || inTown(p.x, p.y))) || (legendFight && e.rank === 'wild' && !e.minion)) { e.aggro = false; e.leash = 2; e.act = null; }
-  else if (e.rank === 'wild' || e.rank === 'legend') {
+  else if ((e.rank === 'wild' || e.rank === 'legend') && !e.arena) {
     if (dist > 750 || Math.hypot(e.x - e.hx, e.y - e.hy) > 900) { e.aggro = false; e.leash = 2; }
     else if ((e.leash = (e.leash ?? 0) - dt) <= 0 && dist < 520) e.aggro = true;
   }
@@ -478,7 +516,7 @@ function manageSpawns(dt) {
     if (n.kind === 'T' || n.gym || n.league) continue;
     if ((n.kind === 'R' || n.kind === 'F') && !world.grass[k]) continue;  // 도로와 숲에서는 원작처럼 풀숲에서만 나온다
     const e = spawnEnemy(MON[pick(wildPool(n))], x, y, 'wild', tierAt(n));
-    if (Math.random() < SHINY_RATE) { e.shiny = true; loadShiny(e.mon); banner = { text: `앗! 색이 다른 ${e.mon.name}이(가) 나타났다!`, t: 3 }; }
+    if (Math.random() < shinyRate()) { e.shiny = true; loadShiny(e.mon); banner = { text: `앗! 색이 다른 ${e.mon.name}이(가) 나타났다!`, t: 3 }; }
     map.enemies.push(e);
     return;
   }
@@ -507,7 +545,9 @@ function onKill(e) {
     banner = { text: `${MON[sb]?.name ?? e.mon.name}을(를) 다음 판부터 스타팅으로 고를 수 있다!`, t: 3.5, glow: '#8cf' };
   }
   if (e.shiny) {
+    const bonus0 = shinyBonusIds().size;
     if (!SHINY.has(e.mon.id)) { SHINY.add(e.mon.id); store.set(SHINY_KEY, [...SHINY]); }
+    if (shinyBonusIds().size > bonus0) say(`이로치 확률 +1%! (지금 ${+(shinyRate() * 100).toFixed(1)}%)`, e.x, e.y - 120, '#fd6');
     ach('shiny');
     banner = { text: sb || LEGEND_MOVE[e.mon.id] ? `색이 다른 ${e.mon.name}을(를) 쓰러뜨렸다! 다음 판부터 이로치로 시작할 수 있다` : `색이 다른 ${e.mon.name}을(를) 쓰러뜨렸다!`, t: 4 };
     map.pickups.push({ ...rollContent(Math.random, { tm: 0.3, c: 0, r: 0.6, l: 0.4 }), x: e.x, y: e.y + 30, ball: true });
@@ -544,5 +584,9 @@ function onKill(e) {
     const sig = LTMS.find(t => t.id === LEGEND_MOVE[e.mon.id]);
     if (sig && !taken.has(sig.id) && !p.moves.has(sig.id)) { taken.add(sig.id); map.pickups.push({ kind: 'tm', tm: sig, x: e.x - 40, y: e.y }); }
     map.pickups.push({ ...rollContent(Math.random, { c: 0, r: 0, l: 1 }), x: e.x + 40, y: e.y });
+    if (e.hoopa) {
+      p.hoopaWin = e.mon.name; p.winAt = 7; sfx('hoopa');
+      banner = { text: `색이 다른 ${e.mon.name}을(를) 쓰러뜨렸다! 다음 판부터 이로치 ${e.mon.name}(으)로 시작할 수 있다`, t: 6, glow: '#c8f' };
+    }
   }
 }

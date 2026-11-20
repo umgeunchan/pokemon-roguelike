@@ -165,6 +165,14 @@ const obOf = key => isGreen(key) ? treeTex(key) : key.startsWith('arena:') ? pil
 function indoorTex(sub, type, what) {
   return tex(`in${sub}${type}${what}`, () => paint(24, 24, (set, g) => {
     const ap = arenaPal(type);
+    // 후파의 이공간: 별이 박힌 보랏빛 바닥, 금테 두른 벽
+    if (sub === 'hoopa') {
+      if (what === 'wall') { fill(g, '#2a1450'); for (let x = 0; x < 24; x++) { set(x, 0, '#e8c048'); set(x, 1, '#a07820'); set(x, 22, '#120828'); set(x, 23, '#120828'); } return; }
+      fill(g, '#1c1236');
+      for (let i = 0; i < 7; i++) { const x = (i * 7 + 3) % 24, y = (i * 11 + 5) % 24; set(x, y, i % 3 ? '#6a58a8' : '#e8e0ff'); }
+      for (let x = 0; x < 24; x++) set(x, 23, '#160e2c');
+      return;
+    }
     if (what === 'wall') {
       fill(g, ap.wall);
       for (let x = 0; x < 24; x++) { for (let y = 14; y < 24; y++) set(x, y, ap.brick); set(x, 13, '#101010'); set(x, 23, '#101010'); if (x % 6 === 0) for (let y = 0; y < 13; y++) set(x, y, '#101010'); }
@@ -199,6 +207,17 @@ const pillarTex = type => tex(`pillar${type}`, () => paint(24, 44, set => {
 // 바닥 위 장식: 입구에서 관장까지 깔린 카펫, 뒷벽 깃발
 function drawRoomDecor() {
   const r = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+  // 후파의 이공간: 바닥에 천천히 도는 금빛 고리 문양
+  if (map.sub === 'hoopa') {
+    const cx = map.tw * TS / 2, cy = map.th * TS / 2;
+    ctx.save(); ctx.lineWidth = 3;
+    for (const [rr, sp, col] of [[300, 0.15, 'rgba(232,192,72,.35)'], [220, -0.25, 'rgba(200,144,255,.35)'], [130, 0.4, 'rgba(232,192,72,.3)']]) {
+      ctx.strokeStyle = col; ctx.beginPath(); ctx.ellipse(cx, cy, rr, rr * 0.62, 0, 0, Math.PI * 2); ctx.stroke();
+      for (let i = 0; i < 6; i++) { const a = now * sp + i * Math.PI / 3; ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.62, 12, 8, 0, 0, Math.PI * 2); ctx.fill(); }
+    }
+    ctx.restore();
+    return;
+  }
   for (const rm of map.rooms) {
     if (!rm.who) continue;
     const c = TYPE_COLOR[rm.type] ?? '#888888', x = rm.cx - 1.5 * TS, top = (rm.y0 + 2.5) * TS, h = (rm.y1 - rm.y0 - 2.5) * TS;
@@ -399,7 +418,7 @@ function edges(k, x, y, test, color, wpx, tuft = null) {
 
 function placeName() {
   if (map === world) return curNode?.name ?? '';
-  return { league: '포켓몬리그' }[map.sub] ?? `${map.leader.leader}의 ${map.leader.title === '체육관 관장' ? '체육관' : '시련'}`;
+  return { league: '포켓몬리그', hoopa: '후파의 고리 너머' }[map.sub] ?? `${map.leader.leader}의 ${map.leader.title === '체육관 관장' ? '체육관' : '시련'}`;
 }
 
 function drawPanel() {
@@ -426,8 +445,6 @@ function drawPanel() {
   text(`기술 ${p.moves.size}/${MAX_MOVES}`, 6, y, 12, '#ff8', 'left');
   const moves = [...p.moves];
   for (let i = 0; i < MAX_MOVES; i++) { y += 15; const m = moveDef(moves[i]); nameText(m, m ? m.name : '-', 10, y, 11, m ? (m.legend ? '#fd6' : TYPE_COLOR[m.type]) : '#444'); }
-  // 전설 기술이 여러 개면 x1.5가 곱해진 합계를 한 줄로
-  if (legendPow > 1) { y += 15; glowText(`기술의 힘 x${+legendPow.toFixed(2)}`, 10, y, 11, '#fd6', '#c8f', 'left'); }
   p.items.filter(i => i.r === 'k').forEach((it, i) => ctx.drawImage(IMG[it.id], 4 + i * 26, y + 6, 26, 26));
   text(TOUCH ? 'A 대화·B 메뉴·구르기·지도' : 'Space 구르기·E 대화·M 지도·N 소리·Esc 메뉴·H 안내', 4, CH - 6, 9, '#777', 'left');
 }
@@ -477,7 +494,55 @@ function drawPortal(o) {
     const r = 30 - i * 7 + Math.sin(now * 5 + i) * 2;
     ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(o.x, o.y, r, r * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
   });
-  text('밖으로', o.x, o.y - 26, 11, '#c8bcff');
+  text(o.label ?? '밖으로', o.x, o.y - 26, 11, '#c8bcff');
+}
+
+// 후파의 고리: 금빛 고리 안쪽에 보랏빛 소용돌이. 나타날 때 커지면서 열린다
+function drawHoopaRing(o, scale = 1) {
+  const k = clamp((now - o.born) / 0.6, 0, 1) * scale, R = 44 * k, y = o.y - 30;
+  if (R <= 4) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(40,10,80,.9)'; ctx.beginPath(); ctx.ellipse(o.x, y, R, R * 1.15, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 4; i++) {
+    ctx.strokeStyle = i % 2 ? '#c890ff' : '#7040d0'; ctx.beginPath();
+    for (let s = 0; s <= 24; s++) { const t = s / 24, a = now * 4 + i * Math.PI / 2 + t * 5, rr = R * 0.9 * t; s ? ctx.lineTo(o.x + Math.cos(a) * rr, y + Math.sin(a) * rr * 1.15) : ctx.moveTo(o.x, y); }
+    ctx.stroke();
+  }
+  ctx.shadowColor = '#ffd860'; ctx.shadowBlur = 12 + Math.sin(now * 5) * 5;
+  ctx.strokeStyle = '#e8c048'; ctx.lineWidth = 7; ctx.beginPath(); ctx.ellipse(o.x, y, R, R * 1.15, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.shadowBlur = 0; ctx.strokeStyle = '#fff2b0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(o.x, y, R - 2, R * 1.15 - 2, 0, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
+  ctx.restore();
+  if (k >= 1 && !o.used) glowText('후파의 고리', o.x, y - R * 1.15 - 10, 12, '#ffe9a8', '#c8f');
+}
+
+// 후파의 고리로 빨려 들어가는 연출: 고리가 화면을 덮을 만큼 커지고, 소용돌이가 돌다가 하얗게 번쩍인다
+function drawWarp() {
+  const w = warp, p = player, cam = { x: clamp(p.x - W / 2, 0, map.tw * TS - W), y: clamp(p.y - H / 2, 0, map.th * TS - H) };
+  const sx = SIDE + w.x - cam.x, sy = HUD + w.y - 30 - cam.y, t = w.t, g = clamp((t - 0.7) / 1.1, 0, 1), R = 44 + g * g * 900;
+  ctx.save(); ctx.beginPath(); ctx.rect(SIDE, HUD, W, H); ctx.clip();
+  ctx.fillStyle = `rgba(24,6,52,${Math.min(1, g * 1.4)})`; ctx.beginPath(); ctx.arc(sx, sy, R, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = 4 + g * 10;
+  for (let i = 0; i < 6; i++) {
+    ctx.strokeStyle = i % 2 ? `rgba(200,144,255,${0.4 + g * 0.5})` : `rgba(232,192,72,${0.3 + g * 0.5})`; ctx.beginPath();
+    for (let s = 0; s <= 30; s++) { const u = s / 30, a = t * (5 + g * 6) + i * Math.PI / 3 + u * 6, rr = R * u; s ? ctx.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr) : ctx.moveTo(sx, sy); }
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#e8c048'; ctx.lineWidth = 8 + g * 20; ctx.shadowColor = '#ffd860'; ctx.shadowBlur = 20;
+  ctx.beginPath(); ctx.arc(sx, sy, R, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
+  for (let i = 0; i < 24; i++) { const a = i * 2.4 + t * 3, d = ((i * 37 + t * 260) % 420) * (1 - g * 0.5); ctx.fillStyle = i % 3 ? '#c8a8ff' : '#fff'; ctx.fillRect(sx + Math.cos(a) * (420 - d), sy + Math.sin(a) * (420 - d), 3, 3); }
+  const flash = clamp((t - 1.7) / 0.6, 0, 1);
+  if (flash > 0) { ctx.fillStyle = `rgba(250,240,255,${flash})`; ctx.fillRect(SIDE, HUD, W, H); }
+  ctx.restore();
+  if (t > 0.9) glowText(w.ready || t < WARP_TIME ? '후파의 고리 너머로 빨려 들어간다...' : '고리 너머를 들여다보는 중...', SIDE + W / 2, HUD + H - 40, 16, flash > 0.5 ? '#503080' : '#ffe9a8', '#c8f');
+}
+
+// 적 광선 한 줄 (조준 광선·휩쓸기 광선 공용)
+function enemyBeamAt(e, ang, c) {
+  const len = beamLen(e.x, e.y, Math.cos(ang), Math.sin(ang), true);
+  ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y - TEAR_Z)); ctx.rotate(ang);
+  for (const [k, col] of [[1, mix(c, '#000000', 0.3)], [0.6, c], [0.25, '#fff']]) { ctx.fillStyle = col; ctx.fillRect(0, -14 * k, len, 28 * k); }
+  ctx.restore();
 }
 
 function drawBeam(b) {
@@ -520,11 +585,26 @@ function drawTelegraphs(e, layer) {
     return;
   }
   if (a.kind === 'beam') {
-    const len = beamLen(e.x, e.y, Math.cos(a.ang), Math.sin(a.ang), true);
-    ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y - TEAR_Z)); ctx.rotate(a.ang);
-    if (a.phase === 0) { ctx.globalAlpha = pulse; ctx.fillStyle = '#f33'; ctx.fillRect(0, -2, len, 4); }
-    else { for (const [k, col] of [[1, mix(c, '#000000', 0.3)], [0.6, c], [0.25, '#fff']]) { ctx.fillStyle = col; ctx.fillRect(0, -14 * k, len, 28 * k); } }
-    ctx.restore();
+    if (a.phase === 0) {
+      const len = beamLen(e.x, e.y, Math.cos(a.ang), Math.sin(a.ang), true);
+      ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y - TEAR_Z)); ctx.rotate(a.ang);
+      ctx.globalAlpha = pulse; ctx.fillStyle = '#f33'; ctx.fillRect(0, -2, len, 4);
+      ctx.restore();
+    } else enemyBeamAt(e, a.ang, c);
+  }
+  // 휩쓸기 광선 예고: 쓸고 지나갈 부채꼴, 시작하는 선, 도는 방향 화살표
+  if (a.kind === 'sweep') {
+    if (a.phase === 0) {
+      const R = 520, a1 = a.ang0 + a.dir * a.span;
+      ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y - TEAR_Z));
+      ctx.fillStyle = `rgba(255,60,60,${pulse * 0.25})`; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, Math.min(a.ang0, a1), Math.max(a.ang0, a1)); ctx.closePath(); ctx.fill();
+      ctx.rotate(a.ang0); ctx.globalAlpha = pulse; ctx.fillStyle = '#f33'; ctx.fillRect(0, -3, R, 6);
+      ctx.restore();
+      ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y - TEAR_Z)); ctx.strokeStyle = `rgba(255,220,220,${pulse})`; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(0, 0, 140, Math.min(a.ang0, a1), Math.max(a.ang0, a1)); ctx.stroke();
+      ctx.rotate(a1); ctx.fillStyle = `rgba(255,220,220,${pulse})`; ctx.beginPath(); ctx.moveTo(140, 0); ctx.lineTo(128, -a.dir * 14); ctx.lineTo(152, -a.dir * 14); ctx.fill();
+      ctx.restore();
+    } else enemyBeamAt(e, a.ang, c);
   }
 }
 
@@ -585,6 +665,7 @@ function drawPlay() {
   const [tx0, ty0, tx1, ty1] = drawTiles(cam);
   if (map.kind === 'indoor') drawRoomDecor();
   if (map.portal) drawPortal(map.portal);
+  if (map.hoopa) drawHoopaRing(map.hoopa, map.hoopa.used ? 1 + (warp?.t ?? 0) : 1);
   const inView = (x, y, m = 120) => x > cam.x - m && x < cam.x + W + m && y > cam.y - m && y < cam.y + H + m * 2;
   const bob = Math.round(Math.sin(now * 5) * 3);
   for (const u of puddles) { ctx.fillStyle = 'rgba(160,64,160,.45)'; ctx.beginPath(); ctx.ellipse(u.x, u.y, u.r, u.r * 0.55, 0, 0, Math.PI * 2); ctx.fill(); }
@@ -633,7 +714,7 @@ function drawPlay() {
   for (const r of map.rooms ?? []) if (r.who) list.push({ y: (r.y0 + 1.6) * TS, draw: () => drawTrainerSprite(r.who.sprite, r.cx, (r.y0 + 1.6) * TS, false, r.cleared ? 0.7 : 1) });
   for (const n of map.npcs) if (inView(n.x, n.y)) list.push({ y: n.y, draw: () => drawTrainerSprite(n.sprite, n.x, n.y, n.flip, n.defeated ? 0.7 : 1, n.moving ? Math.abs(Math.sin(now * 10)) * 3 : 0) });
   for (const e of enemies) list.push({ y: e.y, draw: () => drawActor(e, e.scale, e.hit > 0 ? 0.4 : 1) });
-  list.push({ y: p.y, draw: () => drawActor(p, 1, p.vanish > 0 ? 0.15 : p.inv > 0 && Math.floor(p.inv * 10) % 2 ? 0.3 : 1) });
+  list.push({ y: p.y, draw: () => drawActor(p, p.warpS ?? 1, p.vanish > 0 ? 0.15 : p.warpS !== undefined ? p.warpS : p.inv > 0 && Math.floor(p.inv * 10) % 2 ? 0.3 : 1) });
   for (const t of tears) list.push({ y: t.y, draw: () => {
     const s = t.r * 2, x = Math.round(t.x - t.r), y = Math.round(t.y - TEAR_Z - t.r);
     ctx.fillStyle = '#000'; ctx.fillRect(x - 2, y - 2, s + 4, s + 4);
@@ -666,6 +747,7 @@ function drawPlay() {
 
   drawNight(p.x - cam.x, p.y - cam.y);
   if (timeStop > 0) { ctx.fillStyle = 'rgba(120,140,220,.22)'; ctx.fillRect(SIDE, HUD, W, H); }
+  if (p.warpIn > 0) { ctx.fillStyle = `rgba(250,240,255,${Math.min(1, p.warpIn)})`; ctx.fillRect(SIDE, HUD, W, H); }
   // 다우징머신: 가까운 몬스터볼 방향 화살표
   if (p.dowsing && map === world) {
     const ball = map.pickups.filter(k => k.ball).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];

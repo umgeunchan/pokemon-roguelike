@@ -207,6 +207,15 @@ const SFX = {
   select: t => jingle(t, [84, 91], 0.04, PULSE[0.5], 0.06),
   deny: t => jingle(t, [60, 55], 0.07, PULSE[0.5], 0.07),
   save: t => jingle(t, [79, 84, 88], 0.07, PULSE[0.125], 0.07),
+  // 후파의 고리가 열리는 소리: 반짝이는 온음 음계 아르페지오
+  ring: t => { jingle(t, [72, 74, 76, 78, 80, 82, 84, 86], 0.06, PULSE[0.125], 0.07); jingle(t + 0.12, [84, 86, 88, 90, 92, 94, 96], 0.06, PULSE[0.25], 0.04); voice(sfxBus, 'triangle', 110, t, 1.2, 0.18, { att: 0.2, sus: 1 }); },
+  // 고리로 빨려 들어가는 소리: 낮게 울리다 솟구치는 소용돌이, 끝에 번쩍
+  hoopa: t => {
+    voice(sfxBus, 'sawtooth', 70, t, 2.1, 0.16, { slide: 1400, att: 0.4, sus: 1, lp: 1800 });
+    voice(sfxBus, PULSE[0.125], 140, t + 0.2, 1.8, 0.06, { slide: 2200, sus: 1, vib: true });
+    noise(t, 2.0, 0.12, sfxBus, 300, 5000);
+    jingle(t + 1.75, [84, 88, 91, 96, 100], 0.05, PULSE[0.25], 0.09);
+  },
 };
 const SFX_GAP = { shot: 0.06, hit: 0.05, coin: 0.06, faint: 0.05 }, sfxLast = {};
 function sfx(name) {
@@ -221,6 +230,7 @@ function sfx(name) {
 function bgmFor() {
   if (state === 'title' || state === 'region' || state === 'select' || state === 'ach') return 'town';
   if (!['play', 'pause', 'map', 'learn', 'shop'].includes(state) || !map) return null;
+  if (map.sub === 'hoopa') return map.enemies.some(e => e.hoopa) ? 'legend' : 'champion';
   if (map.battle?.rival || map.npcs.some(n => n.rival && !n.defeated)) return 'rival';
   if (map.enemies.some(e => e.rank === 'legend' && Math.hypot(e.x - player.x, e.y - player.y) < 900)) return 'legend';
   if (map.sub === 'league') return map.room?.who === region.league.at(-1) ? 'champion' : 'league';
