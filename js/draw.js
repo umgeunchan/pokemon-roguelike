@@ -583,6 +583,7 @@ function drawBeam(b) {
 // 적 기술의 예고와 본체: 돌진 조준선, 점프 낙하 지점, 광선
 function drawTelegraphs(e, layer) {
   const a = e.act;
+  if (layer === 'ground' && e.ccImmune > 0) { ctx.strokeStyle = `rgba(255,210,90,${0.5 + Math.abs(Math.sin(now * 5)) * 0.4})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r * 1.5, e.r * 0.7, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (layer === 'ground' && e.enraged) { ctx.strokeStyle = `rgba(255,50,50,${0.35 + Math.abs(Math.sin(now * 6)) * 0.4})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r * 1.3, e.r * 0.6, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (!a) return;
   const c = TYPE_COLOR[a.type], pulse = 0.35 + Math.abs(Math.sin(now * 10)) * 0.35;
@@ -783,15 +784,17 @@ function drawPlay() {
     text(boss.mon.name, SIDE + W / 2, HUD + H - 38, 14);
   }
   drawItemInfo();
-  if (banner) banner.glow ? glowText(banner.text, SIDE + W / 2, HUD + H / 2 - 70, 18, '#ff8', banner.glow) : text(banner.text, SIDE + W / 2, HUD + H / 2 - 70, 18, '#ff8');
+  // 배너: 화면 폭을 넘으면 줄을 나눠 가운데 정렬
+  if (banner) lines(banner.text, W - 40, 18).forEach((l, i) => banner.glow ? glowText(l, SIDE + W / 2, HUD + H / 2 - 70 + i * 24, 18, '#ff8', banner.glow) : text(l, SIDE + W / 2, HUD + H / 2 - 70 + i * 24, 18, '#ff8'));
   // NPC 대사: 원작처럼 화면 아래 대화창
+  // 대사가 길면 줄을 나누고 창이 위로 늘어난다 (한 줄일 때는 예전과 같은 크기)
   if (dialog) {
-    const x = SIDE + 16, y = HUD + H - 88 - (boss ? 48 : 0), w = W - 32;
-    ctx.fillStyle = OUT; ctx.fillRect(x, y, w, 76);
-    ctx.fillStyle = '#f8f8f8'; ctx.fillRect(x + 4, y + 4, w - 8, 68);
-    ctx.fillStyle = '#a8c0e0'; ctx.fillRect(x + 8, y + 8, w - 16, 2); ctx.fillRect(x + 8, y + 66, w - 16, 2);
+    const x = SIDE + 16, w = W - 32, ls = lines(dialog.text, w - 40, 15), h = 54 + ls.length * 22, y = HUD + H - 12 - h - (boss ? 48 : 0);
+    ctx.fillStyle = OUT; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#f8f8f8'; ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
+    ctx.fillStyle = '#a8c0e0'; ctx.fillRect(x + 8, y + 8, w - 16, 2); ctx.fillRect(x + 8, y + h - 10, w - 16, 2);
     plain(dialog.name, x + 20, y + 30, 13, '#d04848');
-    plain(dialog.text, x + 20, y + 54, 15);
+    ls.forEach((l, i) => plain(l, x + 20, y + 54 + i * 22, 15));
   }
 
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, CW, HUD);

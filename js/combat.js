@@ -72,7 +72,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   if (has('crunch')) e.broken = 3;
   if (has('play-rough') && Math.random() < 0.15 * proc) { e.stun = Math.max(e.stun, 0.8); say('헤롱헤롱해졌다!', e.x, e.y - 50, '#fbd'); }
   if (has('moonblast') && Math.random() < 0.2 * proc) { e.weak = 4; say('공격이 뜸해졌다!', e.x, e.y - 50, '#fbd'); }
-  if (has('brick-break') && e.act && e.act.phase === 0 && e.act.name && !tick && !(e.breakCd > 0)) {
+  if (has('brick-break') && e.act && e.act.phase === 0 && e.act.name && !tick && !(e.breakCd > 0) && !(e.ccImmune > 0)) {
     e.act = null; e.fade = 0; e.cd = cooldown(e); e.breakCd = 3; say('기술을 깨뜨렸다!', e.x, e.y - 60, '#fa8');
   }
   if (has('earth-power') && Math.random() < 0.25 * proc) pstrikes.push({ x: e.x, y: e.y, t: 0.25, r: 45, mul: 0.9, type: 'ground' });
@@ -309,6 +309,7 @@ function pathDir(e) {
 const aimAt = (a, e) => { const p = player, d = Math.hypot(p.x - e.x, p.y - e.y) || 1; a.dx = (p.x - e.x) / d; a.dy = (p.y - e.y) / d; };
 const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) * (e.hoopa ? 0.85 : 1) * (e.weak > 0 ? 1.4 : 1) * diffAt(DIFF_CD, e.tier ?? 0) + Math.random() * 0.5;
 const isBig = e => e.rank === 'boss' || e.rank === 'legend';
+const CC_MAX = 1.5, CC_IMMUNE = 4;  // 보스급 멈춤 면역: 멈춘 시간이 합쳐서 CC_MAX초가 되면 CC_IMMUNE초 동안 면역
 
 function turnToward(cur, want, max) {
   const diff = ((want - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
@@ -496,6 +497,14 @@ function updateEnemy(e, dt) {
 function updateEnemyInner(e, dt) {
   const p = player;
   e.cd -= dt; e.hit -= dt; e.slow -= dt; e.stun -= dt; e.broken -= dt; e.weak -= dt; e.breakCd -= dt;
+  // 보스급(관장·사천왕·챔피언·라이벌 에이스·전설)은 멈춤(풀죽음·마비·얼음·헤롱헤롱)이 합쳐서 CC_MAX초 쌓이면
+  // CC_IMMUNE초 동안 멈추지 않고 기술을 이어 간다. 멈추지 않는 동안에는 쌓인 시간이 천천히 줄어든다
+  if (isBig(e)) {
+    if (e.ccImmune > 0) { e.ccImmune -= dt; e.stun = Math.min(e.stun, 0); e.frozen = 0; }
+    else if (e.stun > 0 || e.frozen > 0) {
+      if ((e.ccT = (e.ccT ?? 0) + dt) >= CC_MAX) { e.ccT = 0; e.ccImmune = CC_IMMUNE; e.stun = 0; e.frozen = 0; say('정신을 차렸다! 잠시 멈추지 않는다', e.x, e.y - 90, '#fc6'); }
+    } else e.ccT = Math.max(0, (e.ccT ?? 0) - dt * 0.5);
+  }
   if (combo('nightmare') && e.stun > 0) e.nightmare = 3;
   if (e.nightmare > 0) { e.nightmare -= dt; if ((e.nmTick = (e.nmTick ?? 0) - dt) <= 0) { e.nmTick = 0.5; damage(e, p.dmg * 0.3, 'ghost', true, true); } }
   if (e.burn > 0) { e.burn -= dt; if ((e.burnTick -= dt) <= 0) { e.burnTick = 0.5; damage(e, p.dmg * 0.3 * (e.holy ? 2 : 1) * (combo('toxic') ? 2 : 1), 'fire', true, true); } }
