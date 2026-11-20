@@ -4,6 +4,15 @@ const sendKey = (code, down) => dispatchEvent(new KeyboardEvent(down ? 'keydown'
 function setupTouch() {
   if (!TOUCH) return;
   document.body.classList.add('touch');
+  // 세로 안내: 누르면 세로 배치로 계속
+  $('#rotate').addEventListener('pointerdown', e => { e.preventDefault(); document.body.classList.add('portrait-ok'); });
+  // 처음 화면을 누르면 전체 화면 + 가로 고정을 시도한다 (지원하는 브라우저만. 아이폰 사파리는 전체 화면 API가 없어 그대로)
+  let fsTried = false;
+  addEventListener('pointerdown', () => {
+    if (fsTried || document.fullscreenElement) return;
+    fsTried = true;
+    document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
+  }, { capture: true });
   // 스틱: 왼쪽은 WASD(8방향, 메뉴에서는 꾹 누르면 반복), 오른쪽은 방향키(공격, 4방향)
   const stick = (el, codes, eight) => {
     const knob = el.querySelector('i');

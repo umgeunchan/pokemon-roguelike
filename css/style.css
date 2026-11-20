@@ -2,17 +2,26 @@ body{margin:0;background:#111;color:#ddd;font-family:Galmuri11,monospace;display
 canvas{width:min(100vw,1200px);image-rendering:pixelated;background:#000}
 #bar{width:min(100vw,1200px);display:flex;flex-wrap:wrap;gap:2px;padding:.5rem;box-sizing:border-box}
 #bar img{width:30px;height:30px;image-rendering:pixelated}
-/* 터치 기기: 화면 아래 양쪽에 스틱, 오른쪽에 버튼. 캔버스는 높이에 맞춰 줄인다 */
-#touch{display:none}
-body.touch{touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
-body.touch canvas{width:min(100vw,calc((100vh - 8px) * 880 / 492));touch-action:none}
+/* 터치 기기(가로): 게임 화면을 화면 높이에 꽉 채우고, 스틱과 버튼은 그 위에 반투명하게 겹친다 */
+#touch{display:none}#rotate{display:none}
+body.touch{touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none;height:100vh;height:100dvh;overflow:hidden;justify-content:center;background:#000}
+body.touch #bar,body.touch #credit{display:none}
+body.touch canvas{width:min(100vw,calc(100dvh * 880 / 492));max-height:100dvh;touch-action:none}
 body.touch #touch{display:block;position:fixed;inset:0;pointer-events:none;z-index:5}
-@media (orientation:portrait){body.touch canvas{width:100vw}}
-.stick{position:absolute;bottom:18px;width:136px;height:136px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.22);pointer-events:auto;touch-action:none}
-.stick i{position:absolute;left:43px;top:43px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.35)}
+.stick{position:absolute;bottom:14px;width:136px;height:136px;border-radius:50%;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.18);pointer-events:auto;touch-action:none}
+.stick i{position:absolute;left:43px;top:43px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.28)}
+/* 세로로 들고 있으면 가로로 돌려 달라고 안내 (한 번 누르면 세로 배치로 그냥 할 수 있다) */
+@media (orientation:portrait){
+  body.touch:not(.portrait-ok) #rotate{display:flex;position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.92);color:#fff;flex-direction:column;align-items:center;justify-content:center;gap:14px;font:16px Galmuri11,monospace;text-align:center}
+  body.touch.portrait-ok{height:auto;overflow:visible;justify-content:flex-start}
+  body.touch.portrait-ok canvas{width:100vw}
+}
+#rotate b{font-size:46px;display:inline-block;animation:turn 1.6s ease-in-out infinite}
+@keyframes turn{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}
 #stickL{left:18px}#stickR{right:18px}
-.tbtn{position:absolute;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.3);color:#fff;font:13px Galmuri11,monospace;
+.tbtn{position:absolute;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);color:#fff;font:13px Galmuri11,monospace;
   display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none}
 .tbtn.on{background:rgba(255,255,255,.4)}
+body.touch #touch .stick,body.touch #touch .tbtn{opacity:.85}
 #bA{right:168px;bottom:96px}#bB{right:168px;bottom:30px}#bDash{left:168px;bottom:30px;width:72px;height:72px;font-size:15px;background:rgba(255,255,255,.22)}#bMap{left:168px;bottom:96px}
-@media (orientation:portrait){.stick{bottom:28px}#bA{right:18px;bottom:184px}#bB{right:84px;bottom:184px}#bDash{left:18px;bottom:184px}#bMap{left:84px;bottom:184px}}
+@media (orientation:portrait){body.touch.portrait-ok .stick{bottom:28px}#bA{right:18px;bottom:184px}#bB{right:84px;bottom:184px}#bDash{left:18px;bottom:184px}#bMap{left:84px;bottom:184px}}
