@@ -447,6 +447,8 @@ function drawPanel() {
   });
   let y = HUD + 84 + STATS.length * 30 + 16;
   text(`기술 ${p.moves.size}/${MAX_MOVES}`, 6, y, 12, '#ff8', 'left');
+  if (p.dps) { const f = powerScale(Math.min(8, p.beaten.size)); text(`상대 적응 x${f.toFixed(1)}`, 152, y, 10, f > 1.05 ? '#f96' : f < 0.95 ? '#9cf' : '#888', 'right'); }  // 적응 난이도
+  if (EASY) text('쉬움', 152, HUD + 50, 10, '#8f8', 'right');
   const moves = [...p.moves];
   for (let i = 0; i < MAX_MOVES; i++) {
     y += 15; const m = moveDef(moves[i]); nameText(m, m ? `${moves[i] === p.zMove ? 'Z ' : ''}${m.name}` : '-', 10, y, 11, m ? (m.legend ? '#fd6' : TYPE_COLOR[m.type]) : '#444');
@@ -499,9 +501,11 @@ function drawItemInfo() {
   const k = near ?? (lastInfo?.t > 0 ? lastInfo.k : null);
   if (!k) return;
   const it = k.kind === 'tm' ? k.tm : k.item, x = SIDE + W - 266, y = HUD + 8, ls = lines(it.desc, 206, 11);
+  // 기술머신: 배우면 공격 방식이 어떻게 바뀌는지 미리 보여 준다
+  if (near && k.kind === 'tm' && !p.moves.has(it.id)) { const a = carrierOf([...p.moves]), b = carrierOf([...p.moves, it.id]); ls.push(a === b ? `공격 방식: ${CARRIER_KO[a]} 그대로` : `공격 방식: ${CARRIER_KO[a]} → ${CARRIER_KO[b]}`); }
   const ts = lines(`${near ? '' : '획득! '}${k.kind === 'tm' ? `기술머신 · ${it.name}` : it.name}`, 206, 13), h = 26 + ts.length * 18 + ls.length * 16;
   ctx.fillStyle = 'rgba(0,0,0,.8)'; ctx.fillRect(x, y, 258, h);
-  ctx.strokeStyle = k.kind === 'tm' ? (k.tm.legend ? '#fd6' : TYPE_COLOR[k.tm.type]) : { c: '#aaa', r: '#d4a017', l: '#c8f', k: '#6cf' }[k.item.r]; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, 256, h - 2);
+  ctx.strokeStyle = k.kind === 'tm' ? (k.tm.legend ? '#fd6' : TYPE_COLOR[k.tm.type]) : { c: '#aaa', r: '#d4a017', l: '#c8f', k: '#6cf', g: '#f8c' }[k.item.r]; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, 256, h - 2);
   ctx.drawImage(IMG[k.kind === 'tm' ? k.tm.tm : k.item.id], x + 6, y + 10, 30, 30);
   ts.forEach((l, i) => nameText(it, l, x + 42, y + 24 + i * 18, 13, k.tm?.legend ? '#fd6' : '#fff'));
   ls.forEach((l, i) => text(l, x + 42, y + 26 + ts.length * 18 + i * 16, 11, '#ccc', 'left'));
@@ -850,7 +854,7 @@ function drawPlay() {
   }
   drawItemInfo();
   // 배너: 화면 폭을 넘으면 줄을 나눠 가운데 정렬
-  if (banner) lines(banner.text, W - 40, 18).forEach((l, i) => banner.glow ? glowText(l, SIDE + W / 2, HUD + H / 2 - 70 + i * 24, 18, '#ff8', banner.glow) : text(l, SIDE + W / 2, HUD + H / 2 - 70 + i * 24, 18, '#ff8'));
+  if (banner && !dangerNow()) lines(banner.text, W - 40, 18).forEach((l, i) => banner.glow ? glowText(l, SIDE + W / 2, HUD + H / 2 - 70 + i * 24, 18, '#ff8', banner.glow) : text(l, SIDE + W / 2, HUD + H / 2 - 70 + i * 24, 18, '#ff8'));
   // NPC 대사: 원작처럼 화면 아래 대화창
   // 대사가 길면 줄을 나누고 창이 위로 늘어난다 (한 줄일 때는 예전과 같은 크기)
   if (dialog) {

@@ -50,7 +50,8 @@ const legendSig = m => { const id = LEGEND_MOVE[m.id], d = id && moveDef(id); re
 const shuffle = list => { const a = [...list]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 // cls: trainer / leader / rival / legend. 타입 기술은 그 기술의 타입 색으로 나간다
 function pickPatterns(e, cls) {
-  const m = e.mon, big = isBig(e), out = [], add = mv => { if (mv && out.length < 4 && !out.some(o => o[1] === mv[1])) out.push(mv); };
+  // 첫 라이벌·초반 관장(단계 0~1)은 기술 3개만: 처음 만나는 보스전이 버겁지 않게
+  const m = e.mon, big = isBig(e), N = big && cls !== 'legend' && (e.tier ?? 0) <= 1 ? 3 : 4, out = [], add = mv => { if (mv && out.length < N && !out.some(o => o[1] === mv[1])) out.push(mv); };
   e.cls = cls;
   if (cls === 'legend') add(legendSig(m));  // 전설은 전용 기술을 늘 갖는다
   const sigs = shuffle(m.types.flatMap(t => TYPE_SIG[t].map(([k, n, o]) => [k, n, { ...o, type: t }])));
@@ -81,9 +82,11 @@ const AWAKE_SPEED = 1.3;
 // ---------- 고유 동작 ----------
 const toP = e => Math.atan2(player.y - e.y, player.x - e.x);
 const hz = (e, a, o) => hazards.push({ type: a.type, src: e, move: a.name, ...o });
-const strikeAt = (e, a, x, y, r = 38, t = 0.9, o = {}) => hz(e, a, { kind: 'strike', x, y, r, t, t0: t, ...o });
+// 초반 보스(단계 0~1): 낙하 표식·장판을 하나 걸러 하나만 (화면이 표식으로 뒤덮이지 않게)
+const thin = (e, a) => isBig(e) && (e.tier ?? 0) <= 1 && (a.hzN = (a.hzN ?? 0) + 1) % 2 === 0;
+const strikeAt = (e, a, x, y, r = 38, t = 0.9, o = {}) => thin(e, a) ? 0 : hz(e, a, { kind: 'strike', x, y, r, t, t0: t, ...o });
 // 장판: delay 동안 테두리로 예고, 그 뒤 dur 동안 밟으면 피해 (slow면 피해 대신 느려짐)
-const zoneAt = (e, a, x, y, r, delay, dur, o = {}) => hz(e, a, { kind: 'zone', x, y, r, delay, delay0: delay, dur, ...o });
+const zoneAt = (e, a, x, y, r, delay, dur, o = {}) => thin(e, a) ? 0 : hz(e, a, { kind: 'zone', x, y, r, delay, delay0: delay, dur, ...o });
 // 선: t 동안 예고한 뒤 선 전체가 터진다
 const lineAt = (e, a, x, y, ang, len, w, t) => hz(e, a, { kind: 'line', x, y, a: ang, len, w, t, t0: t });
 const lineThrough = (e, a, cx, cy, ang, len, w, t) => lineAt(e, a, cx - Math.cos(ang) * len / 2, cy - Math.sin(ang) * len / 2, ang, len, w, t);

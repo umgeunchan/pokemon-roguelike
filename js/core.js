@@ -188,12 +188,22 @@ const rollRange = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
 // 그 단계에서 예상한 화력(base x growth^단계)보다 강하면 상대 체력을 (비율^follow)배 올린다. 예상보다 약하면 그대로(1배), 최대 max배
 // 예상 화력(base)은 자속(STAB배)을 넣은 값: 자속 때문에 화력이 오른 만큼은 따라가지 않는다 (DIFF_HP가 메워 준다)
 // v2.6: 잘하는 사람을 덜 벌주고(최대 2.5배, 지수 0.5), 화력이 모자라면 상대 체력을 0.7배까지 낮춰 돕는다
+// 쉬움 모드: 받는 피해 절반 (설정 화면에서 켜고 끔, 브라우저에 저장)
+const EASY_KEY = 'pokemon-dungeon-easy';
+let EASY = !!store.get(EASY_KEY);
+// 필살기 예고가 떠 있는 동안: 축하 문구·업적 팝업을 잠깐 미룬다 (피해야 할 순간에 시선을 가리지 않게)
+const dangerNow = () => state === 'play' && (hazards.some(h => h.dmg > 1) || !!map?.enemies?.some(e => e.act && (e.act.heavy || e.act.kind === 'smash')));
 const POWER = { base: 6 * STAB, growth: 1.5, follow: 0.5, min: 0.7, max: 2.5 };
 const powerScale = t => { const d = player?.dps; return d ? clamp((d / (POWER.base * POWER.growth ** t)) ** POWER.follow, POWER.min, POWER.max) : 1; };
 // 한 승부가 끝날 때마다 그 승부의 초당 피해를 기록에 섞는다 (4초 넘게 싸운 승부만)
 function samplePower() {
   const p = player;
-  if ((p.fT ?? 0) > 4) { const v = p.fD / p.fT; p.dps = p.dps ? p.dps * 0.6 + v * 0.4 : v; }
+  if ((p.fT ?? 0) > 4) {
+    const v = p.fD / p.fT; p.dps = p.dps ? p.dps * 0.6 + v * 0.4 : v;
+    // 적응 난이도가 크게 바뀌면 알려 준다 (숨은 벌이 아니라 보이는 도전으로)
+    const f = powerScale(Math.min(8, p.beaten.size));
+    if (Math.abs(f - (p.adaptShown ?? 1)) >= 0.2) { p.adaptShown = f; say(f > 1 ? `상대가 강해진다 x${f.toFixed(1)}` : `상대가 약해진다 x${f.toFixed(1)}`, p.x, p.y - 110, f > 1 ? '#f96' : '#9cf'); }
+  }
   p.fT = p.fD = 0;
 }
 // 난이도: 단계(0~8 = 배지 수·지역 깊이)별로 상대 체력과 공격 빈도를 곱한다. 숫자를 바꾸면 바로 반영된다

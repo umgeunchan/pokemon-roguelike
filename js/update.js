@@ -4,7 +4,7 @@ function update(dt) {
   const p = player;
   refreshFx();
   now += dt; dayTime += map === world ? dt : 0; p.cd -= dt; p.inv -= dt; p.dashCd -= dt; p.eruptCd -= dt; textCd -= dt; shake -= dt; timeStop -= dt;
-  if (banner && (banner.t -= dt) <= 0) banner = null;
+  if (banner && !dangerNow() && (banner.t -= dt) <= 0) banner = null;  // 필살기 예고 중에는 문구를 멈춰 두었다가 나중에
   if (lastInfo) lastInfo.t -= dt;
   if (dialog && ((dialog.t -= dt) <= 0 || (map.battle && !dialog.keep))) dialog = null;
   p.deltas.forEach(d => d && (d.t -= dt));

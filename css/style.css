@@ -14,5 +14,5 @@ body.touch #touch{display:block;position:fixed;inset:0;pointer-events:none;z-ind
 .tbtn{position:absolute;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.3);color:#fff;font:13px Galmuri11,monospace;
   display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none}
 .tbtn.on{background:rgba(255,255,255,.4)}
-#bA{right:168px;bottom:96px}#bB{right:168px;bottom:30px}#bDash{left:168px;bottom:30px}#bMap{left:168px;bottom:96px}
+#bA{right:168px;bottom:96px}#bB{right:168px;bottom:30px}#bDash{left:168px;bottom:30px;width:72px;height:72px;font-size:15px;background:rgba(255,255,255,.22)}#bMap{left:168px;bottom:96px}
 @media (orientation:portrait){.stick{bottom:28px}#bA{right:18px;bottom:184px}#bB{right:84px;bottom:184px}#bDash{left:18px;bottom:184px}#bMap{left:84px;bottom:184px}}

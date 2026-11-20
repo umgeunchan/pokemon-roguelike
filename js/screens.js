@@ -26,9 +26,9 @@ function menuKey(code) {
   }
   if (back || (ok && !['가방', '포켓몬 도감', '설정'].includes(menu.screen))) { menu.screen = 'root'; return; }
   if (menu.screen === '설정') {
-    if (up || down) { menu.sel = (menu.sel + 1) % 2; sfx('menu'); }
-    const k = ['bgm', 'sfx'][menu.sel];
-    if (left || right) { VOL[k] = clamp(Math.round((VOL[k] + (right ? 0.1 : -0.1)) * 10) / 10, 0, 1); applyVolume(); sfx('menu'); }
+    if (up || down) { menu.sel = (menu.sel + (down ? 1 : 2)) % 3; sfx('menu'); }
+    if (menu.sel === 2) { if (left || right || ok) { EASY = !EASY; store.set(EASY_KEY, EASY); sfx('menu'); } }
+    else { const k = ['bgm', 'sfx'][menu.sel]; if (left || right) { VOL[k] = clamp(Math.round((VOL[k] + (right ? 0.1 : -0.1)) * 10) / 10, 0, 1); applyVolume(); sfx('menu'); } }
   }
   if (menu.screen === '가방') {
     if (left || right) { menu.tab = (menu.tab + (right ? 1 : 2)) % 3; menu.sel = 0; }
@@ -81,7 +81,14 @@ function drawSettingsScreen(x, y) {
     for (let j = 0; j < 10; j++) { ctx.fillStyle = j < Math.round(VOL[k] * 10) ? (on ? '#304080' : '#6070a0') : '#c8cce0'; ctx.fillRect(x + 150 + j * 30, yy - 16, 24, 20); }
     plain(`${Math.round(VOL[k] * 100)}%`, x + 470, yy, 14, '#303060');
   });
-  if (muted) plain('지금은 N 키로 소리를 꺼 둔 상태입니다', x + 44, y + 230, 12, '#904040');
+  // 쉬움 모드: 받는 피해 절반
+  const yy = y + 210, on = menu.sel === 2;
+  if (on) plain('▶', x + 20, yy, 15);
+  plain('쉬움 모드', x + 44, yy, 15);
+  ctx.fillStyle = EASY ? '#40a060' : '#c8cce0'; ctx.fillRect(x + 150, yy - 16, 60, 20); plain(EASY ? '켜짐' : '꺼짐', x + 180, yy, 12, EASY ? '#fff' : '#606070', 'center');
+  plain('받는 피해가 절반이 됩니다. 액션이 서툴거나 휴대폰으로 할 때 추천', x + 230, yy, 11, '#707080');
+  taps.push({ x: x + 20, y: yy - 22, w: 600, h: 30, fn: () => { menu.sel = 2; EASY = !EASY; store.set(EASY_KEY, EASY); } });
+  if (muted) plain('지금은 N 키로 소리를 꺼 둔 상태입니다', x + 44, y + 260, 12, '#904040');
 }
 
 function drawPartyScreen(x, y) {
@@ -343,7 +350,8 @@ function drawResult() {
   ctx.fillStyle = '#0c0c14'; ctx.fillRect(0, 0, CW, CH);
   taps.push({ x: 0, y: 0, w: CW, h: CH, fn: () => state = 'region' });
   win ? glowText(`${region.name}지방 챔피언이 되었다!`, CW / 2, 52, 28, '#ff8', '#fc4') : text(`${p.mon.name}는(은) 쓰러졌다...`, CW / 2, 52, 28, '#f66');
-  if (!win && p.cause) text(`${p.cause}에 쓰러졌다`, CW / 2, 80, 14, '#f99');
+  if (!win && p.cause) text(`${p.cause}에 쓰러졌다`, CW / 2, 78, 14, '#f99');
+  if (!win && p.lastHits?.length) text(`마지막에 맞은 공격: ${p.lastHits.map(h => `${h.who ? `${h.who}의 ` : ''}${h.move ?? `${TYPE_KO[h.type]} 공격`}(${h.d / 2}칸${h.heavy ? '·필살기' : ''})`).join(' → ')}`, CW / 2, 95, 11, '#c99');
   if (win && p.hoopaWin) glowText(`후파의 고리 너머에서 색이 다른 ${p.hoopaWin}을(를) 쓰러뜨렸다!`, CW / 2, 82, 14, '#fff', '#c8f');
   if (win && p.hoopaLost) text(`후파의 고리 너머의 ${p.hoopaLost}에게는 아쉽게 졌다`, CW / 2, 82, 14, '#c9a8ff');
   // 기록

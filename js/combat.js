@@ -27,10 +27,14 @@ function hurt(type, amount = 1, src = null) {
   const m = eff(type, p.mon.types);
   let d = m === 0 ? 0 : amount + (m > 1 ? 1 : 0) + (who?.awake ? 1 : 0);  // 각성한 상대의 공격은 반 칸 더
   if (amount >= 2) d = Math.min(d, amount + 1);  // 필살기·큰 공격은 약점·각성이 겹쳐도 반 칸까지만 더
+  // 쉬움 모드: 피해 절반 (반 칸 단위라 남는 반은 모아 두었다가 다음에 더한다)
+  if (EASY && d > 0) { p.easyCarry = (p.easyCarry ?? 0) + d / 2; d = Math.floor(p.easyCarry); p.easyCarry -= d; if (d <= 0) { p.inv = p.invTime; return; } }
   if (hasFx('bulwark') && d > 0) { d -= 1; if (d === 0 && Math.random() < 0.5) d = 1; if (d === 0) { p.inv = 0.5; return say('막아냈다!', p.x, p.y - 60, '#ccf'); } }
   // 특성: 막거나 줄이거나 회복으로 바꾼다
   if (d > 0) { d = abHurt(type, d, who, src); if (d <= 0) { p.inv = 0.4; return; } }
-  p.inv = p.invTime + abStat('inv', 0); p.streak = 0; p.hits = (p.hits ?? 0) + 1;
+  p.inv = p.invTime + abStat('inv', 0); p.streak = 0;
+  // 사망 화면에 보여 줄 최근 맞은 공격 3개
+  p.lastHits = [...(p.lastHits ?? []), { who: who?.mon.name, move, d, heavy: amount >= 2, type }].slice(-3); p.hits = (p.hits ?? 0) + 1;
   if (p.balloon && d > 0) { p.balloon = p.flying = false; say('풍선이 터졌다!', p.x, p.y - 80, '#f88'); unstick(p); }
   if (m > 1 && p.weaknessPolicy) { p.weaknessPolicy = false; withDelta(p => p.dmg += 0.6); say('약점보험 발동!', p.x, p.y - 90, '#ff8'); }
   if (d > 0) sfx('hurt');
@@ -196,7 +200,13 @@ function beamCfg() {
   return { type, mul, wm: wm * fxScale(), cm, crit };
 }
 // 공격 방식: 알폭탄 > 광선 > 레이저 > 원뿔 > 보통 탄
-function carrier() { return has('egg-bomb') ? 'bomb' : BEAMS.some(has) || hasFx('beam') ? 'beam' : LASERS.some(has) ? 'laser' : CONES.some(has) ? 'cone' : 'tear'; }
+function carrier() { return carrierOf([...player.moves]); }
+// 이 기술들을 가졌을 때의 공격 방식 (볼 근처에서 "공격 방식: 보통 탄 → 광선" 미리 보기에도 쓴다)
+function carrierOf(ids) {
+  const h = id => ids.includes(id);
+  return h('egg-bomb') ? 'bomb' : BEAMS.some(h) || ids.some(id => moveDef(id)?.fx === 'beam') ? 'beam' : LASERS.some(h) ? 'laser' : CONES.some(h) ? 'cone' : 'tear';
+}
+const CARRIER_KO = { bomb: '알폭탄', beam: '광선', laser: '레이저', cone: '원뿔', tear: '보통 탄' };
 const shotScale = () => clamp(1 + (player.dmg * legendPow - 3) * 0.05, 1, 2);
 const spread = () => has('pin-missile') ? [-0.26, 0, 0.26] : has('razor-leaf') ? [-0.12, 0.12] : [0];
 const chargeTime = () => player.fireDelay * 2.2 * beamCfg().cm * (has('bullet-seed') ? 0.6 : 1);

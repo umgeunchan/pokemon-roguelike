@@ -4,7 +4,7 @@ function loop(t) {
   last = t;
   if (state === 'play') update(dt);
   if (state === 'warp') updateWarp(dt);
-  toasts.slice(0, 3).forEach(o => o.t += dt); toasts = toasts.filter(o => o.t < 5);
+  if (!dangerNow()) toasts.slice(0, 3).forEach(o => o.t += dt); toasts = toasts.filter(o => o.t < 5);
   draw(); tickMusic();
   requestAnimationFrame(loop);
 }
