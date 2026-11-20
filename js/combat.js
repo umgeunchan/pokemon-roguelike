@@ -50,6 +50,9 @@ const nearestEnemy = (x, y, except, maxD) => map.enemies.filter(e => e !== excep
   .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
 const enemiesNear = (x, y, rad, except) => map.enemies.filter(o => o !== except && o.hp > 0 && Math.hypot(o.x - x, o.y - y) < rad + o.r);
 
+// 상성 배수 완화: 효과가 별로(0.5배) → 0.75배, 0.25배 → 0.6배, 효과 없음(0배) → 0.5배. 효과가 굉장하면 그대로
+// 로그라이크라 기술을 고를 수 없을 때가 많아서, 상성이 나빠도 피해가 아예 안 들어가지는 않게 한다
+const effMul = raw => raw >= 1 ? raw : raw === 0 ? 0.5 : raw >= 0.5 ? 0.75 : 0.6;
 // tick: 광선처럼 짧은 간격으로 들어가는 피해. secondary: 다른 효과가 만든 피해라 또 연쇄하지 않음
 function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   if (e.hp <= 0 || untargetable(e)) return;
@@ -58,7 +61,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   const p = player, raw = eff(type, e.mon.types), big = isBig(e), near = Math.hypot(e.x - p.x, e.y - p.y) < 110 + e.r, dot = e.burn > 0 || e.psn > 0;
   // shortcut: 면역(0배)도 0.25배로 처리해서 못 잡는 적이 없게 함
   // 늘 붙는 기술 보너스는 moveDmgMul(능력치 창의 공격에 보이는 값), 여기서는 조건이 붙는 것만 더 곱한다
-  let d = base * moveDmgMul() * Math.max(raw, 0.25) * (raw > 1 && p.expert ? 1.3 : 1) * (p.metronome ? 1 + Math.min(p.streak, 20) * 0.03 : 1) * (e.frozen > 0 ? 1.5 : 1)
+  let d = base * moveDmgMul() * effMul(raw) * (raw > 1 && p.expert ? 1.3 : 1) * (p.metronome ? 1 + Math.min(p.streak, 20) * 0.03 : 1) * (e.frozen > 0 ? 1.5 : 1)
     * (hasFx('blade') && big ? 1.4 : 1) * (hasFx('madness') && big ? (combo('calamity') ? 1.5 : 1.25) : 1) * (has('moonblast') && big ? 1.3 : 1) * (has('earth-power') && big ? 1.25 : 1)
     * (combo('scorch') && dot ? 1.4 : 1) * (combo('quake') && big ? 1.35 : 1) * (combo('dragon') ? 1.25 : 1) * (combo('mind') && e.stun > 0 ? 1.5 : 1)
     * stab(type) * zTypeMul(type) * abDamageMul(type, near) * (has('close-combat') && near ? 1.4 : 1) * (has('play-rough') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1)

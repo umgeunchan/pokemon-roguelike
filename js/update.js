@@ -1,5 +1,7 @@
 // 매 프레임 게임 진행: 이동, 충돌, 탄, 아이템 줍기
 // ---------- 메인 업데이트 ----------
+// 돌진 기술 위력 배수 = 이동 속도 (능력치 창의 속도 값, 기본 1 안팎)
+const dashSpd = () => player.speed * abStat('speed') / 200;
 function update(dt) {
   const p = player;
   refreshFx();
@@ -30,7 +32,7 @@ function update(dt) {
     p.dashQ = false;
     sfx('dash'); p.dashed = true;
     // 구르기 대기 1초. 돌진 기술(화룡점정·라이트닝드라이브 등)은 0.25초에, 가까운 적에게 자동으로 돌진한다
-    p.dash = hasFx('dashStrike') ? 0.26 : 0.2; p.dashCd = hasFx('dashStrike') ? 0.25 : abStat('dash'); p.dashDir = vx || vy ? [vx, vy] : [p.flip ? 1 : -1, 0]; p.dashHit = new Set(); p.dashAt = p.time;
+    p.dash = hasFx('dashStrike') ? 0.26 : 0.2; p.dashCd = hasFx('dashStrike') ? 1 : abStat('dash'); p.dashDir = vx || vy ? [vx, vy] : [p.flip ? 1 : -1, 0]; p.dashHit = new Set(); p.dashAt = p.time;
     const tg = hasFx('dashStrike') && nearestEnemy(p.x, p.y, null, 320);
     if (tg) { const d = Math.hypot(tg.x - p.x, tg.y - p.y) || 1; p.dashDir = [(tg.x - p.x) / d, (tg.y - p.y) / d]; }
     if (hasFx('vanish')) p.vanish = 0.6;
@@ -44,11 +46,11 @@ function update(dt) {
       if (dtype === 'electric' && Math.random() < 0.6) { const a = Math.random() * Math.PI * 2; fx.push({ kind: 'zap', x: p.x, y: p.y, x2: p.x + Math.cos(a) * 60, y2: p.y + Math.sin(a) * 60, t: 0.12 }); }
     }
     if (dtype) for (const e of map.enemies) if (!p.dashHit.has(e) && e.hp > 0 && !untargetable(e) && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r + 55) {
-      p.dashHit.add(e); damage(e, p.dmg * 4, dtype);
+      p.dashHit.add(e); damage(e, p.dmg * 4 * dashSpd(), dtype);
       fx.push({ kind: 'boom', x: e.x, y: e.y, r: 34, t: 0.2, max: 0.2, color: dcol });
       if (combo('stormdash') && e.hp > 0) {
         e.stun = Math.max(e.stun ?? 0, 1); say('마비되었다!', e.x, e.y - 50, '#ff8');
-        for (const o of enemiesNear(e.x, e.y, 150, e).slice(0, 3)) { damage(o, p.dmg * 1.2, 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.15 }); }
+        for (const o of enemiesNear(e.x, e.y, 150, e).slice(0, 3)) { damage(o, p.dmg * 1.2 * dashSpd(), 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.15 }); }
       }
     }
   }
@@ -56,7 +58,7 @@ function update(dt) {
     p.dashDone = true;
     const dtype = moveDef([...p.moves].find(id => moveDef(id).fx === 'dashStrike')).type, R = 95;
     fx.push({ kind: 'boom', x: p.x, y: p.y, r: R, t: 0.25, max: 0.25, color: TYPE_COLOR[dtype] }); fx.push({ kind: 'ring', x: p.x, y: p.y, t: 0.3, max: 0.3 }); shake = Math.max(shake, 0.12);
-    for (const e of enemiesNear(p.x, p.y, R)) { p.dashHit.add(e); damage(e, p.dmg * 1.5, dtype, false, true); }
+    for (const e of enemiesNear(p.x, p.y, R)) { p.dashHit.add(e); damage(e, p.dmg * 1.5 * dashSpd(), dtype, false, true); }
     // 돌진은 적 사이로 파고드는 기술이라 맞히면 잠깐 무적 (회복은 돌진으로 쓰러뜨렸을 때: combat.js onKill)
     if (p.dashHit.size) p.inv = Math.max(p.inv, 0.4);
   }
