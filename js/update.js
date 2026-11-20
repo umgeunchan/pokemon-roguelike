@@ -15,7 +15,7 @@ function update(dt) {
   p.time += dt; p.hop -= dt;
   if (p.regen && (p.regenT -= dt) <= 0) { p.regenT = 12; heal(1); }
   // 지오컨트롤: 12초마다 4초 동안 대지의 힘이 넘친다
-  if (hasFx('geo') && (p.geoT = (p.geoT ?? 6) - dt) <= 0) { p.geoT = 12; p.surge = 4; banner = { text: '대지의 힘이 넘쳐흐른다!', t: 1.5, glow: '#f9c' }; }
+  if (hasFx('geo') && (p.geoT = (p.geoT ?? 6) - dt) <= 0) { p.geoT = combo('gaia') ? 8 : 12; p.surge = combo('gaia') ? 5 : 4; banner = { text: '대지의 힘이 넘쳐흐른다!', t: 1.5, glow: '#f9c' }; }
   if (p.surge > 0) p.surge -= dt;
   if (map.enemies.some(e => (e.battle || (e.rank === 'legend' && e.aggro)) && e.hp > 0)) p.fT = (p.fT ?? 0) + dt;
   if ((p.achT = (p.achT ?? 0) - dt) <= 0) { p.achT = 0.5; checkAch(); }
@@ -36,11 +36,16 @@ function update(dt) {
     if (hasFx('dashStrike')) for (const e of map.enemies) if (!p.dashHit.has(e) && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r + 8) {
       p.dashHit.add(e); damage(e, p.dmg * 4, moveDef([...p.moves].find(id => moveDef(id).fx === 'dashStrike')).type);
       fx.push({ kind: 'boom', x: e.x, y: e.y, r: 30, t: 0.2, max: 0.2, color: '#fff' });
+      if (combo('stormdash') && e.hp > 0) {
+        e.stun = Math.max(e.stun ?? 0, 1); say('마비되었다!', e.x, e.y - 50, '#ff8');
+        for (const o of enemiesNear(e.x, e.y, 150, e).slice(0, 3)) { damage(o, p.dmg * 1.2, 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.15 }); }
+      }
     }
   }
   if (p.vanish > 0 && (p.vanish -= dt) <= 0) {
-    fx.push({ kind: 'boom', x: p.x, y: p.y, r: 100, t: 0.3, max: 0.3, color: TYPE_COLOR.ghost }); shake = 0.2;
-    for (const e of enemiesNear(p.x, p.y, 100)) damage(e, p.dmg * 3, 'ghost');
+    const R = combo('phantom') ? 160 : 100;
+    fx.push({ kind: 'boom', x: p.x, y: p.y, r: R, t: 0.3, max: 0.3, color: TYPE_COLOR.ghost }); shake = 0.2;
+    for (const e of enemiesNear(p.x, p.y, R)) damage(e, p.dmg * 3 * (combo('phantom') ? 1.5 : 1), 'ghost');
   }
   if (vx && !(keys.ArrowLeft || keys.ArrowRight)) p.flip = vx > 0;
   moveBody(p, vx * p.speed * dt, vy * p.speed * dt); clampBody(p);
@@ -83,7 +88,7 @@ function update(dt) {
   updateNpcs(dt);
 
   // 시간의포효: 주기적으로 적과 적의 공격이 멈춘다
-  if (hasFx('timeStop') && (p.stopCd -= dt) <= 0 && map.enemies.some(e => Math.hypot(e.x - p.x, e.y - p.y) < 500)) { p.stopCd = 7; timeStop = 1.8; banner = { text: '시간이 멈췄다!', t: 1.5 }; }
+  if (hasFx('timeStop') && (p.stopCd -= dt) <= 0 && map.enemies.some(e => Math.hypot(e.x - p.x, e.y - p.y) < 500)) { p.stopCd = combo('timewarp') ? 5 : 7; timeStop = 1.8; banner = { text: '시간이 멈췄다!', t: 1.5 }; }
   const frozenTime = timeStop > 0;
 
   if ((flowT -= dt) <= 0) { flowT = 0.25; buildFlow(); }

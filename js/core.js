@@ -210,12 +210,13 @@ function makePlayer(m) {
 
 // 기술의 능력치 보너스(공격 x1.2, 급소 +20% 등)는 왼쪽 능력치 창에 바로 더해져 보인다
 function learnMove(id) {
-  const p = player, d = moveDef(id);
+  const p = player, d = moveDef(id), kp = kindPairs();
   withDelta(() => {
     p.moves.add(id);
     if (!p.items.includes(d)) p.items.push(d);
     d.onLearn?.(p);
     refreshFx();
   });
+  if (kindPairs() > kp) { const k = MOVE_KINDS.find(([, f]) => f(id))?.[0] ?? '기술'; banner = { text: `같은 종류(${k}) 기술이 공명한다! 범위·위력 증가`, t: 2.5, glow: '#ffd060' }; }
   renderBar();
 }

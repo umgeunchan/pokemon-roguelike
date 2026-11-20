@@ -180,11 +180,32 @@ const COMBOS = [
   // 번개 조합
   { id: 'stormfront', name: '폭풍우', need: ['thunder', 'hydro-pump'], desc: '광선이 지나가는 자리에 벼락이 연달아 떨어진다', color: '#5070ff' },
   { id: 'raijin', name: '뇌신', need: ['thunder', 'thunder-wave'], desc: '마비된 적에게는 벼락이 거의 반드시 떨어진다', color: '#ffff40' },
+  // 전설 기술 조합: 'fx:이름'은 그 효과를 가진 전설 기술 아무거나 (사이코브레이크·미스트볼·러스터퍼지는 모두 fx:psy)
+  { id: 'psybreak', name: '사이코 브레이크', need: ['fx:psy', 'psychic'], desc: '탄이 맞은 자리에서 염동 폭발', color: '#ff60ff' },
+  { id: 'inferno', name: '성스러운 업화', need: ['sacred-fire', 'flamethrower'], desc: '화상 입은 적에게 피해 x1.5, 불탄 적의 폭발이 두 배 넓게', color: '#ffd040' },
+  { id: 'blueblaze', name: '청염', need: ['blue-flare', 'will-o-wisp'], desc: '얹히는 불꽃 피해 x4, 화상 지속 피해 x2', color: '#40a0ff' },
+  { id: 'absolute', name: '절대영도', need: ['sheer-cold', 'ice-beam'], desc: '언 적을 때리면 35% 확률로 깨지며 주변에 얼음 폭발', color: '#e8ffff' },
+  { id: 'thundergod', name: '뇌격신', need: ['fusion-bolt', 'thunder'], desc: '낙뢰 확률 60%, 연쇄 번개가 4마리까지', color: '#ffff90' },
+  { id: 'tsunami', name: '근원의 해일', need: ['origin-pulse', 'surf'], desc: '파동이 7갈래로, 더 크고 세게', color: '#2060ff' },
+  { id: 'tectonic', name: '지각 붕괴', need: ['fx:erupt', 'earthquake'], desc: '땅의 칼날이 7개, 더 넓고 더 자주 솟는다', color: '#d07030' },
+  { id: 'dimension', name: '차원 절단', need: ['spacial-rend', 'x-scissor'], desc: '공간 베기 범위 x1.6, 피해 x1.5', color: '#ff90e0' },
+  { id: 'timewarp', name: '시간 역행', need: ['roar-of-time', 'dragon-pulse'], desc: '시간이 5초마다 멈추고, 멈춘 동안 피해 x2', color: '#6080ff' },
+  { id: 'lunar', name: '월식', need: ['moongeist-beam', 'moonblast'], desc: '광선 위력 x1.4, 50% 확률로 적의 공격이 뜸해짐', color: '#a080ff' },
+  { id: 'eclipse', name: '일식', need: ['fx:blade', 'flash-cannon'], desc: '맞힐 때마다 강철 폭발', color: '#ffb040' },
+  { id: 'dynamax', name: '무한다이맥스', need: ['eternabeam', 'hyper-beam'], desc: '광선 차징 x0.6, 굵기 x1.3', color: '#ff2050' },
+  { id: 'gaia', name: '대지의 맥동', need: ['geomancy', 'earth-power'], desc: '대지의 힘이 8초마다 5초 동안, 그동안 맞힌 적 발밑에서 땅이 솟는다', color: '#ff80c0' },
+  { id: 'calamity', name: '재앙의 날', need: ['fx:madness', 'dark-pulse'], desc: '체력 절반 확률 35%, 보스 피해 x1.5', color: '#802040' },
+  { id: 'deathwing', name: '데스윙', need: ['oblivion-wing', 'air-slash'], desc: '체력 흡수 2배', color: '#c02030' },
+  { id: 'bloom', name: '생명의 개화', need: ['seed-flare', 'energy-ball'], desc: '씨앗 폭발 범위 x1.6, 피해 x1.5, 쓰러뜨리면 40% 회복', color: '#90ff60' },
+  { id: 'diamond', name: '다이아 광채', need: ['diamond-storm', 'stone-edge'], desc: '다이아 파편 확률 60%, 10갈래', color: '#f0f8ff' },
+  { id: 'stormdash', name: '전광석화', need: ['fx:dashStrike', 'thunder-wave'], desc: '구르기에 맞은 적이 마비되고 주변으로 전기가 튄다', color: '#ffe040' },
+  { id: 'phantom', name: '망령의 습격', need: ['shadow-force', 'shadow-ball'], desc: '나타날 때 폭발 범위 x1.6, 피해 x1.5', color: '#6030a0' },
+  { id: 'juggernaut', name: '철벽 돌진', need: ['behemoth-bash', 'close-combat'], desc: '부딪힌 적에게 주는 피해 x2', color: '#a0b0d0' },
 ];
 const combo = id => !!player?.combos?.has(id);
 function refreshCombos() {
   const p = player;
-  p.combos = new Set(COMBOS.filter(c => c.need.every(id => p.moves.has(id))).map(c => c.id));
+  p.combos = new Set(COMBOS.filter(c => c.need.every(id => id.startsWith('fx:') ? FX.has(id.slice(3)) : p.moves.has(id))).map(c => c.id));
   // 공격 색: 켜진 조합이 있으면 마지막 조합의 색, 없으면 최근에 배운 두 기술의 타입 색(바탕·가운데)
   const cs = COMBOS.filter(c => p.combos.has(c.id)), ms = [...p.moves].map(moveDef).filter(Boolean);
   p.pcol = cs.length ? [cs.at(-1).color, cs.length > 1 ? cs.at(-2).color : '#ffffff']
@@ -250,7 +271,7 @@ const HOOPA_POOL = Object.keys(LEGEND_MOVE).map(Number);
 // 기술이 늘 주는 능력치 보너스(조건 없는 것만). 왼쪽 능력치 창과 실제 계산이 같은 값을 쓴다
 // 숨은 조합 보너스는 여기 넣지 않는다 (화면에 드러나면 숨은 효과가 아니게 된다)
 const moveDmgMul = () => (has('flash-cannon') ? 1.2 : 1) * (has('focus-blast') ? 1.6 : 1) * (has('dragon-claw') ? 1.2 : 1)
-  * (has('close-combat') ? 1.35 : 1) * (has('play-rough') ? 1.35 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * legendPow;
+  * (has('close-combat') ? 1.35 : 1) * (has('play-rough') ? 1.35 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * kindPow() * legendPow;
 const moveCrit = () => (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0);
 // 공격 사이 간격 배수 (작을수록 빠름): 구슬 하나마다 x1.2, 기합구슬은 더 느리다
 const moveRate = () => (has('bullet-seed') ? 0.5 : 1) * (has('air-slash') ? 0.8 : 1) * 1.2 ** orbCount() * (has('focus-blast') ? 1.15 : 1);
@@ -258,7 +279,13 @@ const moveShot = () => has('air-slash') ? 1.3 : 1;
 // 구슬: 구슬 기술 + 다른 기술이 하나라도 있으면 모든 효과(탄 크기·폭발·광선 굵기·원뿔 길이·범위)가 커지고 위력이 오른다. 구슬이 많을수록 더
 const orbCount = () => player ? ORBS.filter(id => player.moves.has(id)).length : 0;
 const orbBoost = () => { const n = orbCount(); return n && player.moves.size >= 2 ? n : 0; };
-const fxScale = () => { const n = orbBoost(); return n ? 1.3 + 0.15 * (n - 1) : 1; };
+const fxScale = () => { const n = orbBoost(); return (n ? 1.3 + 0.15 * (n - 1) : 1) * kindScale(); };
+// 같은 종류 공명: 광선·레이저·원뿔 기술을 같은 종류로 2개 이상 가지면 범위(굵기·길이·폭발)와 위력이 오른다 (구슬은 위의 구슬 보너스가 같은 역할)
+// 전설의 광선 기술(에어로블라스트 등)도 광선으로 센다. 2개면 한 쌍, 3개면 두 쌍
+const MOVE_KINDS = [['광선', id => BEAMS.includes(id) || moveDef(id)?.fx === 'beam'], ['레이저', id => LASERS.includes(id)], ['원뿔', id => CONES.includes(id)]];
+const kindPairs = () => player ? MOVE_KINDS.reduce((n, [, f]) => n + Math.max(0, [...player.moves].filter(f).length - 1), 0) : 0;
+const kindScale = () => { const n = kindPairs(); return n ? 1.25 + 0.15 * (n - 1) : 1; };
+const kindPow = () => { const n = kindPairs(); return n ? 1.2 + 0.1 * (n - 1) : 1; };
 const orbPow = () => { const n = orbBoost(); return n ? 1.2 + 0.1 * (n - 1) : 1; };
 // 그 분류에서 가장 최근에 배운 기술
 const lastOf = list => [...player.moves].filter(id => list.includes(id)).at(-1);
