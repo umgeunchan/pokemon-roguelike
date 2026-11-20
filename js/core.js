@@ -184,7 +184,8 @@ const EARLY_GYMS = 3, GYM_ROOMS = { early: [1, 2], late: [2, 3] }, GYM_TRAINER_M
 const rollRange = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
 // 화력 따라가기: 트레이너·관장·라이벌·전설과 싸울 때 실제로 넣은 초당 피해(p.dps)를 재서,
 // 그 단계에서 예상한 화력(base x growth^단계)보다 강하면 상대 체력을 (비율^follow)배 올린다. 예상보다 약하면 그대로(1배), 최대 max배
-const POWER = { base: 6, growth: 1.5, follow: 0.75, max: 6 };
+// 예상 화력(base)은 자속(STAB배)을 넣은 값: 자속 때문에 화력이 오른 만큼은 따라가지 않는다 (ENEMY_HP가 이미 메워 준다)
+const POWER = { base: 6 * STAB, growth: 1.5, follow: 0.75, max: 6 };
 const powerScale = t => { const d = player?.dps; return d ? clamp((d / (POWER.base * POWER.growth ** t)) ** POWER.follow, 1, POWER.max) : 1; };
 // 한 승부가 끝날 때마다 그 승부의 초당 피해를 기록에 섞는다 (4초 넘게 싸운 승부만)
 function samplePower() {
@@ -192,7 +193,13 @@ function samplePower() {
   if ((p.fT ?? 0) > 4) { const v = p.fD / p.fT; p.dps = p.dps ? p.dps * 0.6 + v * 0.4 : v; }
   p.fT = p.fD = 0;
 }
-const hpMult = (rank, t) => rank === 'legend' ? 20 * 1.6 ** t : rank === 'boss' ? 10 * 1.6 ** t * bossEase(t) : rank === 'trainer' ? 2 * 1.5 ** t * trainerEase(t) : 2 * 1.5 ** t;
+// 난이도: 모든 상대 체력 x ENEMY_HP(자속 1.5배를 메우는 값), 그 위에 단계(0~8 = 배지 수·지역 깊이)별 곡선을 곱한다
+// 초반은 체력이 조금 낮고 공격이 뜸하며, 배지 5개 이후로 갈수록 단단하고 공격이 잦아진다. 숫자를 바꾸면 바로 반영된다
+const ENEMY_HP = 1.5;
+const DIFF_HP = [0.85, 0.9, 0.95, 1, 1, 1.1, 1.2, 1.3, 1.4];   // 단계별 체력 배율
+const DIFF_CD = [1.2, 1.15, 1.1, 1, 1, 0.95, 0.9, 0.85, 0.8];  // 단계별 기술 대기 시간 배율 (작을수록 자주 공격)
+const diffAt = (arr, t) => arr[clamp(Math.round(t), 0, arr.length - 1)];
+const hpMult = (rank, t) => ENEMY_HP * diffAt(DIFF_HP, t) * (rank === 'legend' ? 20 * 1.6 ** t : rank === 'boss' ? 10 * 1.6 ** t * bossEase(t) : rank === 'trainer' ? 2 * 1.5 ** t * trainerEase(t) : 2 * 1.5 ** t);
 
 function makePlayer(m) {
   const b = baseOf(m);
