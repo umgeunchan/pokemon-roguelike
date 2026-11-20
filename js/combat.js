@@ -20,7 +20,7 @@ function withDelta(fn) {
 function hurt(type, amount = 1, src = null) {
   const p = player, who = src?.src ?? curEnemy, move = src?.move ?? who?.act?.name;
   if (p.inv > 0 || p.dash > 0 || p.vanish > 0 || state !== 'play') return;
-  if (Math.random() < p.dodge) { p.inv = 0.5; return say('공격을 피했다!', p.x, p.y - 60, '#aef'); }
+  if (Math.random() < p.dodge + (hasFx('shard') ? 0.1 : 0)) { p.inv = 0.5; return say('공격을 피했다!', p.x, p.y - 60, '#aef'); }
   // 거대방패: 8초마다 다시 차오르는 방패가 공격 한 번을 완전히 막는다
   if (hasFx('bulwark') && p.shieldUp) { p.shieldUp = false; p.shieldT = 8; p.inv = 0.6; fx.push({ kind: 'boom', x: p.x, y: p.y, r: 50, t: 0.25, max: 0.25, color: '#c8d4e8' }); sfx('crit'); return say('방패가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   if (combo('fortress') && Math.random() < 0.2) { p.inv = 0.5; return say('강철 요새가 막아냈다!', p.x, p.y - 60, '#ccf'); }

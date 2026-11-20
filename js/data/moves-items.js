@@ -238,8 +238,8 @@ const LTMS = [
   L('precipice-blades', 'ground', 'erupt', '강화 · 땅의 칼날'),
   L('thousand-arrows', 'ground', 'erupt', '강화 · 땅의 칼날'),
   L('dragon-ascent', 'flying', 'dashStrike', '돌진 · 구르기가 공격, 자동 조준'),
-  L('collision-course', 'fighting', 'dashStrike', '돌진 · 구르기가 공격, 자동 조준, 속도 증가', p => p.speed *= 1.15),
-  L('electro-drift', 'electric', 'dashStrike', '돌진 · 구르기가 공격, 자동 조준, 속도 증가', p => p.speed *= 1.15),
+  L('collision-course', 'fighting', 'dashStrike', '돌진 · 구르기가 공격, 자동 조준, 속도 증가'),
+  L('electro-drift', 'electric', 'dashStrike', '돌진 · 구르기가 공격, 자동 조준, 속도 증가'),
   L('roar-of-time', 'dragon', 'timeStop', '강화 · 주기적으로 시간 정지'),
   L('spacial-rend', 'dragon', 'rend', '강화 · 공간째 범위 베기'),
   L('shadow-force', 'ghost', 'vanish', '구르기 · 사라졌다 나타나며 폭발'),
@@ -248,12 +248,12 @@ const LTMS = [
   L('sunsteel-strike', 'steel', 'blade', '강화 · 관통, 보스에게 강함'),
   L('behemoth-blade', 'steel', 'blade', '강화 · 관통, 보스에게 강함'),
   L('behemoth-bash', 'steel', 'bulwark', '강화 · 피해 감소, 방패'),
-  L('geomancy', 'fairy', 'geo', '강화 · 능력치 상승, 주기적 강화', p => { p.dmg *= 1.3; p.fireDelay *= 0.8; p.speed *= 1.15; }),
+  L('geomancy', 'fairy', 'geo', '강화 · 능력치 상승, 주기적 강화'),
   L('oblivion-wing', 'flying', 'drain', '강화 · 체력 흡수'),
   L('seed-flare', 'grass', 'flare', '강화 · 맞으면 폭발'),
   L('natures-madness', 'fairy', 'madness', '강화 · 체력 절반 확률'),
   L('ruination', 'dark', 'madness', '강화 · 체력 절반 확률'),
-  L('diamond-storm', 'rock', 'shard', '강화 · 급소, 다이아 파편', p => { p.crit += 0.3; p.dodge += 0.1; }),
+  L('diamond-storm', 'rock', 'shard', '강화 · 급소, 다이아 파편'),
 ];
 // 전설 기술 한국어 이름 (PokeAPI에 한국어 이름이 없을 때 대신 쓴다)
 const LEGEND_KO = { psystrike: '사이코브레이크', 'mist-ball': '미스트볼', 'luster-purge': '러스터퍼지', aeroblast: '에어로블라스트', 'blue-flare': '푸른불꽃', 'moongeist-beam': '섀도레이',
@@ -277,11 +277,15 @@ const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'fusion-bolt', 146: 'sacred-fire',
 const HOOPA_POOL = Object.keys(LEGEND_MOVE).map(Number);
 // 기술이 늘 주는 능력치 보너스(조건 없는 것만). 왼쪽 능력치 창과 실제 계산이 같은 값을 쓴다
 // 숨은 조합 보너스는 여기 넣지 않는다 (화면에 드러나면 숨은 효과가 아니게 된다)
+// 배수 규칙: 도구의 배수(빨강구슬 x1.3 등)는 얻는 순간 그때의 능력치에 한 번 곱한다.
+// 기술·특성·기믹의 배수는 아래 함수들로 늘 계산에 붙어서, 그 뒤에 얻은 도구에도 곱해진다
 const moveDmgMul = () => (has('flash-cannon') ? 1.2 : 1) * (has('focus-blast') ? 1.35 : 1) * (has('dragon-claw') ? 1.2 : 1)
-  * (has('close-combat') ? 1.2 : 1) * (has('play-rough') ? 1.2 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * kindPow() * gimmickMul() * abMul() * legendPow;
-const moveCrit = () => (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0) + abStat('crit', 0);
+  * (has('close-combat') ? 1.2 : 1) * (has('play-rough') ? 1.2 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * kindPow() * (hasFx('geo') ? 1.3 : 1) * gimmickMul() * abMul() * legendPow;
+const moveCrit = () => (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0) + (hasFx('shard') ? 0.3 : 0) + abStat('crit', 0);
+// 이동 속도 배수 (기술·특성): 지오컨트롤 x1.15, 액셀브레이크·라이트닝드라이브 x1.15, 특성
+const moveSpeed = () => (hasFx('geo') ? 1.15 : 1) * (has('collision-course') || has('electro-drift') ? 1.15 : 1) * abStat('speed');
 // 공격 사이 간격 배수 (작을수록 빠름): 구슬 하나마다 x1.2, 기합구슬은 더 느리다
-const moveRate = () => (has('bullet-seed') ? 0.5 : 1) * (has('air-slash') ? 0.8 : 1) * 1.2 ** orbCount() * (has('focus-blast') ? 1.15 : 1) * abStat('rate');
+const moveRate = () => (has('bullet-seed') ? 0.5 : 1) * (has('air-slash') ? 0.8 : 1) * 1.2 ** orbCount() * (has('focus-blast') ? 1.15 : 1) * (hasFx('geo') ? 0.8 : 1) * abStat('rate');
 const moveShot = () => (has('air-slash') ? 1.3 : 1) * abStat('shot');
 // 구슬: 구슬 기술 + 다른 기술이 하나라도 있으면 모든 효과(탄 크기·폭발·광선 굵기·원뿔 길이·범위)가 커지고 위력이 오른다. 구슬이 많을수록 더
 const orbCount = () => player ? ORBS.filter(id => player.moves.has(id)).length : 0;
@@ -300,6 +304,6 @@ const lastOf = list => { const ms = [...player.moves].filter(id => list.includes
 // [이름, 아이콘, 값, 소수 자리]: 도구·도핑약·기술 보너스가 모두 들어간 실제 값
 const STATS = [
   ['공격', 'muscle-band', p => p.dmg * moveDmgMul() * stab(p.type), 2], ['연사', 'quick-claw', p => 1 / (p.fireDelay * moveRate()), 2], ['사거리', 'wide-lens', p => p.range * p.shotSpeed * moveShot() / TS, 1],
-  ['탄속', 'zoom-lens', p => p.shotSpeed * moveShot() / 380, 2], ['속도', 'choice-scarf', p => p.speed * abStat('speed') / 200, 2], ['급소', 'scope-lens', p => (p.crit + moveCrit()) * 100, 0],
+  ['탄속', 'zoom-lens', p => p.shotSpeed * moveShot() / 380, 2], ['속도', 'choice-scarf', p => p.speed * moveSpeed() / 200, 2], ['급소', 'scope-lens', p => (p.crit + moveCrit()) * 100, 0],
 ];
 const HEART = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];

@@ -1,7 +1,7 @@
 // 매 프레임 게임 진행: 이동, 충돌, 탄, 아이템 줍기
 // ---------- 메인 업데이트 ----------
 // 돌진 기술 위력 배수 = 이동 속도 (능력치 창의 속도 값, 기본 1 안팎)
-const dashSpd = () => Math.max(2, player.speed * abStat('speed') / 200);  // 최소 2배
+const dashSpd = () => Math.max(2, player.speed * moveSpeed() / 200);  // 최소 2배
 function update(dt) {
   const p = player;
   refreshFx();
@@ -72,7 +72,7 @@ function update(dt) {
     if (hitN && p.time >= (p.dashHealAt ?? 0)) { p.dashHealAt = p.time + 1.5; heal(1); say('체력을 회복했다!', p.x, p.y - 60, '#8f8'); }
   }
   if (vx && !(keys.ArrowLeft || keys.ArrowRight)) p.flip = vx > 0;
-  moveBody(p, vx * p.speed * dt * (p.webbed > 0 && !abStat('clear', false) ? 0.5 : 1) * abStat('speed'), vy * p.speed * dt * (p.webbed > 0 && !abStat('clear', false) ? 0.5 : 1) * abStat('speed')); clampBody(p);  // 실 장판 위에서는 느려진다
+  moveBody(p, vx * p.speed * dt * (p.webbed > 0 && !abStat('clear', false) ? 0.5 : 1) * moveSpeed(), vy * p.speed * dt * (p.webbed > 0 && !abStat('clear', false) ? 0.5 : 1) * moveSpeed()); clampBody(p);  // 실 장판 위에서는 느려진다
   p.velX = (p.x - ox) / dt; p.velY = (p.y - oy) / dt;  // 라이벌의 읽어내기가 쓰는 이동 속도
   p.walk += Math.hypot(p.x - ox, p.y - oy); p.moving = p.x !== ox || p.y !== oy;
   if (vx || vy) p.face = faceRow(vx, vy);
