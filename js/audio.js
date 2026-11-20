@@ -230,6 +230,7 @@ function sfx(name) {
 function bgmFor() {
   if (state === 'title' || state === 'region' || state === 'select' || state === 'ach') return 'town';
   if (!['play', 'pause', 'map', 'learn', 'shop'].includes(state) || !map) return null;
+  if (map.sub === 'rival') return 'rival';
   if (map.sub === 'hoopa') return map.enemies.some(e => e.hoopa) ? 'legend' : 'champion';
   if (map.battle?.rival || map.npcs.some(n => n.rival && !n.defeated)) return 'rival';
   if (map.enemies.some(e => e.rank === 'legend' && Math.hypot(e.x - player.x, e.y - player.y) < 900)) return 'legend';

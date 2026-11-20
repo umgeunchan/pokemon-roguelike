@@ -55,7 +55,7 @@ function newRun(m, shiny = false) {
 const SAVE_KEY = 'pokemon-dungeon-save';
 const clearSave = () => store.set(SAVE_KEY, { deleted: true, at: Date.now() });
 // 지도나 상자 내용물 규칙이 바뀌면 SAVE_VER를 올린다. 버전이 다른 옛 기록은 이어하지 않는다 (같은 시드로도 다른 지도가 나와서 기록이 어긋난다)
-const SAVE_VER = 2;
+const SAVE_VER = 3;
 const loadSave = () => { const sv = store.get(SAVE_KEY); return sv?.v === SAVE_VER && REGIONS.some(r => r.name === sv.region) ? sv : null; };
 const packContent = k => k.kind === 'tm' ? { kind: 'tm', tm: k.tm.id } : k.kind === 'item' ? { kind: 'item', item: k.item.id } : { kind: k.kind };
 const unpackContent = k => k.kind === 'tm' ? { kind: 'tm', tm: moveDef(k.tm) } : k.kind === 'item' ? { kind: 'item', item: itemById(k.item) } : { kind: k.kind };
@@ -63,7 +63,7 @@ const unpackContent = k => k.kind === 'tm' ? { kind: 'tm', tm: moveDef(k.tm) } :
 function saveRun() {
   const p = player;
   if (!p || !world || p.hp <= 0 || p.champion || !['play', 'pause', 'map', 'shop', 'learn'].includes(state)) return false;  // 챔피언이 된 판은 끝난 판이라 저장하지 않는다
-  if (map.battle && map === world) return false;  // 승부 중에는 저장하지 않는다 (도망치기 꼼수 방지)
+  if ((map.battle && map === world) || map.sub === 'rival') return false;  // 승부 중에는 저장하지 않는다 (도망치기 꼼수 방지)
   const prim = Object.fromEntries(Object.entries(p).filter(([, v]) => v === null || ['number', 'boolean', 'string'].includes(typeof v)));
   const [x, y] = map === world ? [p.x, p.y] : world.returnTo;
   const sv = {
@@ -75,6 +75,7 @@ function saveRun() {
     drops: world.pickups.filter(k => !k.id).map(k => ({ ...packContent(k), x: k.x, y: k.y, ball: !!k.ball })),
     npcs: world.npcs.filter(n => n.id >= 0).map(n => ({ id: n.id, defeated: !!n.defeated, gift: n.kind === 'gift' && !n.gift, sold: !!n.sold, healed: !!n.healed })),
     legends: world.legends.filter(l => l.done).map(l => l.i),
+    legendHp: Object.fromEntries(world.legends.filter(l => !l.done).map(l => { const e = world.enemies.find(e => e.legend === l); return [l.i, e ? e.hp / e.maxHp : l.hpFrac ?? 1]; })),
     visited: world.nodes.filter(n => n.visited).map(n => n.i),
   };
   return store.set(SAVE_KEY, sv);
@@ -104,6 +105,7 @@ async function continueRun() {
     world.pickups = [...world.pickups.filter(k => left.has(k.id)), ...sv.drops.map(d => ({ ...unpackContent(d), x: d.x, y: d.y, ball: d.ball })).filter(k => k.kind === 'berry' || k.kind === 'candy' || k.tm || k.item)];
     for (const n of world.npcs) { const o = byId.get(n.id); if (!o) continue; if (o.defeated) n.defeated = true; if (o.gift) n.gift = null; if (o.sold) n.sold = true; if (o.healed) n.healed = true; }
     for (const i of sv.legends) world.legends[i].done = true;
+    for (const [i, f] of Object.entries(sv.legendHp ?? {})) if (world.legends[i]) world.legends[i].hpFrac = f;
     for (const i of sv.visited) world.nodes[i].visited = true;
     map = world;
     resetCombat(); refreshFx(); renderBar();
@@ -115,4 +117,4 @@ async function continueRun() {
 
 function autoSave() { if (saveRun()) { sfx('save'); say('기록했다', player.x, player.y - 100, '#8cf'); } }
 
-const resetCombat = () => { tears = []; beams = []; bombs = []; hazards = []; puddles = []; pstrikes = []; fx = fx ?? []; curNode = null; timeStop = 0; };
+const resetCombat = () => { tears = []; beams = []; bombs = []; hazards = []; puddles = []; pstrikes = []; fx = fx ?? []; curNode = null; timeStop = 0; legendFight = false; };

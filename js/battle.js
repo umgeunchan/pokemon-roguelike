@@ -82,7 +82,7 @@ function rivalDue() {
 
 function rivalCheck() {
   const p = player, r = p.rival;
-  if (!r || map !== world || map.battle) return;
+  if (!r || map !== world || map.battle || legendFight) return;
   const here = world.npcs.find(n => n.rival);
   if (here) { if (!here.defeated && Math.hypot(here.x - p.x, here.y - p.y) > 2200) world.npcs = world.npcs.filter(n => n !== here); return; }
   const ev = rivalDue();
@@ -94,18 +94,35 @@ function rivalCheck() {
   banner = { text: `라이벌 ${name}이(가) 다가온다!`, t: 2.5 };
 }
 
+// 라이벌과 마주치면 체육관 같은 결투장으로 옮겨서 싸운다. 이기면 잠시 뒤 마주쳤던 자리로 돌아오고, 보상은 그 자리에 떨어져 있다
+function makeRivalArena(who, type) {
+  const tw = 21, th = 13, cx = Math.floor(tw / 2);
+  const solid = new Uint8Array(tw * th).fill(4), voids = new Uint8Array(tw * th);
+  for (let y = 1; y < th - 1; y++) for (let x = 1; x < tw - 1; x++) solid[y * tw + x] = 0;
+  for (const [dx, dy] of [[4, 4], [7, 7], [5, 9]]) { solid[dy * tw + cx - dx] = 1; solid[dy * tw + cx + dx] = 1; }  // 좌우 대칭 기둥(지진 엄폐물)
+  const room = { i: 0, y0: 0, y1: th - 1, x0: 0, x1: tw - 1, cx: (cx + 0.5) * TS, type, who, down: [], up: [], cleared: false, started: true };
+  return { kind: 'indoor', sub: 'rival', building: null, tw, th, solid, voids, rooms: [room], room, npcs: [], pickups: [], enemies: [], buildings: [], signs: [], battle: null, type, furn: [], leader: null };
+}
+
 function startRival(n) {
   const p = player, b = p.beaten.size, [hi, bye] = RIVAL_TALK[n.rival];
+  if (map !== world || legendFight) return;
   n.fighting = true; n.flip = p.x > n.x;
-  startBattle({ who: n.name, title: '라이벌', queue: rivalTeam(b), x: n.x, y: n.y, rank: b ? 'boss' : 'trainer', tier: clamp(b - 1, 0, 7), npc: n, rival: true, wait: 2.5,
+  world.returnTo = [p.x, p.y];
+  map = makeRivalArena({ leader: n.name, sprite: n.sprite, title: '라이벌' }, MON[p.rival.starter]?.types[0] ?? 'normal');
+  resetCombat(); p.warpIn = 0.6;
+  const r = map.room, at = { x: r.cx, y: (r.y0 + 1.6) * TS };
+  p.x = r.cx; p.y = (map.th - 2.5) * TS;
+  startBattle({ who: n.name, title: '라이벌', queue: rivalTeam(b), ...at, rank: b ? 'boss' : 'trainer', tier: clamp(b - 1, 0, 7), rival: true, wait: 2.5,
     say: (i, ace) => ace && i > 0 ? '아직 끝나지 않았어! 내 파트너, 가자!' : i === 0 ? hi : null, onWin: () => {
-    n.fighting = false; n.defeated = true; n.leaveT = 5; p.rival.done.add(n.rival);
+    n.fighting = false; n.defeated = true; n.leaveT = 5; p.rival.done.add(n.rival); r.cleared = true;
     ach('rival1'); if (RIVAL_EVENTS.every(ev => p.rival.done.has(ev))) ach('rival6');
-    gainMoney(b ? 1200 + b * 500 : 300, n.x, n.y);
-    dialog = { name: n.name, text: bye, t: 5 };
-    banner = { text: `라이벌 ${n.name}에게 이겼다!`, t: 2.5 };
-    map.pickups.push({ ...rollContent(Math.random, { tm: 0.45, c: b ? 0 : 0.5, r: 0.6, l: b >= 5 ? 0.4 : 0.1 }), x: n.x, y: n.y + 40, ball: true });
-    map.pickups.push({ kind: 'candy', x: n.x + 40, y: n.y + 40 });
+    gainMoney(b ? 1200 + b * 500 : 300, at.x, at.y);
+    dialog = { name: n.name, text: bye, t: 6 };
+    banner = { text: `라이벌 ${n.name}에게 이겼다! 원래 자리로 돌아간다`, t: 3 };
+    world.pickups.push({ ...rollContent(Math.random, { tm: 0.45, c: b ? 0 : 0.5, r: 0.6, l: b >= 5 ? 0.4 : 0.1 }), x: n.x, y: n.y + 40, ball: true });
+    world.pickups.push({ kind: 'candy', x: n.x + 40, y: n.y + 40 });
+    map.returnT = 3.5;
   } });
 }
 
@@ -145,6 +162,8 @@ function startRoom(r) {
     open(); if ((p.hits ?? 0) === hits0) ach('perfect'); p.beaten.add(gi); map.portal = gymPortal(r);
     gainMoney(1500 + gt * 600, at.x, at.y + 2 * TS);
     banner = { text: `${r.who.leader}에게 이겼다! 배지를 손에 넣었다 (${p.beaten.size}/${region.gyms.length})`, t: 3 }; sfx('badge');
+    map.roadPortal = roadPortal(r);
+    if (map.roadPortal) dialog = { name: r.who.leader, text: `배지 ${region.gyms.length}개를 다 모았구나. 저 고리를 타면 ${roadNode().name}까지 단숨에 갈 수 있어!`, t: 6, keep: true };
     map.pickups.push({ ...rollContent(Math.random, { tm: 0.55, c: 0, r: 0.7, l: 0.3 }), x: r.cx, y: (r.y0 + 4.5) * TS });
     map.pickups.push({ kind: 'candy', x: r.cx + 60, y: (r.y0 + 4.5) * TS });
   } });
@@ -164,11 +183,12 @@ function startRoom(r) {
   if (champ) dialog = { name: r.who.leader, text: `기다리고 있었어. 나는 ${region.name}지방의 챔피언 ${r.who.leader}. 이 방에 들어온 이상, 자격을 증명해야 해.`, t: 4, keep: true };
 }
 
-function leaveBuilding() {
-  const p = player;
+function leaveBuilding(to = null) {
+  const p = player, from = map.sub;
   map = world;
-  [p.x, p.y] = world.returnTo;
+  [p.x, p.y] = to ?? world.returnTo;
   resetCombat();
+  if (from === 'rival' || to) p.warpIn = 0.6;
   if (p.hp > 0 && p.winAt <= 0) autoSave();
 }
 
@@ -266,14 +286,14 @@ function updateNpcs(dt) {
     // 라이벌은 플레이어를 향해 곧장 걸어와서 승부를 건다
     if (n.rival) {
       const d = Math.hypot(p.x - n.x, p.y - n.y);
-      if (!map.battle && d < 200) { startRival(n); continue; }
+      if (!map.battle && !legendFight && d < 200) { startRival(n); continue; }
       const [wx, wy] = pathDir(n), ox = n.x, oy = n.y;
       moveBody(n, wx * 150 * dt, wy * 150 * dt);
       n.moving = n.x !== ox || n.y !== oy; n.flip = p.x > n.x;
       continue;
     }
     // 트레이너와 눈이 마주치면 승부
-    if (!map.battle && Math.hypot(p.x - n.x, p.y - n.y) < 170) { n.flip = p.x > n.x; startTrainer(n); continue; }
+    if (!map.battle && !legendFight && Math.hypot(p.x - n.x, p.y - n.y) < 170) { n.flip = p.x > n.x; startTrainer(n); continue; }
     if ((n.turn -= dt) <= 0) { const hd = Math.hypot(n.hx - n.x, n.hy - n.y); n.dir = hd > 120 ? [(n.hx - n.x) / hd, (n.hy - n.y) / hd] : Math.random() < 0.4 ? [0, 0] : randDir(); n.turn = 1 + Math.random() * 2; }
     const ox = n.x, oy = n.y;
     moveBody(n, n.dir[0] * 45 * dt, n.dir[1] * 45 * dt);
@@ -298,6 +318,7 @@ function talk() {
     if (!n.gift) return line('여행 조심해!');
     map.pickups.push({ ...n.gift, x: n.x, y: n.y + 50, ball: true }); n.gift = null; line('이걸 줄게!');
   }
+  if (n.kind === 'trainer' && !n.defeated && legendFight) return line('전설의 포켓몬이 날뛰고 있잖아! 승부는 나중에 하자!');
   if (n.kind === 'trainer') n.defeated ? line(n.rival ? '다음엔 내가 이긴다!' : '졌다...') : n.rival ? startRival(n) : startTrainer(n);
 }
 

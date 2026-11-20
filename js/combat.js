@@ -44,6 +44,8 @@ const enemiesNear = (x, y, rad, except) => map.enemies.filter(o => o !== except 
 // tick: 광선처럼 짧은 간격으로 들어가는 피해. secondary: 다른 효과가 만든 피해라 또 연쇄하지 않음
 function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   if (e.hp <= 0 || untargetable(e)) return;
+  // 전설은 제 장소 안에서만 싸울 수 있다 (장소 밖에서 쏘아 맞히는 꼼수 방지)
+  if (outsideLegendHome(e)) { if (!tick) say('전설의 기운에 막혔다', e.x, e.y - 70, '#c8f'); return; }
   const p = player, raw = eff(type, e.mon.types), big = isBig(e);
   // shortcut: 면역(0배)도 0.25배로 처리해서 못 잡는 적이 없게 함. 기술을 골라 쓰게 되면 원작대로 0배로
   // 늘 붙는 기술 보너스는 moveDmgMul(능력치 창의 공격에 보이는 값), 여기서는 조건이 붙는 것만 더 곱한다
@@ -458,9 +460,11 @@ function updateEnemyInner(e, dt) {
   // 야생·전설은 가까이 오거나 맞기 전까지는 제 영역을 어슬렁거린다.
   // 플레이어가 멀어지거나 제 영역에서 너무 끌려 나오면 쫓기를 그만두고 돌아간다 (2초 동안은 다시 쫓지 않는다)
   if (((e.rank === 'wild' || e.rank === 'legend') && ((map.battle && !e.battle) || inTown(p.x, p.y))) || (legendFight && e.rank === 'wild' && !e.minion)) { e.aggro = false; e.leash = 2; e.act = null; }
+  else if (outsideLegendHome(e)) { if (e.aggro || e.act) escapeLegend(e); }
   else if ((e.rank === 'wild' || e.rank === 'legend') && !e.arena) {
     if (dist > 750 || Math.hypot(e.x - e.hx, e.y - e.hy) > 900) { e.aggro = false; e.leash = 2; }
     else if ((e.leash = (e.leash ?? 0) - dt) <= 0 && dist < 520) e.aggro = true;
+    if (e.aggro && e.rank === 'legend') e.engaged = true;
   }
   let w = [0, 0], k = 1;
   if (!e.aggro) {
@@ -507,7 +511,7 @@ function manageSpawns(dt) {
   const p = player, wild = map.enemies.filter(e => e.rank === 'wild');
   for (const e of wild) if (Math.hypot(e.x - p.x, e.y - p.y) > 1400) e.gone = true;
   const here = nodeAt(p.x, p.y), near = wild.filter(e => !e.gone && Math.hypot(e.x - p.x, e.y - p.y) < 900).length;
-  if (near >= 6 + Math.floor(tierAt(here) / 2)) return;
+  if (near >= 8 + Math.floor(tierAt(here) / 2)) return;  // 넓어진 도로에 맞춰 한 번에 더 많이
   for (let tries = 0; tries < 24; tries++) {
     const a = Math.random() * Math.PI * 2, d = 480 + Math.random() * 280, x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
     const tx = Math.floor(x / TS), ty = Math.floor(y / TS), k = ty * world.tw + tx;
@@ -522,12 +526,28 @@ function manageSpawns(dt) {
   }
 }
 
+// 전설이 사는 장소. 플레이어가 그 밖에 있으면 전설과 싸울 수 없다
+const outsideLegendHome = e => e.rank === 'legend' && !!e.legend && map === world && nodeAt(player.x, player.y) !== e.legend.n;
+// 장소 밖으로 나가면 도망친 것: 전설은 깎인 체력 그대로 제자리로 돌아가고, 다시 들어오면 이어서 싸운다
+function escapeLegend(e) {
+  const fled = e.engaged;
+  e.aggro = e.engaged = false; e.act = null; e.leash = 1; e.fade = 0; e.z = 0; unstick(e);
+  e.legend.hpFrac = e.hp / e.maxHp;
+  for (const o of map.enemies) if (o.summoner === e) { o.gone = true; fx.push({ kind: 'poof', x: o.x, y: o.y, t: 0.3, max: 0.3 }); }
+  tears = tears.filter(t => t.from !== 'e' || (t.src !== e && t.src?.summoner !== e));
+  hazards = hazards.filter(h => h.src !== e);
+  if (!fled) return;
+  samplePower();
+  banner = { text: `${e.mon.name}에게서 도망쳤다! (남은 체력 ${Math.ceil(e.hp / e.maxHp * 100)}%)`, t: 3 };
+}
+
 function checkLegends() {
   const p = player;
   for (const l of world.legends) {
     if (l.done || l.alive || Math.hypot(p.x - l.x, p.y - l.y) > 520) continue;
     const e = spawnEnemy(MON[l.id], l.x, l.y, 'legend', nodeAt(l.x, l.y).tier);
     e.legend = l; l.alive = true;
+    if (l.hpFrac < 1) { e.hp = e.maxHp * l.hpFrac; }  // 예전에 도망쳤던 전설: 깎인 체력 그대로
     map.enemies.push(e);
     banner = { text: `앗! 야생의 ${MON[l.id].name}이(가) 나타났다!`, t: 3 }; sfx('legend');
   }

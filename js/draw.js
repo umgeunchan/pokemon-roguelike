@@ -418,7 +418,7 @@ function edges(k, x, y, test, color, wpx, tuft = null) {
 
 function placeName() {
   if (map === world) return curNode?.name ?? '';
-  return { league: '포켓몬리그', hoopa: '후파의 고리 너머' }[map.sub] ?? `${map.leader.leader}의 ${map.leader.title === '체육관 관장' ? '체육관' : '시련'}`;
+  return { league: '포켓몬리그', hoopa: '후파의 고리 너머', rival: '라이벌과의 승부' }[map.sub] ?? `${map.leader.leader}의 ${map.leader.title === '체육관 관장' ? '체육관' : '시련'}`;
 }
 
 function drawPanel() {
@@ -468,6 +468,18 @@ function drawRegionMap(ox, oy, sx, sy, big) {
     ctx.fillStyle = n.gym ? (p.beaten.has(region.gyms.indexOf(n.gym)) ? TYPE_COLOR[n.gym.type] : '#fff') : n.league ? '#c8f' : n.kind === 'T' ? '#b9a77a' : n.visited ? '#888' : '#444';
     ctx.fillRect(x - s, y - s, s * 2 + 2, s * 2 + 2);
     if (big && (n.visited || p.townMap) && (n.kind === 'T' || n.gym || n.league || n.legends.length || n === nodeAt(p.x, p.y))) text(n.name, x + 1, y - 12, 10, n === nodeAt(p.x, p.y) ? '#ff8' : '#ddd');
+  }
+  // 타운맵이 있으면 체육관마다 순서 번호(아직) 또는 ✔(배지 획득)를 달고, 다음에 갈 체육관을 깜빡여 알려 준다
+  if (big && p.townMap) {
+    const next = region.gyms.findIndex((_, i) => !p.beaten.has(i));
+    for (const n of nodes) {
+      if (!n.gym) continue;
+      const i = region.gyms.indexOf(n.gym), [x, y] = pos(n), got = p.beaten.has(i);
+      text(got ? '✔' : `${i + 1}`, x + 1, y + 5, 11, got ? '#2a2' : '#222');
+      if (i === next) { ctx.strokeStyle = Math.floor(now * 3) % 2 ? '#ff8' : '#fa4'; ctx.lineWidth = 2; ctx.strokeRect(x - 12, y - 12, 26, 26); }
+    }
+    const nn = next >= 0 && nodes.find(n => n.gym === region.gyms[next]);
+    glowText(nn ? `다음 목적지: ${nn.name} (${next + 1}번째 · ${TYPE_KO[nn.gym.type]} 체육관 ${nn.gym.leader})` : `배지 ${region.gyms.length}개 완료! 다음 목적지: ${roadNode().name}`, SIDE + W / 2, HUD + H - 14, 13, '#ff8', '#a60');
   }
   if (big) for (const l of world.legends) if (!l.done) { const [x, y] = pos(l.n); text('★', x + 14, y + 6, 14, Math.floor(now * 3) % 2 ? '#c8f' : '#fff'); }
   const [wx, wy] = map === world ? [p.x, p.y] : world.returnTo, px = ox + (wx / TS - MARGIN) / CELL * sx, py = oy + (wy / TS - MARGIN) / CELL * sy;
@@ -665,6 +677,7 @@ function drawPlay() {
   const [tx0, ty0, tx1, ty1] = drawTiles(cam);
   if (map.kind === 'indoor') drawRoomDecor();
   if (map.portal) drawPortal(map.portal);
+  if (map.roadPortal) drawPortal(map.roadPortal);
   if (map.hoopa) drawHoopaRing(map.hoopa, map.hoopa.used ? 1 + (warp?.t ?? 0) : 1);
   const inView = (x, y, m = 120) => x > cam.x - m && x < cam.x + W + m && y > cam.y - m && y < cam.y + H + m * 2;
   const bob = Math.round(Math.sin(now * 5) * 3);
@@ -787,7 +800,7 @@ function drawBigMap() {
   ctx.fillStyle = 'rgba(0,0,0,.85)'; ctx.fillRect(SIDE, HUD, W, H);
   const cols = Math.max(...world.nodes.map(n => n.gx)) + 1, rows = Math.max(...world.nodes.map(n => n.gy)) + 1, s = Math.min((W - 80) / cols, (H - 80) / rows);
   drawRegionMap(SIDE + (W - (cols - 1) * s) / 2, HUD + (H - (rows - 1) * s) / 2 + 10, s, s, true);
-  text(`${region.name}지방 지도 (M 닫기) · ★ 전설의 기운`, SIDE + W / 2, HUD + 24, 14, '#ff8');
+  text(`${region.name}지방 지도 (M 닫기) · ★ 전설의 기운${player.townMap ? ' · 숫자 = 체육관 순서, ✔ = 배지 획득' : ''}`, SIDE + W / 2, HUD + 24, 14, '#ff8');
 }
 
 function drawLearn() {

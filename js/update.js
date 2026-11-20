@@ -49,6 +49,8 @@ function update(dt) {
     if (p.y > (map.th - 1) * TS + 10) return leaveBuilding();
     if (map.portal && Math.hypot(p.x - map.portal.x, p.y - map.portal.y) < 28) { if (map.portal.win) { state = 'win'; return; } return leaveBuilding(); }
     if (map.hoopa && Math.hypot(p.x - map.hoopa.x, p.y - map.hoopa.y) < 30) return enterHoopa();
+    if (map.roadPortal && Math.hypot(p.x - map.roadPortal.x, p.y - map.roadPortal.y) < 28) { const n = roadNode(); leaveBuilding(openSpot(n)); banner = { text: `${n.name}(으)로 이동했다!`, t: 2.5 }; return; }
+    if (map.returnT > 0 && (map.returnT -= dt) <= 0) return leaveBuilding();  // 라이벌 결투장: 이기면 원래 자리로
     const r = roomAt(Math.floor(p.y / TS));
     if (r && !r.started && !map.battle && p.y < (r.y1 - 1.2) * TS) startRoom(r);
   } else {
@@ -59,6 +61,8 @@ function update(dt) {
       curNode = n;
       if (!n.visited) { n.visited = true; banner = { text: n.name, t: 2 }; }
     }
+    // 전설이 사는 장소 밖으로 나가면 도망친 것 (멀리 있어서 이번 프레임에 움직이지 않는 전설도 확인)
+    for (const e of map.enemies) if (e.rank === 'legend' && (e.aggro || e.act) && outsideLegendHome(e)) escapeLegend(e);
     // 전설과 싸우기 시작하면(전설이 덤벼들면) 주변 야생은 놀라 달아나고, 싸우는 동안 새로 나오지 않는다
     const lf = map.enemies.some(e => e.rank === 'legend' && e.aggro && e.hp > 0 && Math.hypot(e.x - p.x, e.y - p.y) < 900);
     if (lf && !legendFight) {

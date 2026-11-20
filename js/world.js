@@ -59,9 +59,9 @@ function genWorld(seed) {
   const maxD = Math.max(...dist.values()) || 1;
   for (const n of nodes) {
     n.tier = Math.round(dist.get(n) / maxD * 7);
-    // 마을은 반듯한 광장, 일직선으로 지나가는 길은 진행 방향으로 길쭉한 구역
+    // 마을은 건물·NPC만 들어가는 작은 광장, 도로는 넉넉하게 넓은 전투 구역. 일직선으로 지나가는 길은 진행 방향으로 길쭉하다
     const h = n.links.some(l => l.gy === n.gy), v = n.links.some(l => l.gx === n.gx);
-    [n.hx, n.hy] = n.kind === 'T' || n.gym || n.league ? [10, 8] : h && !v ? [12, 6] : v && !h ? [6, 12] : [10, 10];
+    [n.hx, n.hy] = n.kind === 'T' || n.gym || n.league ? [8, 6] : h && !v ? [15, 8] : v && !h ? [8, 15] : [13, 13];
   }
 
   const area = new Int16Array(N), zone = new Uint8Array(N), solid = new Uint8Array(N).fill(1), road = new Uint8Array(N), deco = new Uint8Array(N);
@@ -76,12 +76,12 @@ function genWorld(seed) {
     const wob = n.kind === 'T' || n.gym || n.league ? 0 : (noise(tx / 4, ty / 4) - 0.5) * 0.35;
     if (Math.max(Math.abs(tx - n.tx) / n.hx, Math.abs(ty - n.ty) / n.hy) + wob < 1) { const k = ty * tw + tx; zone[k] = 1; solid[k] = 0; area[k] = n.i; }
   }
-  // 구역 사이를 잇는 폭 5칸 길, 가운데 3칸은 흙길
+  // 구역 사이를 잇는 폭 7칸 길, 가운데 3칸은 흙길
   for (const [a, b] of links) {
     const A = byCh[a], B = byCh[b], steps = Math.ceil(Math.hypot(B.tx - A.tx, B.ty - A.ty));
     for (let s = 0; s <= steps; s++) {
       const x = Math.round(A.tx + (B.tx - A.tx) * s / steps), y = Math.round(A.ty + (B.ty - A.ty) * s / steps);
-      for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
+      for (let oy = -3; oy <= 3; oy++) for (let ox = -3; ox <= 3; ox++) {
         const k = (y + oy) * tw + x + ox;
         if (!zone[k]) zone[k] = 2;
         solid[k] = 0;
@@ -136,8 +136,8 @@ function genWorld(seed) {
   let npcId = 0;
   const towns = nodes.filter(n => n.kind === 'T').sort((a, b) => a.tier - b.tier || (b.start ? 1 : 0) - (a.start ? 1 : 0));
   for (const n of nodes) {
-    if (n.gym) building(n, 'gym', -8, 1, 7, 4, { type: n.gym.type });
-    if (n.league) building(n, 'league', 2, 1, 8, 4, { type: 'dragon' });
+    if (n.gym) building(n, 'gym', -7, 0, 7, 4, { type: n.gym.type });
+    if (n.league) building(n, 'league', 0, 0, 8, 4, { type: 'dragon' });
     if (n.kind !== 'T') continue;
     // 회복과 상점은 건물 없이 마을 한가운데 NPC에게 말을 건다 (연못은 중심 4칸 밖에만 생겨서 이 자리는 비어 있다)
     w.npcs.push({ id: npcId++, kind: 'nurse', sprite: 'nurse', name: '간호순', x: (n.tx - 2.5) * TS, y: (n.ty - 1.5) * TS });
@@ -196,12 +196,12 @@ function genWorld(seed) {
   let pk = 0;
   for (const n of nodes) {
     if (n.kind === 'T' || n.gym || n.league) continue;
-    for (let i = 0, c = 2 + Math.floor(rnd() * 3); i < c; i++) {
+    for (let i = 0, c = 3 + Math.floor(rnd() * 3); i < c; i++) {
       const [x, y] = spotNear(n, true);
       w.pickups.push({ id: `pk${pk++}`, x, y, ball: true, ...rollContent(rnd, n.kind === 'S' ? { tm: 0.2, c: 0.45, r: 0.35, l: 0.2 } : { tm: 0.2, c: 0.68, r: 0.3, l: 0.02 }) });
     }
     const pool = TRAINERS[n.kind] ?? TRAINERS.R;
-    for (let i = 0, c = 1 + Math.floor(rnd() * 2); i < c; i++) {
+    for (let i = 0, c = 2 + Math.floor(rnd() * 2); i < c; i++) {
       const [sprite, name] = pool[Math.floor(rnd() * pool.length)], [x, y] = spotNear(n, false);
       w.npcs.push({ id: npcId++, kind: 'trainer', sprite, name, x, y, hx: x, hy: y, r: 14, dir: [0, 0], turn: rnd() * 2, node: n });
     }
@@ -252,8 +252,21 @@ function makeIndoor(b) {
   if (!league && player.beaten.has(region.gyms.indexOf(g))) {
     for (const r of m.rooms) { r.cleared = r.started = true; r.up.forEach(k => solid[k] = 0); if (r.npc) r.npc.defeated = true; }
     m.portal = gymPortal(m.rooms.at(-1));
+    m.roadPortal = roadPortal(m.rooms.at(-1));
   }
   return m;
+}
+// 배지 8개를 다 모으면 관장 방에 챔피언로드(없는 지방은 포켓몬리그 마을)로 바로 가는 고리가 생긴다
+const roadNode = () => world.nodes.find(n => n.name.includes('챔피언로드')) ?? world.nodes.find(n => n.league);
+const roadPortal = r => player.beaten.size >= region.gyms.length ? { x: r.cx, y: (r.y1 - 6.5) * TS, label: `${roadNode().name}(으)로`, road: true } : null;
+// 장소 한가운데에서 가장 가까운, 걸어갈 수 있는 빈칸
+function openSpot(n) {
+  for (let rad = 0; rad < 12; rad++) for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+    if (Math.max(Math.abs(dx), Math.abs(dy)) !== rad) continue;
+    const tx = n.tx + dx, ty = n.ty + dy, k = ty * world.tw + tx;
+    if (world.reach[k] && !world.solid[k] && !circleHitsSolid((tx + 0.5) * TS, (ty + 0.5) * TS, 16)) return [(tx + 0.5) * TS, (ty + 0.5) * TS];
+  }
+  return [(n.tx + 0.5) * TS, (n.ty + 0.5) * TS];
 }
 // 관장 방 한가운데 아래쪽: 밟으면 체육관 밖 문 앞으로 나간다
 const gymPortal = r => ({ x: r.cx, y: (r.y1 - 3.5) * TS });

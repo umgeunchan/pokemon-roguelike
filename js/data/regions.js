@@ -1,7 +1,7 @@
 // 지방 데이터: 지도, 체육관 관장, 사천왕, 라이벌, 트레이너 종류
 const API = 'https://pokeapi.co/api/v2', SPR = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites';
 const SIDE = 160, W = 720, H = 432, HUD = 60, CW = SIDE + W, CH = HUD + H;
-const TS = 48, CELL = 26, MARGIN = 14, TEAR_Z = 22, FLY_Z = 30, DAY = 300;
+const TS = 48, CELL = 34, MARGIN = 20, TEAR_Z = 22, FLY_Z = 30, DAY = 300;
 const DIRS = [[0, -1], [0, 1], [-1, 0], [1, 0]];
 const DIRS8 = [...DIRS, [-1, -1], [1, -1], [-1, 1], [1, 1]];
 const LEGEND_KEY = 'pokemon-dungeon-legends', DEX_KEY = 'pokemon-dungeon-dex', SHINY_KEY = 'pokemon-dungeon-shiny', SHINY_RATE = 0.01, NAMES_KEY = 'pokemon-dungeon-names-v2', STARTER_KEY = 'pokemon-dungeon-starters';
