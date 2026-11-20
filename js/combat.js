@@ -421,7 +421,7 @@ function pathDir(e) {
 }
 
 const aimAt = (a, e) => { const p = player, d = Math.hypot(p.x - e.x, p.y - e.y) || 1; a.dx = (p.x - e.x) / d; a.dy = (p.y - e.y) / d; };
-const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) * (e.hoopa ? 0.85 : 1) * (e.weak > 0 ? 1.4 : 1) * (isBig(e) ? Math.min(1, diffAt(DIFF_CD, e.tier ?? 0)) : diffAt(DIFF_CD, e.tier ?? 0)) * abFoes(e) + Math.random() * 0.5;
+const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) * (e.hoopa ? 0.85 : 1) * (e.weak > 0 ? 1.4 : 1) * (isBig(e) && legendStart() ? Math.min(1, diffAt(DIFF_CD, e.tier ?? 0)) : diffAt(DIFF_CD, e.tier ?? 0)) * abFoes(e) + Math.random() * 0.5;
 // 관장·라이벌 등 보스급은 초반에도 공격 빈도를 늦추지 않는다 (DIFF_CD의 초반 완화는 잡몹·트레이너만)
 // 필살기(필살 일격·필살 광선) 피해: 체력 2칸, 마지막 단계(사천왕·챔피언·후반 전설)는 3칸
 const heavyDmg = e => (e.tier ?? 0) >= 7 ? 3 : 2;

@@ -160,7 +160,7 @@ function startRoom(r) {
   // 관장은 배지가 적을 때 엔트리 뒤쪽(에이스 포함) 몇 마리만 낸다: 배지 0~1개 2마리, 2~3개 3마리, 4개 이상 전부
   const leaderTeam = r.who.team.slice(-clamp(2 + Math.floor(gt / 2), 2, r.who.team.length));
   if (b.kind === 'gym') return startBattle({ who: r.who.leader, title: r.who.title, queue: leaderTeam, ...at, rank: 'boss', tier: gt, onWin: () => {
-    open(); if ((p.hits ?? 0) === hits0) ach('perfect'); p.beaten.add(gi); p.maxHp += 1; p.hp += 1; map.portal = gymPortal(r);
+    open(); if ((p.hits ?? 0) === hits0) ach('perfect'); p.beaten.add(gi); p.maxHp += badgeHp(); p.hp += badgeHp(); map.portal = gymPortal(r);
     gainMoney(1500 + gt * 600, at.x, at.y + 2 * TS);
     banner = { text: `${r.who.leader}에게 이겼다! 배지를 손에 넣었다 (${p.beaten.size}/${region.gyms.length})`, t: 3 }; sfx('badge');
     map.roadPortal = roadPortal(r);

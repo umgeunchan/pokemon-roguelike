@@ -20,7 +20,8 @@ function evolve() {
   const p = player, next = p.evo.shift(), m = MON[next.id];
   if (!m) return;
   const a = baseOf(p.mon), b = baseOf(m), old = p.mon.name;
-  withDelta(p => { p.dmg += b.dmg - a.dmg; p.speed += b.speed - a.speed; });
+  // 진화하면 기본 능력치 차이만큼 오른다 (체력도: 진화한 모습의 체력이 더 높으면 그만큼 최대 체력이 늘고 회복)
+  withDelta(p => { p.dmg += b.dmg - a.dmg; p.speed += b.speed - a.speed; const dh = Math.max(0, b.hp - a.hp); p.maxHp += dh; p.hp += dh; });
   p.mon = m; if (p.shiny) loadShiny(m);
   fx.push({ kind: 'evo', x: p.x, y: p.y, t: 1.2, max: 1.2 }); sfx('evolve');
   banner = { text: `축하합니다! ${old}는(은) ${m.name}(으)로 진화했다!`, t: 4 };

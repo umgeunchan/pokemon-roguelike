@@ -365,7 +365,7 @@ function spawnEnemy(m, x, y, rank, tier = 0) {
     flip: false, hit: 0, cd: 1 + Math.random(), turn: Math.random(), dir: randDir(), vx: 0, vy: 0, walk: 0, moving: false, burn: 0, burnTick: 0, slow: 0, stun: 0, frozen: 0,
     z: 0, fade: 0, act: null, lunge: 1 + Math.random() * 2, burst: 0, burstT: 0, shotStyle: pick(['single', 'fan', 'burst']), aggro: rank !== 'wild',
     moves: rank === 'wild' ? null : movesFor(m), speed: big ? 30 + s.speed * 0.6 : (40 + s.speed * 0.8) * (rank === 'wild' ? 1.15 : 1), shooter: !big && s['special-attack'] >= s.attack };
-  if (rank !== 'wild') { e.hp *= powerScale(tier); e.maxHp = e.hp; }
+  if (rank !== 'wild') { e.hp *= powerScale(tier) * (legendStart() ? LEGEND_START_HP : 1); e.maxHp = e.hp; }
   e.lvl = rank === 'boss' ? (tier >= 6 ? 2 : tier >= 3 ? 1 : 0) : rank === 'legend' ? (tier >= 4 ? 2 : 1) : 0;
   // 기술은 타입 고유·급 고유·공통 기술 중 4개만 무작위로 (patterns.js). 라이벌은 battle.js에서 라이벌 기술로 다시 고른다
   // 후반(배지 4개~) 보스급은 필살기(체력 2~3칸)가 섞일 수 있다

@@ -176,8 +176,13 @@ const expNeed = lv => Math.round(20 * 2 ** ((lv - 8) / 7));
 // 플레이어 화력이 단계마다 1.5배쯤 크는 것(dps 시뮬레이션)에 맞춘 값
 // 관장·라이벌·사천왕 체력 보정: 단계(tier = 들어갈 때 가진 배지 수)별로 곱한다. 초반을 가볍게, 배지 5개부터는 원래대로
 // 배지 0개(첫 체육관) ~ 4개까지 차례로. 숫자를 바꾸면 바로 반영된다
+// 전설로 시작한 판: 상대(관장·트레이너·라이벌·전설) 체력 x1.5, 관장 보상 체력은 반 칸. 일반 스타팅은 배지마다 1칸
+const legendStart = () => !!LEGEND_MOVE[player?.startId];
+const LEGEND_START_HP = 1.5;
+const badgeHp = () => legendStart() ? 1 : 2;
 const BOSS_HP_EARLY = [0.6, 0.65, 0.7, 0.78, 0.88];  // v2.6: 2~4단계(가장 많이 막히던 구간)를 조금 낮춤
-const bossEase = t => t >= BOSS_HP_EARLY.length ? 1 : BOSS_HP_EARLY[Math.max(0, Math.floor(t))];
+// 일반 스타팅은 배지 0~3개 구간 보스 체력을 0.8배 더 (봇 모의 테스트에서 2단계 관장전이 가장 길고 아팠다)
+const bossEase = t => (t >= BOSS_HP_EARLY.length ? 1 : BOSS_HP_EARLY[Math.max(0, Math.floor(t))]) * (t <= 3 && !legendStart() ? 0.8 : 1);
 // 트레이너(체육관 트레이너·필드 트레이너) 체력: 야생의 TRAINER_HP배에, 단계별 보정을 곱한다. 5단계부터는 보정 없음
 const TRAINER_HP = 2.2, TRAINER_HP_EARLY = [0.6, 0.7, 0.8, 0.9];
 const trainerEase = t => t >= TRAINER_HP_EARLY.length ? 1 : TRAINER_HP_EARLY[Math.max(0, Math.floor(t))];
@@ -208,14 +213,15 @@ function samplePower() {
 }
 // 난이도: 단계(0~8 = 배지 수·지역 깊이)별로 상대 체력과 공격 빈도를 곱한다. 숫자를 바꾸면 바로 반영된다
 // 체력: 초반(0~3단계)은 자속 1.5배를 메울 만큼 단단하게, 후반은 일괄 1.5배를 빼서 너무 질기지 않게 (v1.9.1의 2.1배 → 1.4배)
-const DIFF_HP = [1.28, 1.35, 1.43, 1.5, 1.45, 1.4, 1.6, 1.85, 2.0];  // v2.6: 적응 상한(2.5배)을 낮춘 만큼 6~8단계를 올려 후반은 어렵게 (봇 기준 후반 관장 에이스 30~45초)   // 단계별 체력 배율 (v1.9.0 이전 대비)
+const DIFF_HP = [1.28, 1.35, 1.43, 1.5, 1.45, 1.4, 1.6, 1.75, 1.75];  // v2.6: 적응 상한(2.5배)을 낮춘 만큼 6~8단계를 올려 후반은 어렵게 (봇 기준 후반 관장 에이스 30~45초)   // 단계별 체력 배율 (v1.9.0 이전 대비)
 const DIFF_CD = [1.2, 1.15, 1.1, 1, 1, 0.95, 0.9, 0.85, 0.8];  // 단계별 기술 대기 시간 배율 (작을수록 자주 공격)
 const diffAt = (arr, t) => arr[clamp(Math.round(t), 0, arr.length - 1)];
 const hpMult = (rank, t) => diffAt(DIFF_HP, t) * (rank === 'legend' ? 20 * 1.6 ** t * bossEase(t) : rank === 'boss' ? 10 * 1.6 ** t * bossEase(t) : rank === 'trainer' ? 2 * 1.5 ** t * trainerEase(t) : 2 * 1.5 ** t);
 
 function makePlayer(m) {
-  const b = baseOf(m);
-  return { mon: m, type: m.types[0], x: 0, y: 0, r: 14, maxHp: b.hp, hp: b.hp, items: [], moves: new Set(), beaten: new Set(), seen: new Set(), defeated: {}, time: 0, hop: 0, deltas: Array(STATS.length).fill(null), bought: {}, evo: [],
+  // 일반 스타팅은 최소 4칸으로 시작 (전설은 원래 체력이 높다)
+  const b = baseOf(m), hp = LEGEND_MOVE[m.id] ? b.hp : Math.max(b.hp, 8);
+  return { mon: m, type: m.types[0], x: 0, y: 0, r: 14, maxHp: hp, hp, items: [], moves: new Set(), beaten: new Set(), seen: new Set(), defeated: {}, time: 0, hop: 0, deltas: Array(STATS.length).fill(null), bought: {}, evo: [],
     dmg: b.dmg, speed: b.speed, fireDelay: 0.42, range: 0.7, shotSpeed: 380, crit: 0.05, dodge: 0, invTime: 1, moneyMul: 1, expMul: 1,
     level: 5, exp: 0, money: 1000, shots: 0, flip: false, cd: 0, inv: 0, charge: 0, aim: [0, -1], walk: 0, moving: false, streak: 0, drain: 0, drain2: 0,
     dash: 0, dashCd: 0, dashDir: [1, 0], vanish: 0, stopCd: 3, eruptCd: 0, winAt: 0, regenT: 0 };
