@@ -444,7 +444,10 @@ function drawPanel() {
   let y = HUD + 84 + STATS.length * 30 + 16;
   text(`기술 ${p.moves.size}/${MAX_MOVES}`, 6, y, 12, '#ff8', 'left');
   const moves = [...p.moves];
-  for (let i = 0; i < MAX_MOVES; i++) { y += 15; const m = moveDef(moves[i]); nameText(m, m ? m.name : '-', 10, y, 11, m ? (m.legend ? '#fd6' : TYPE_COLOR[m.type]) : '#444'); }
+  for (let i = 0; i < MAX_MOVES; i++) {
+    y += 15; const m = moveDef(moves[i]); nameText(m, m ? m.name : '-', 10, y, 11, m ? (m.legend ? '#fd6' : TYPE_COLOR[m.type]) : '#444');
+    if (m && p.stabTypes?.has(m.type)) text(`자속 x${STAB}`, 154, y, 9, '#fd6', 'right');  // 내 타입과 같은 기술: 그 타입 공격 1.5배
+  }
   p.items.filter(i => i.r === 'k').forEach((it, i) => ctx.drawImage(IMG[it.id], 4 + i * 26, y + 6, 26, 26));
   text(TOUCH ? 'A 대화·B 메뉴·구르기·지도' : 'Space 구르기·E 대화·M 지도·N 소리·Esc 메뉴·H 안내', 4, CH - 6, 9, '#777', 'left');
 }
@@ -558,7 +561,7 @@ function enemyBeamAt(e, ang, c) {
 }
 
 function drawBeam(b) {
-  const pts = beamPath(b), c = TYPE_COLOR[beamCfg().type], w = b.w + Math.random() * 4 - 2;
+  const pts = beamPath(b), c = player.pcol?.[0] ?? TYPE_COLOR[beamCfg().type], w = b.w + Math.random() * 4 - 2;
   ctx.save();
   ctx.globalAlpha = Math.min(1, b.t * 8);
   ctx.translate(0, -TEAR_Z); ctx.lineJoin = 'round';
@@ -642,6 +645,7 @@ function drawFx(f) {
     ctx.lineTo(f.x2, f.y2 - TEAR_Z); ctx.stroke();
   }
   if (f.kind === 'boom') { ctx.globalAlpha = 1 - k; ctx.fillStyle = f.color ?? '#f8a030'; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.5 + k * 0.5), 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+  if (f.kind === 'wave') { ctx.strokeStyle = `rgba(80,150,255,${1 - k})`; ctx.lineWidth = 10 * (1 - k) + 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, 150 * k, 80 * k, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (f.kind === 'ring') { ctx.strokeStyle = `rgba(224,192,104,${1 - k})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(f.x, f.y, 90 * k, 45 * k, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (f.kind === 'evo') { ctx.globalAlpha = 1 - k; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(f.x, f.y - 30, 30 + k * 120, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
   if (f.kind === 'slash') { ctx.fillStyle = `rgba(255,255,255,${1 - k})`; for (let i = -1; i <= 1; i++) { ctx.save(); ctx.translate(f.x + i * 30, f.y - 30); ctx.rotate(-0.8); ctx.fillRect(-60, -2, 120, 4); ctx.restore(); } }
@@ -727,18 +731,21 @@ function drawPlay() {
   for (const r of map.rooms ?? []) if (r.who) list.push({ y: (r.y0 + 1.6) * TS, draw: () => drawTrainerSprite(r.who.sprite, r.cx, (r.y0 + 1.6) * TS, false, r.cleared ? 0.7 : 1) });
   for (const n of map.npcs) if (inView(n.x, n.y)) list.push({ y: n.y, draw: () => drawTrainerSprite(n.sprite, n.x, n.y, n.flip, n.defeated ? 0.7 : 1, n.moving ? Math.abs(Math.sin(now * 10)) * 3 : 0) });
   for (const e of enemies) list.push({ y: e.y, draw: () => drawActor(e, e.scale, e.hit > 0 ? 0.4 : 1) });
+  if (p.surge > 0) { ctx.strokeStyle = `rgba(255,150,210,${0.4 + Math.abs(Math.sin(now * 8)) * 0.4})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y, 30, 14, 0, 0, Math.PI * 2); ctx.stroke(); }
   list.push({ y: p.y, draw: () => drawActor(p, p.warpS ?? 1, p.vanish > 0 ? 0.15 : p.warpS !== undefined ? p.warpS : p.inv > 0 && Math.floor(p.inv * 10) % 2 ? 0.3 : 1) });
   for (const t of tears) list.push({ y: t.y, draw: () => {
     const s = t.r * 2, x = Math.round(t.x - t.r), y = Math.round(t.y - TEAR_Z - t.r);
     ctx.fillStyle = '#000'; ctx.fillRect(x - 2, y - 2, s + 4, s + 4);
-    ctx.fillStyle = TYPE_COLOR[t.type] ?? '#fff'; ctx.fillRect(x, y, s, s);
+    ctx.fillStyle = t.color ?? TYPE_COLOR[t.type] ?? '#fff'; ctx.fillRect(x, y, s, s);
+    // 가운데 색: 두 번째 기술(또는 조합)의 색
+    if (t.accent && s >= 10) { const q = Math.max(4, Math.round(s * 0.45)), o = Math.round((s - q) / 2); ctx.fillStyle = t.accent; ctx.fillRect(x + o, y + o, q, q); }
     ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(x + 2, y + 2, 4, 4);
   } });
   for (const b of bombs) list.push({ y: b.y, draw: () => {
     const x = Math.round(b.x), y = Math.round(b.y - 10 - b.z);
     ctx.fillStyle = '#000'; ctx.fillRect(x - 8, y - 11, 16, 22); ctx.fillRect(x - 10, y - 7, 20, 14);
     ctx.fillStyle = '#f4ecd8'; ctx.fillRect(x - 6, y - 9, 12, 18); ctx.fillRect(x - 8, y - 5, 16, 10);
-    ctx.fillStyle = '#7cb342'; ctx.fillRect(x - 4, y - 4, 4, 4); ctx.fillRect(x + 2, y + 2, 4, 4);
+    ctx.fillStyle = p.pcol?.[0] ?? '#7cb342'; ctx.fillRect(x - 4, y - 4, 4, 4); ctx.fillStyle = p.pcol?.[1] ?? '#7cb342'; ctx.fillRect(x + 2, y + 2, 4, 4);
   } });
   for (const s of pstrikes) list.push({ y: s.y, draw: () => { ctx.fillStyle = s.type === 'ground' ? '#a07848' : '#7a6a48'; ctx.fillRect(s.x - 10, s.y - 20 - Math.max(0, s.t) * 300, 20, 18); } });
   list.sort((a, b) => a.y - b.y).forEach(a => a.draw());

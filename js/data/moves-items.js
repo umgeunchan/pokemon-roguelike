@@ -107,59 +107,80 @@ const TMS = [
   { id: 'will-o-wisp', tm: 'tm-fire', name: '도깨비불', type: 'fire', desc: '적중한 적에게 화상 (지속 피해)' },
   { id: 'razor-leaf', tm: 'tm-grass', name: '잎날가르기', type: 'grass', desc: '공격이 2갈래로 나간다 (한 발 위력 x0.7)' },
   { id: 'giga-drain', tm: 'tm-grass', name: '기가드레인', type: 'grass', desc: '피해를 줄수록 체력 회복' },
-  { id: 'bullet-seed', tm: 'tm-grass', name: '씨기관총', type: 'grass', desc: '연사 x2, 한 발 위력 감소' },
+  { id: 'bullet-seed', tm: 'tm-grass', name: '씨기관총', type: 'grass', desc: '연사 x2, 한 발 위력 감소, 씨앗이 조금씩 흩어져 나간다' },
   { id: 'earthquake', tm: 'tm-ground', name: '지진', type: 'ground', desc: '적중 시 주변 땅 위의 적에게 충격파' },
   { id: 'surf', tm: 'tm-water', name: '파도타기', type: 'water', desc: '공격이 커지고 관통하며 적을 크게 밀어낸다' },
   { id: 'sludge-bomb', tm: 'tm-poison', name: '오물폭탄', type: 'poison', desc: '적중한 자리에 독 웅덩이' },
   { id: 'psychic', tm: 'tm-psychic', name: '사이코키네시스', type: 'psychic', desc: '탄이 부메랑처럼 돌아온다' },
-  { id: 'aerial-ace', tm: 'tm-flying', name: '제비반환', type: 'flying', desc: '탄속 크게 증가, 급소 확률 증가' },
+  { id: 'aerial-ace', tm: 'tm-flying', name: '제비반환', type: 'flying', desc: '탄속 크게 증가, 급소 +15%, 탄이 장애물을 넘어간다' },
   { id: 'dragon-pulse', tm: 'tm-dragon', name: '용의파동', type: 'dragon', desc: '적중 시 주변에 폭발' },
   { id: 'dazzling-gleam', tm: 'tm-fairy', name: '매지컬샤인', type: 'fairy', desc: '4번째 공격마다 사방으로 빛을 뿜는다' },
   { id: 'rock-slide', tm: 'tm-rock', name: '스톤샤워', type: 'rock', desc: '적중 시 주변에 바위가 떨어진다' },
-  { id: 'brick-break', tm: 'tm-fighting', name: '깨트리기', type: 'fighting', desc: '트레이너·관장·전설에게 피해 x1.3' },
-  { id: 'crunch', tm: 'tm-dark', name: '깨물어부수기', type: 'dark', desc: '급소 피해 x1.5 → x2.2, 급소 확률 +5%' },
-  { id: 'flash-cannon', tm: 'tm-steel', name: '러스터캐논', type: 'steel', desc: '모든 공격 위력 x1.2' },
+  { id: 'brick-break', tm: 'tm-fighting', name: '깨트리기', type: 'fighting', desc: '트레이너·관장·전설에게 피해 x1.3, 기술을 준비하는 적을 맞히면 기술이 끊긴다' },
+  { id: 'crunch', tm: 'tm-dark', name: '깨물어부수기', type: 'dark', desc: '급소 피해 x1.5 → x2.2, 급소 +5%, 물린 적은 3초 동안 받는 피해 +20%' },
+  { id: 'flash-cannon', tm: 'tm-steel', name: '러스터캐논', type: 'steel', desc: '모든 공격 위력 x1.2, 5번째 공격마다 관통하는 강철 포탄' },
   { id: 'ice-beam', tm: 'tm-ice', name: '냉동빔', type: 'ice', desc: '적중 시 15% 확률로 얼림 (언 적은 피해 x1.5)' },
-  { id: 'stone-edge', tm: 'tm-rock', name: '스톤에지', type: 'rock', desc: '급소 확률 +20%' },
+  { id: 'stone-edge', tm: 'tm-rock', name: '스톤에지', type: 'rock', desc: '급소 +20%, 급소가 나면 바위 칼날이 솟아 주변 피해' },
   { id: 'dark-pulse', tm: 'tm-dark', name: '악의파동', type: 'dark', desc: '적중 시 20% 확률로 풀죽음 (잠깐 멈춤)' },
-  { id: 'focus-blast', tm: 'tm-fighting', name: '기합구슬', type: 'fighting', desc: '위력 x1.6, 대신 연사가 조금 느려진다' },
+  { id: 'focus-blast', tm: 'tm-fighting', name: '기합구슬', type: 'fighting', desc: '위력 x1.6, 탄이 커지고 맞은 자리에서 터진다, 대신 연사가 느려진다' },
   { id: 'iron-head', tm: 'tm-steel', name: '아이언헤드', type: 'steel', desc: '위력 x1.15, 15% 확률로 풀죽음' },
-  { id: 'dragon-claw', tm: 'tm-dragon', name: '드래곤크루', type: 'dragon', desc: '모든 공격 위력 x1.2' },
-  { id: 'moonblast', tm: 'tm-fairy', name: '문포스', type: 'fairy', desc: '관장·사천왕·전설에게 피해 x1.3' },
+  { id: 'dragon-claw', tm: 'tm-dragon', name: '드래곤크루', type: 'dragon', desc: '모든 공격 위력 x1.2, 맞힌 적과 바로 옆 적을 발톱으로 한 번 더 할퀸다' },
+  { id: 'moonblast', tm: 'tm-fairy', name: '문포스', type: 'fairy', desc: '관장·사천왕·전설에게 피해 x1.3, 20% 확률로 적의 공격이 4초 동안 뜸해진다' },
   { id: 'x-scissor', tm: 'tm-bug', name: '시저크로스', type: 'bug', desc: '공격이 적을 관통한다' },
-  { id: 'hydro-pump', tm: 'tm-water', name: '하이드로펌프', type: 'water', desc: '모든 공격 위력 x1.25' },
+  { id: 'hydro-pump', tm: 'tm-water', name: '하이드로펌프', type: 'water', desc: '모든 공격 위력 x1.25, 적을 멀리 밀어내고 벽에 부딪히면 추가 피해' },
   { id: 'blizzard', tm: 'tm-ice', name: '눈보라', type: 'ice', desc: '적중 시 10% 확률로 그 적과 주변 적을 얼림' },
   { id: 'thunder', tm: 'tm-electric', name: '번개', type: 'electric', desc: '적중 시 15% 확률로 벼락이 떨어져 주변에 큰 피해' },
   { id: 'energy-ball', tm: 'tm-grass', name: '에너지볼', type: 'grass', desc: '적중 시 20% 확률로 작은 폭발 (주변 피해)' },
   { id: 'poison-jab', tm: 'tm-poison', name: '독찌르기', type: 'poison', desc: '적중 시 30% 확률로 독 (지속 피해)' },
   { id: 'bug-buzz', tm: 'tm-bug', name: '벌레의야단법석', type: 'bug', desc: '5번째 적중마다 주변에 음파 (피해 + 밀어냄)' },
   { id: 'air-slash', tm: 'tm-flying', name: '에어슬래시', type: 'flying', desc: '적중 시 25% 확률로 풀죽음' },
-  { id: 'close-combat', tm: 'tm-fighting', name: '인파이트', type: 'fighting', desc: '모든 공격 위력 x1.35, 연사 조금 느려짐' },
-  { id: 'play-rough', tm: 'tm-fairy', name: '치근거리기', type: 'fairy', desc: '급소 확률 +10%, 급소 피해 x1.2' },
-  { id: 'earth-power', tm: 'tm-ground', name: '대지의힘', type: 'ground', desc: '관장·사천왕·전설에게 피해 x1.25' },
+  { id: 'close-combat', tm: 'tm-fighting', name: '인파이트', type: 'fighting', desc: '모든 공격 위력 x1.35, 가까운 적(2칸 안)에게는 x1.4 더, 연사 조금 느려짐' },
+  { id: 'play-rough', tm: 'tm-fairy', name: '치근거리기', type: 'fairy', desc: '급소 +10%, 급소 피해 x1.2, 15% 확률로 적이 헤롱헤롱(잠깐 멈춤)' },
+  { id: 'earth-power', tm: 'tm-ground', name: '대지의힘', type: 'ground', desc: '관장·사천왕·전설에게 피해 x1.25, 25% 확률로 적의 발밑에서 땅이 솟는다' },
 ];
 // 숨은 조합: 두 기술을 함께 기억하면 추가 효과가 조용히 켜진다 (화면에 알리지 않는다. 직접 찾아내는 재미)
+// color: 조합이 켜지면 공격(탄·광선·알)이 이 색으로 바뀐다. 알림은 없지만 색으로 눈치챌 수 있다
 const COMBOS = [
-  { id: 'scorch', name: '작열', need: ['will-o-wisp', 'flamethrower'], desc: '화상·독에 걸린 적에게 피해 x1.4' },
-  { id: 'storm', name: '뇌우', need: ['thunderbolt', 'surf'], desc: '전기 튀김이 더 멀리, 피해 x2' },
-  { id: 'zero', name: '절대영도', need: ['icy-wind', 'ice-beam'], desc: '느려진 적은 30% 확률로 얼어붙는다' },
-  { id: 'toxic', name: '맹독', need: ['sludge-bomb', 'poison-jab'], desc: '독·화상 지속 피해 x2' },
-  { id: 'quake', name: '대지붕괴', need: ['earthquake', 'rock-slide'], desc: '관장·전설에게 피해 x1.35' },
-  { id: 'fang', name: '그림자 송곳니', need: ['shadow-ball', 'crunch'], desc: '급소 시 15% 확률로 체력 회복' },
-  { id: 'dragon', name: '용의 춤', need: ['dragon-claw', 'dragon-pulse'], desc: '모든 공격 위력 x1.25' },
-  { id: 'vine', name: '흡수 덩굴', need: ['giga-drain', 'razor-leaf'], desc: '체력 흡수가 두 배로 잦아진다' },
-  { id: 'mind', name: '정신 붕괴', need: ['psychic', 'dark-pulse'], desc: '풀죽은 적에게 피해 x1.5' },
-  { id: 'fortress', name: '강철 요새', need: ['flash-cannon', 'iron-head'], desc: '받는 공격을 20% 확률로 막아낸다' },
-  { id: 'gale', name: '질풍', need: ['aerial-ace', 'swift'], desc: '연사 x1.25' },
-  { id: 'steam', name: '증기 폭발', need: ['hydro-pump', 'flamethrower'], desc: '광선 피해 x1.4' },
-  { id: 'tempest', name: '천둥 폭풍', need: ['thunder', 'thunderbolt'], desc: '벼락 확률 15% → 30%' },
-  { id: 'prank', name: '요정의 장난', need: ['play-rough', 'dazzling-gleam'], desc: '빛 폭발이 3번째 공격마다' },
+  { id: 'scorch', name: '작열', need: ['will-o-wisp', 'flamethrower'], desc: '화상·독에 걸린 적에게 피해 x1.4', color: '#ff5a1f' },
+  { id: 'storm', name: '뇌우', need: ['thunderbolt', 'surf'], desc: '전기 튀김이 더 멀리, 피해 x2', color: '#7fd8ff' },
+  { id: 'zero', name: '절대영도', need: ['icy-wind', 'ice-beam'], desc: '느려진 적은 30% 확률로 얼어붙는다', color: '#d8f8ff' },
+  { id: 'toxic', name: '맹독', need: ['sludge-bomb', 'poison-jab'], desc: '독·화상 지속 피해 x2', color: '#b040e0' },
+  { id: 'quake', name: '대지붕괴', need: ['earthquake', 'rock-slide'], desc: '관장·전설에게 피해 x1.35', color: '#a0703a' },
+  { id: 'fang', name: '그림자 송곳니', need: ['shadow-ball', 'crunch'], desc: '급소 시 15% 확률로 체력 회복', color: '#5a3a8a' },
+  { id: 'dragon', name: '용의 춤', need: ['dragon-claw', 'dragon-pulse'], desc: '모든 공격 위력 x1.25', color: '#8050ff' },
+  { id: 'vine', name: '흡수 덩굴', need: ['giga-drain', 'razor-leaf'], desc: '체력 흡수가 두 배로 잦아진다', color: '#60e070' },
+  { id: 'mind', name: '정신 붕괴', need: ['psychic', 'dark-pulse'], desc: '풀죽은 적에게 피해 x1.5', color: '#e050a0' },
+  { id: 'fortress', name: '강철 요새', need: ['flash-cannon', 'iron-head'], desc: '받는 공격을 20% 확률로 막아낸다', color: '#c8d0e0' },
+  { id: 'gale', name: '질풍', need: ['aerial-ace', 'swift'], desc: '연사 x1.25', color: '#c0e8ff' },
+  { id: 'steam', name: '증기 폭발', need: ['hydro-pump', 'flamethrower'], desc: '광선 피해 x1.4', color: '#f0f0f0' },
+  { id: 'tempest', name: '천둥 폭풍', need: ['thunder', 'thunderbolt'], desc: '벼락 확률 15% → 30%', color: '#fff060' },
+  { id: 'prank', name: '요정의 장난', need: ['play-rough', 'dazzling-gleam'], desc: '빛 폭발이 3번째 공격마다', color: '#ffb0d8' },
+  { id: 'eggstorm', name: '알 폭풍', need: ['egg-bomb', 'pin-missile'], desc: '알이 터지면 작은 알 3개로 갈라져 한 번 더 터진다', color: '#fff4c0' },
+  { id: 'eggfire', name: '화염알', need: ['egg-bomb', 'flamethrower'], desc: '알이 터질 때 화염이 8방향으로', color: '#ffa040' },
+  { id: 'magnet', name: '자력선', need: ['swift', 'thunderbolt'], desc: '튀는 전기가 2마리 더 이어진다', color: '#ffe080' },
+  { id: 'tidal', name: '해일', need: ['surf', 'hydro-pump'], desc: '6번째 공격마다 주위로 큰 물결이 퍼져 적을 밀어낸다', color: '#3080ff' },
+  { id: 'meteor', name: '유성우', need: ['rock-slide', 'stone-edge'], desc: '급소가 나면 하늘에서 바위 3개가 더 떨어진다', color: '#d0a050' },
+  { id: 'aurora', name: '오로라', need: ['ice-beam', 'dazzling-gleam'], desc: '사방으로 뿜는 빛이 30% 확률로 적을 얼린다', color: '#a0ffe0' },
+  { id: 'venom', name: '독엄니', need: ['poison-jab', 'crunch'], desc: '독에 걸린 적에게 급소 확률 +25%', color: '#8020a0' },
+  { id: 'skyfall', name: '하늘 가르기', need: ['air-slash', 'aerial-ace'], desc: '탄이 날아가다 둘로 갈라진다', color: '#e0d8ff' },
+  { id: 'ironfist', name: '강철 주먹', need: ['close-combat', 'iron-head'], desc: '가까운 적(2칸 안)을 맞히면 잠깐 기절', color: '#e0a080' },
+  { id: 'solar', name: '솔라빔', need: ['hyper-beam', 'energy-ball'], desc: '광선 피해 x1.4, 가끔 꽃잎이 터진다', color: '#f8ff80' },
+  { id: 'rift', name: '지각변동', need: ['earth-power', 'earthquake'], desc: '충격파 범위 두 배, 공중의 적도 맞는다', color: '#c08040' },
+  { id: 'nightmare', name: '악몽', need: ['shadow-ball', 'dark-pulse'], desc: '풀죽은 적은 악몽에 시달려 계속 피해를 입는다', color: '#402060' },
 ];
 const combo = id => !!player?.combos?.has(id);
 function refreshCombos() {
   const p = player;
   p.combos = new Set(COMBOS.filter(c => c.need.every(id => p.moves.has(id))).map(c => c.id));
+  // 공격 색: 켜진 조합이 있으면 마지막 조합의 색, 없으면 최근에 배운 두 기술의 타입 색(바탕·가운데)
+  const cs = COMBOS.filter(c => p.combos.has(c.id)), ms = [...p.moves].map(moveDef).filter(Boolean);
+  p.pcol = cs.length ? [cs.at(-1).color, cs.length > 1 ? cs.at(-2).color : '#ffffff']
+    : ms.length ? [TYPE_COLOR[ms.at(-1).type], ms.length > 1 ? TYPE_COLOR[ms.at(-2).type] : '#ffffff'] : [TYPE_COLOR[p.type], '#ffffff'];
+  // 자속 보정: 이 포켓몬의 타입과 같은 타입의 기술을 갖고 있으면 그 타입의 공격이 STAB배
+  p.stabTypes = new Set(p.mon.types.filter(t => ms.some(m => m.type === t)));
 }
+const STAB = 1.5;
+const stab = type => player.stabTypes?.has(type) ? STAB : 1;
 
 // 도감 스타팅이 갖고 시작하는 기술: 첫 번째 타입에 맞는 기술머신 (없으면 두 번째 타입). 타입마다 목록 맨 앞이 공격 기술이라 회복 기술로 시작하지 않는다
 const typeMove = m => m.types.map(t => TMS.find(x => x.type === t)).find(Boolean)?.id;
@@ -190,15 +211,15 @@ const LTMS = [
   L('shadow-force', 'ghost', 'vanish', '구르면 사라졌다가 나타나며 주변에 큰 피해'),
   L('fusion-bolt', 'electric', 'smite', '적중 시 35% 확률로 낙뢰 + 연쇄 번개'),
   L('sheer-cold', 'ice', 'freeze', '적중 시 35% 확률로 얼림, 언 적은 피해 x1.5'),
-  L('sunsteel-strike', 'steel', 'blade', '위력 x1.5, 보스에게 추가 x1.4'),
-  L('behemoth-blade', 'steel', 'blade', '위력 x1.5, 보스에게 추가 x1.4'),
+  L('sunsteel-strike', 'steel', 'blade', '위력 x1.5, 보스에게 추가 x1.4, 탄이 적을 관통'),
+  L('behemoth-blade', 'steel', 'blade', '위력 x1.5, 보스에게 추가 x1.4, 탄이 적을 관통'),
   L('behemoth-bash', 'steel', 'bulwark', '받는 피해 감소, 부딪힌 적에게 큰 피해'),
-  L('geomancy', 'fairy', null, '배우는 순간 공격 x1.3, 연사 x1.25, 속도 x1.15', p => { p.dmg *= 1.3; p.fireDelay *= 0.8; p.speed *= 1.15; }),
+  L('geomancy', 'fairy', 'geo', '배우는 순간 공격 x1.3, 연사 x1.25, 속도 x1.15 · 12초마다 4초 동안 대지의 힘이 넘쳐 피해 x1.5', p => { p.dmg *= 1.3; p.fireDelay *= 0.8; p.speed *= 1.15; }),
   L('oblivion-wing', 'flying', 'drain', '위력 x1.2, 준 피해로 체력을 크게 흡수'),
   L('seed-flare', 'grass', 'flare', '탄이 터지며 범위 피해, 쓰러뜨리면 가끔 회복'),
   L('natures-madness', 'fairy', 'madness', '일반 적은 20% 확률로 체력 절반, 보스 피해 x1.25'),
   L('ruination', 'dark', 'madness', '일반 적은 20% 확률로 체력 절반, 보스 피해 x1.25'),
-  L('diamond-storm', 'rock', null, '배우는 순간 급소 +30%, 회피 +10%', p => { p.crit += 0.3; p.dodge += 0.1; }),
+  L('diamond-storm', 'rock', 'shard', '배우는 순간 급소 +30%, 회피 +10% · 적중하면 30% 확률로 다이아 파편이 사방으로 튄다', p => { p.crit += 0.3; p.dodge += 0.1; }),
 ];
 // 전설의 포켓몬 → 상징적인 기술
 const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'fusion-bolt', 146: 'sacred-fire', 150: 'psystrike', 151: 'psystrike', 243: 'fusion-bolt', 244: 'sacred-fire', 245: 'origin-pulse',
@@ -223,7 +244,7 @@ const moveRate = () => (has('bullet-seed') ? 0.5 : 1) * (has('focus-blast') ? 1.
 const moveShot = () => has('aerial-ace') ? 1.6 : 1;
 // [이름, 아이콘, 값, 소수 자리]: 도구·도핑약·기술 보너스가 모두 들어간 실제 값
 const STATS = [
-  ['공격', 'muscle-band', p => p.dmg * moveDmgMul(), 2], ['연사', 'quick-claw', p => 1 / (p.fireDelay * moveRate()), 2], ['사거리', 'wide-lens', p => p.range * p.shotSpeed * moveShot() / TS, 1],
+  ['공격', 'muscle-band', p => p.dmg * moveDmgMul() * stab(p.type), 2], ['연사', 'quick-claw', p => 1 / (p.fireDelay * moveRate()), 2], ['사거리', 'wide-lens', p => p.range * p.shotSpeed * moveShot() / TS, 1],
   ['탄속', 'zoom-lens', p => p.shotSpeed * moveShot() / 380, 2], ['속도', 'choice-scarf', p => p.speed / 200, 2], ['급소', 'scope-lens', p => (p.crit + moveCrit()) * 100, 0],
 ];
 const HEART = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];

@@ -14,6 +14,9 @@ function update(dt) {
   if (map.hoopaT > 0 && (map.hoopaT -= dt) <= 0) openHoopaRing();
   p.time += dt; p.hop -= dt;
   if (p.regen && (p.regenT -= dt) <= 0) { p.regenT = 12; heal(1); }
+  // 지오컨트롤: 12초마다 4초 동안 대지의 힘이 넘친다
+  if (hasFx('geo') && (p.geoT = (p.geoT ?? 6) - dt) <= 0) { p.geoT = 12; p.surge = 4; banner = { text: '대지의 힘이 넘쳐흐른다!', t: 1.5, glow: '#f9c' }; }
+  if (p.surge > 0) p.surge -= dt;
   if (map.enemies.some(e => (e.battle || (e.rank === 'legend' && e.aggro)) && e.hp > 0)) p.fT = (p.fT ?? 0) + dt;
   if ((p.achT = (p.achT ?? 0) - dt) <= 0) { p.achT = 0.5; checkAch(); }
   tickTutorial();
@@ -129,7 +132,8 @@ function update(dt) {
     const pts = beamPath(b);
     for (const e of enemies) {
       if (!pts.some(([x, y]) => Math.hypot(e.x - x, e.y - y) < b.w / 2 + e.r)) continue;
-      damage(e, p.dmg * 0.45 * bc.mul * (combo('steam') ? 1.4 : 1), bc.type, true, false, bc.crit);
+      damage(e, p.dmg * 0.45 * bc.mul * (combo('steam') ? 1.4 : 1) * (combo('solar') ? 1.4 : 1), bc.type, true, false, bc.crit);
+      if (combo('solar') && Math.random() < 0.04) { fx.push({ kind: 'boom', x: e.x, y: e.y, r: 50, t: 0.2, max: 0.2, color: '#f8ff80' }); for (const o of enemiesNear(e.x, e.y, 50)) damage(o, p.dmg * 0.5, 'grass', false, true); }
       if (has('blue-flare')) e.burn = 3;
       if (has('thunderbolt')) damage(e, p.dmg * 0.2, 'electric', true, true);
     }
@@ -137,6 +141,8 @@ function update(dt) {
   beams = beams.filter(b => b.t > 0);
 
   for (const b of bombs) {
+    // 유도되는 알: 목표가 살아 있으면 떨어질 자리가 목표를 따라 움직인다
+    if (b.target && b.target.hp > 0 && !untargetable(b.target)) { b.tx += (b.target.x - b.tx) * Math.min(1, dt * 8); b.ty += (b.target.y - b.ty) * Math.min(1, dt * 8); }
     b.t += dt;
     const k = Math.min(b.t / b.dur, 1);
     b.x = b.sx + (b.tx - b.sx) * k; b.y = b.sy + (b.ty - b.sy) * k; b.z = Math.sin(k * Math.PI) * 50;
@@ -164,6 +170,8 @@ function update(dt) {
     }
     // 사이코키네시스: 사거리 절반에서 플레이어 쪽으로 되돌아온다
     if (t.boom && !t.back && t.life < t.life0 / 2) { t.back = true; t.hit.clear(); t.life = t.life0; }
+    // 하늘 가르기: 사거리 절반에서 둘로 갈라진다
+    if (t.split2 && t.life < t.life0 / 2) { t.split2 = false; const a = Math.atan2(t.vy, t.vx); for (const o of [-0.35, 0.35]) playerShot(t.x, t.y, a + o, { type: t.type, mul: t.mul, r: t.r, life: t.life, pierce: t.pierce, ghost: t.ghost, home: t.home, blast: t.blast, hit: new Set(t.hit), color: t.color, accent: t.accent }); }
     if (t.back) { const d = Math.hypot(p.x - t.x, p.y - t.y) || 1, sp = Math.hypot(t.vx, t.vy); t.vx = (p.x - t.x) / d * sp; t.vy = (p.y - t.y) / d * sp; if (d < 20) t.life = 0; }
     t.x += t.vx * dt; t.y += t.vy * dt; t.life -= dt;
     if (t.life > 0 && shotBlocked(Math.floor(t.x / TS), Math.floor(t.y / TS), t.ghost && t.from === 'p')) { t.life = 0; fx.push({ kind: 'splash', x: t.x, y: t.y, t: 0.2, max: 0.2, color: TYPE_COLOR[t.type] }); }
@@ -173,7 +181,15 @@ function update(dt) {
         if (t.hit.has(e) || e.hp <= 0 || untargetable(e) || Math.hypot(e.x - t.x, e.y - t.y) > e.r + t.r) continue;
         t.hit.add(e);
         damage(e, p.dmg * t.mul, t.type);
-        if (!isBig(e) && !e.act) moveBody(e, t.vx * (has('surf') ? 0.09 : 0.03), t.vy * (has('surf') ? 0.09 : 0.03));
+        if (t.freeze && Math.random() < t.freeze) { e.frozen = 1; say('얼어붙었다!', e.x, e.y - 50, '#aef'); }
+        if (t.blast) { fx.push({ kind: 'boom', x: e.x, y: e.y, r: 45, t: 0.2, max: 0.2, color: t.color }); for (const o of enemiesNear(e.x, e.y, 45, e)) damage(o, p.dmg * 0.5, 'fighting', false, true); }
+        // 밀어내기: 파도타기·하이드로펌프는 멀리. 하이드로펌프로 밀린 적이 벽에 부딪히면 추가 피해
+        const push = has('hydro-pump') ? 0.13 : has('surf') ? 0.09 : 0.03;
+        if (!isBig(e) && !e.act) {
+          const ex = e.x, ey = e.y, want = Math.hypot(t.vx, t.vy) * push;
+          moveBody(e, t.vx * push, t.vy * push);
+          if (has('hydro-pump') && Math.hypot(e.x - ex, e.y - ey) < want * 0.5 && (e.slamCd ?? 0) < now) { e.slamCd = now + 0.6; damage(e, p.dmg * 0.8, 'water', false, true); say('벽에 부딪혔다!', e.x, e.y - 50, '#8cf'); }
+        }
         if (!t.pierce) { t.life = 0; break; }
       }
     } else if (Math.hypot(p.x - t.x, p.y - t.y) < p.r + t.r) { hurt(t.type, 1, t); t.life = 0; }
