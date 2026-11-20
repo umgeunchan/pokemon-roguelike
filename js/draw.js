@@ -280,6 +280,7 @@ function drawActor(a, scale, alpha = 1, battle = false) {
   if (a.frozen > 0) { ctx.fillStyle = 'rgba(170,230,255,.45)'; ctx.fillRect(a.x - w / 2, top, w, a.y - lift - top); }
   const dots = (color) => { ctx.fillStyle = color; for (let i = 0; i < 3; i++) ctx.fillRect(Math.round(a.x - 12 + i * 10 + Math.sin(now * 9 + i) * 3), Math.round(top + ((now * 40 + i * 13) % 26)), 4, 4); };
   if (a.burn > 0) dots(a.holy ? '#ffd040' : '#f84');
+  if (a.psn > 0) dots('#b050e0');
   if (a.slow > 0) dots('#aef');
   if (a.stun > 0) { ctx.fillStyle = '#ff8'; ctx.fillRect(Math.round(a.x - 8 + Math.sin(now * 8) * 10), Math.round(top - 6), 4, 4); }
   if (a.shiny) drawSparkle(a, top, w);
@@ -560,7 +561,23 @@ function enemyBeamAt(e, ang, c) {
   ctx.restore();
 }
 
+// 레이저: 가늘고 밝은 선. 전기는 지글거리고 얼음은 반짝인다
+const LASER_COLOR = { electric: ['#fff36a', '#ffffff'], ice: ['#9ff0ff', '#ffffff'] };
+function drawLaser(b) {
+  const pts = b.pts ?? beamPath(b), [c, core] = LASER_COLOR[b.ltype] ?? [player.pcol?.[0] ?? '#fff', '#fff'], k = Math.min(1, Math.max(0, b.t / b.t0) * 1.6);
+  ctx.save(); ctx.globalAlpha = k; ctx.translate(0, -TEAR_Z); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.shadowColor = c; ctx.shadowBlur = 12;
+  const jit = b.ltype === 'electric' ? 5 : 0;
+  // 풀밭 위에서도 보이게 어두운 테두리 → 색 → 하얀 심
+  for (const [w, col] of [[b.w + 4, mix(c, '#000000', 0.6)], [b.w, c], [Math.max(2, b.w * 0.4), core]]) {
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath();
+    pts.forEach(([x, y], i) => { const j = i && i < pts.length - 1 ? (Math.random() - 0.5) * jit : 0; i ? ctx.lineTo(x + j, y + j) : ctx.moveTo(x, y); });
+    ctx.stroke();
+  }
+  if (b.ltype === 'ice') { ctx.fillStyle = '#fff'; for (let i = 2; i < pts.length; i += 4) ctx.fillRect(pts[i][0] - 2 + Math.random() * 6 - 3, pts[i][1] - 2 + Math.random() * 6 - 3, 3, 3); }
+  ctx.restore();
+}
 function drawBeam(b) {
+  if (b.laser) return drawLaser(b);
   const pts = beamPath(b), c = player.pcol?.[0] ?? TYPE_COLOR[beamCfg().type], w = b.w + Math.random() * 4 - 2;
   ctx.save();
   ctx.globalAlpha = Math.min(1, b.t * 8);
@@ -569,9 +586,9 @@ function drawBeam(b) {
     ctx.strokeStyle = col; ctx.lineWidth = w * k; ctx.beginPath();
     pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
   }
-  if (has('thunderbolt')) {
-    // 광선을 감싸고 도는 두 줄의 전기 레이저 (휘어도 광선을 따라간다)
-    ctx.fillStyle = '#fff36a';
+  if (has('thunderbolt') || has('ice-beam')) {
+    // 광선을 감싸고 도는 두 줄의 레이저 (전기는 노랑, 얼음은 하늘색. 휘어도 광선을 따라간다)
+    ctx.fillStyle = has('thunderbolt') ? '#fff36a' : '#9ff0ff';
     for (let i = 1; i < pts.length; i++) {
       const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], a = Math.atan2(y1 - y0, x1 - x0);
       for (const ph of [0, Math.PI]) { const o = Math.sin(i - now * 30 + ph) * (w / 2 + 6); ctx.fillRect(x1 - Math.sin(a) * o - 2, y1 + Math.cos(a) * o - 2, 4, 4); }
@@ -646,6 +663,14 @@ function drawFx(f) {
     ctx.lineTo(f.x2, f.y2 - TEAR_Z); ctx.stroke();
   }
   if (f.kind === 'boom') { ctx.globalAlpha = 1 - k; ctx.fillStyle = f.color ?? '#f8a030'; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.5 + k * 0.5), 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+  // 원뿔: 부채꼴이 퍼지며 사라진다. 바깥 테두리는 두 번째 색
+  if (f.kind === 'cone') {
+    const R = f.len * (0.55 + 0.45 * k), cy = f.y - TEAR_Z;
+    ctx.save(); ctx.globalAlpha = 0.25 + (1 - k) * 0.5; ctx.fillStyle = f.color;
+    ctx.beginPath(); ctx.moveTo(f.x, cy); ctx.arc(f.x, cy, R, f.a - f.half, f.a + f.half); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1 - k; ctx.strokeStyle = f.accent; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(f.x, cy, R, f.a - f.half, f.a + f.half); ctx.stroke();
+    ctx.restore();
+  }
   if (f.kind === 'wave') { ctx.strokeStyle = `rgba(80,150,255,${1 - k})`; ctx.lineWidth = 10 * (1 - k) + 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, 150 * k, 80 * k, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (f.kind === 'ring') { ctx.strokeStyle = `rgba(224,192,104,${1 - k})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(f.x, f.y, 90 * k, 45 * k, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (f.kind === 'evo') { ctx.globalAlpha = 1 - k; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(f.x, f.y - 30, 30 + k * 120, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
@@ -736,6 +761,25 @@ function drawPlay() {
   list.push({ y: p.y, draw: () => drawActor(p, p.warpS ?? 1, p.vanish > 0 ? 0.15 : p.warpS !== undefined ? p.warpS : p.inv > 0 && Math.floor(p.inv * 10) % 2 ? 0.3 : 1) });
   for (const t of tears) list.push({ y: t.y, draw: () => {
     const s = t.r * 2, x = Math.round(t.x - t.r), y = Math.round(t.y - TEAR_Z - t.r);
+    // 불·독이 얹힌 탄: 뒤로 불씨·독방울이 흩날린다
+    if (t.fire || t.psn) for (let i = 0; i < 3; i++) { ctx.fillStyle = t.fire && (i % 2 || !t.psn) ? (i ? '#ffb030' : '#ff5020') : '#b050e0'; ctx.fillRect(Math.round(t.x - t.vx * 0.02 * (i + 1) + Math.random() * 6 - 3), Math.round(t.y - TEAR_Z - t.vy * 0.02 * (i + 1) + Math.random() * 6 - 3), 4, 4); }
+    // 에어슬래시: 날아가는 방향으로 길쭉한 칼날
+    if (t.blade) {
+      ctx.save(); ctx.translate(t.x, t.y - TEAR_Z); ctx.rotate(Math.atan2(t.vy, t.vx));
+      ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(t.r * 2.4, 0); ctx.lineTo(0, -t.r * 0.9); ctx.lineTo(-t.r * 1.6, 0); ctx.lineTo(0, t.r * 0.9); ctx.fill();
+      ctx.fillStyle = t.color ?? '#dff'; ctx.beginPath(); ctx.moveTo(t.r * 2, 0); ctx.lineTo(0, -t.r * 0.6); ctx.lineTo(-t.r * 1.3, 0); ctx.lineTo(0, t.r * 0.6); ctx.fill();
+      ctx.fillStyle = t.accent ?? '#fff'; ctx.fillRect(-t.r * 0.6, -1, t.r * 2, 2);
+      ctx.restore(); return;
+    }
+    // 구슬처럼 큰 탄은 둥글게: 바깥 테두리, 몸통, 가운데 색, 빛 반사
+    if (t.r >= 12) {
+      const cx = t.x, cy = t.y - TEAR_Z, pul = 1 + Math.sin(now * 14 + t.x * 0.05) * 0.05, R = t.r * pul;
+      ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(cx, cy, R + 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = t.color ?? TYPE_COLOR[t.type] ?? '#fff'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+      if (t.accent) { ctx.fillStyle = t.accent; ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.arc(cx, cy, R * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+      ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.beginPath(); ctx.arc(cx - R * 0.35, cy - R * 0.35, Math.max(2, R * 0.2), 0, Math.PI * 2); ctx.fill();
+      return;
+    }
     ctx.fillStyle = '#000'; ctx.fillRect(x - 2, y - 2, s + 4, s + 4);
     ctx.fillStyle = t.color ?? TYPE_COLOR[t.type] ?? '#fff'; ctx.fillRect(x, y, s, s);
     // 가운데 색: 두 번째 기술(또는 조합)의 색

@@ -55,7 +55,7 @@ function newRun(m, shiny = false) {
 const SAVE_KEY = 'pokemon-dungeon-save';
 const clearSave = () => store.set(SAVE_KEY, { deleted: true, at: Date.now() });
 // 지도나 상자 내용물 규칙이 바뀌면 SAVE_VER를 올린다. 버전이 다른 옛 기록은 이어하지 않는다 (같은 시드로도 다른 지도가 나와서 기록이 어긋난다)
-const SAVE_VER = 3;
+const SAVE_VER = 4;
 const loadSave = () => { const sv = store.get(SAVE_KEY); return sv?.v === SAVE_VER && REGIONS.some(r => r.name === sv.region) ? sv : null; };
 const packContent = k => k.kind === 'tm' ? { kind: 'tm', tm: k.tm.id } : k.kind === 'item' ? { kind: 'item', item: k.item.id } : { kind: k.kind };
 const unpackContent = k => k.kind === 'tm' ? { kind: 'tm', tm: moveDef(k.tm) } : k.kind === 'item' ? { kind: 'item', item: itemById(k.item) } : { kind: k.kind };

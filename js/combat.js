@@ -46,93 +46,94 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   if (e.hp <= 0 || untargetable(e)) return;
   // 전설은 제 장소 안에서만 싸울 수 있다 (장소 밖에서 쏘아 맞히는 꼼수 방지)
   if (outsideLegendHome(e)) { if (!tick) say('전설의 기운에 막혔다', e.x, e.y - 70, '#c8f'); return; }
-  const p = player, raw = eff(type, e.mon.types), big = isBig(e), near = Math.hypot(e.x - p.x, e.y - p.y) < 110 + e.r;
-  // shortcut: 면역(0배)도 0.25배로 처리해서 못 잡는 적이 없게 함. 기술을 골라 쓰게 되면 원작대로 0배로
+  const p = player, raw = eff(type, e.mon.types), big = isBig(e), near = Math.hypot(e.x - p.x, e.y - p.y) < 110 + e.r, dot = e.burn > 0 || e.psn > 0;
+  // shortcut: 면역(0배)도 0.25배로 처리해서 못 잡는 적이 없게 함
   // 늘 붙는 기술 보너스는 moveDmgMul(능력치 창의 공격에 보이는 값), 여기서는 조건이 붙는 것만 더 곱한다
   let d = base * moveDmgMul() * Math.max(raw, 0.25) * (raw > 1 && p.expert ? 1.3 : 1) * (p.metronome ? 1 + Math.min(p.streak, 20) * 0.03 : 1) * (e.frozen > 0 ? 1.5 : 1)
-    * (hasFx('blade') && big ? 1.4 : 1) * (hasFx('madness') && big ? 1.25 : 1)
-    * (has('brick-break') && e.rank !== 'wild' ? 1.3 : 1) * (has('moonblast') && big ? 1.3 : 1) * (has('earth-power') && big ? 1.25 : 1)
-    * (combo('scorch') && e.burn > 0 ? 1.4 : 1) * (combo('quake') && big ? 1.35 : 1) * (combo('dragon') ? 1.25 : 1) * (combo('mind') && e.stun > 0 ? 1.5 : 1)
-    * stab(type) * (has('close-combat') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1);
-  const crit = Math.random() < p.crit + extraCrit + moveCrit() + (combo('venom') && e.burn > 0 ? 0.25 : 0);
-  if (crit) d *= (has('crunch') ? 2.2 : 1.5) * (has('play-rough') ? 1.2 : 1);
+    * (hasFx('blade') && big ? 1.4 : 1) * (hasFx('madness') && big ? 1.25 : 1) * (has('moonblast') && big ? 1.3 : 1) * (has('earth-power') && big ? 1.25 : 1)
+    * (combo('scorch') && dot ? 1.4 : 1) * (combo('quake') && big ? 1.35 : 1) * (combo('dragon') ? 1.25 : 1) * (combo('mind') && e.stun > 0 ? 1.5 : 1)
+    * stab(type) * (has('close-combat') && near ? 1.4 : 1) * (has('play-rough') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1);
+  const crit = Math.random() < p.crit + extraCrit + moveCrit() + (combo('venom') && e.psn > 0 ? 0.25 : 0);
+  if (crit) d *= has('crunch') ? 2.2 : 1.5;
   if (crit && combo('fang') && !tick && Math.random() < 0.15) heal(1);
   if (e.battle || e.rank === 'legend') p.fD = (p.fD ?? 0) + Math.min(d, Math.max(0, e.hp));
   e.hp -= d; e.hit = 0.1; e.aggro = true;
   if (!tick) sfx(crit ? 'crit' : 'hit');
   if (hasFx('drain') && (p.drain2 += d) >= 12) { p.drain2 -= 12; heal(1); }
+  if (combo('vine') && (p.drain += d) >= 25) { p.drain -= 25; heal(1); say('체력을 흡수했다!', p.x, p.y - 60, '#8f8'); }
   if (!tick) {
     const msg = crit ? '급소에 맞았다!' : raw > 1 ? '효과가 굉장했다!' : raw === 0 ? '효과가 없는 것 같다...' : raw < 1 ? '효과가 별로인 듯하다' : null;
     if (msg) say(msg, e.x, e.y - 70, raw > 1 ? '#ff4' : '#ccc');
   }
   if (secondary) return;
   p.streak++;
-  const proc = tick ? 0.12 : 1;
-  // 스탯만 바꾸던 기술들의 고유 효과
-  if (has('crunch')) e.broken = 3;
-  if (has('play-rough') && Math.random() < 0.15 * proc) { e.stun = Math.max(e.stun, 0.8); say('헤롱헤롱해졌다!', e.x, e.y - 50, '#fbd'); }
-  if (has('moonblast') && Math.random() < 0.2 * proc) { e.weak = 4; say('공격이 뜸해졌다!', e.x, e.y - 50, '#fbd'); }
-  if (has('brick-break') && e.act && e.act.phase === 0 && e.act.name && !tick && !(e.breakCd > 0) && !(e.ccImmune > 0)) {
-    e.act = null; e.fade = 0; e.cd = cooldown(e); e.breakCd = 3; say('기술을 깨뜨렸다!', e.x, e.y - 60, '#fa8');
-  }
-  if (has('earth-power') && Math.random() < 0.25 * proc) pstrikes.push({ x: e.x, y: e.y, t: 0.25, r: 45, mul: 0.9, type: 'ground' });
-  if (has('stone-edge') && crit) pstrikes.push({ x: e.x, y: e.y, t: 0.1, r: 55, mul: 1, type: 'rock' });
-  if (combo('meteor') && crit) for (let i = 0; i < 3; i++) pstrikes.push({ x: e.x + Math.random() * 120 - 60, y: e.y + Math.random() * 120 - 60, t: 0.35 + i * 0.12, r: 45, mul: 1, type: 'rock' });
-  if (combo('ironfist') && near) e.stun = Math.max(e.stun, 0.4);
-  if (has('dragon-claw') && !tick) {
-    fx.push({ kind: 'slash', x: e.x, y: e.y, t: 0.2, max: 0.2 });
-    for (const o of [e, ...enemiesNear(e.x, e.y, 50, e)]) damage(o, p.dmg * 0.35, 'dragon', true, true);
-  }
-  if (hasFx('shard') && !tick && Math.random() < 0.3) for (let i = 0; i < 6; i++) playerShot(e.x, e.y, i / 6 * Math.PI * 2 + Math.random() * 0.5, { type: 'rock', mul: 0.5, r: 6, life: 0.35, hit: new Set([e]), color: '#e8f8ff', accent: '#ff9fe0' });
-  if (has('will-o-wisp') && Math.random() < proc) e.burn = 3;
+  // proc: 광선처럼 촘촘히 들어가는 피해는 확률 효과를 낮춰서 건다. ride: 원뿔 기술의 적중 효과는 공격 방식이 원뿔이 아닐 때만 따로 얹는다 (원뿔이면 원뿔 자체가 그 효과)
+  const proc = tick ? 0.12 : 1, ride = carrier() !== 'cone', s = fxScale();
+  // 도깨비불·오물폭탄: 모든 공격에 불·독이 얹힌다
+  if (has('will-o-wisp') && Math.random() < (tick ? 0.3 : 1)) { e.burn = Math.max(e.burn, 3); damage(e, base * 0.15, 'fire', true, true); }
+  if (has('sludge-bomb') && Math.random() < (tick ? 0.3 : 1)) { e.psn = Math.max(e.psn ?? 0, 4); damage(e, base * 0.15, 'poison', true, true); }
+  if (has('sludge-bomb') && Math.random() < 0.15 * proc) puddles.push({ x: e.x, y: e.y, r: 40 * s, t: 2.5, tick: 0 });
+  if (has('flamethrower') && Math.random() < 0.5 * proc) e.burn = Math.max(e.burn, 2);
   if (hasFx('holyBurn') && Math.random() < proc) { e.burn = 4; e.holy = true; }
   if (has('icy-wind') && Math.random() < proc) e.slow = 2;
-  if (has('thunder-wave') && Math.random() < 0.25 * proc) { e.stun = 1; say('마비되었다!', e.x, e.y - 50, '#ff8'); }
   if (has('ice-beam') && Math.random() < 0.15 * proc) { e.frozen = 1; say('얼어붙었다!', e.x, e.y - 50, '#aef'); }
-  if ((has('dark-pulse') && Math.random() < 0.2 * proc) || (has('iron-head') && Math.random() < 0.15 * proc)) { e.stun = 0.6; say('풀죽었다!', e.x, e.y - 50, '#ccc'); }
+  if (has('dark-pulse') && Math.random() < 0.2 * proc) { e.stun = 0.6; say('풀죽었다!', e.x, e.y - 50, '#ccc'); }
+  if (has('air-slash') && Math.random() < 0.25 * proc) { e.stun = 0.5; say('풀죽었다!', e.x, e.y - 50, '#ccc'); }
   if (hasFx('freeze') && Math.random() < 0.35 * proc) { e.frozen = 1.5; say('얼어붙었다!', e.x, e.y - 50, '#aef'); }
   if (p.kingsRock && Math.random() < 0.1 * proc) { e.stun = 0.8; say('풀죽었다!', e.x, e.y - 50, '#ccc'); }
-  if (has('blizzard') && Math.random() < 0.1 * proc) { for (const o of [e, ...enemiesNear(e.x, e.y, 90, e)]) o.frozen = 1.2; say('눈보라에 얼어붙었다!', e.x, e.y - 50, '#aef'); }
-  if (has('poison-jab') && Math.random() < 0.3 * proc) e.burn = Math.max(e.burn, 3);
-  if (has('air-slash') && Math.random() < 0.25 * proc) { e.stun = 0.5; say('풀죽었다!', e.x, e.y - 50, '#ccc'); }
+  if (has('blizzard') && Math.random() < 0.1 * proc) { for (const o of [e, ...enemiesNear(e.x, e.y, 90 * s, e)]) o.frozen = 1.2; say('눈보라에 얼어붙었다!', e.x, e.y - 50, '#aef'); }
   if (combo('zero') && e.slow > 0 && Math.random() < 0.3 * proc) { e.frozen = 1; say('얼어붙었다!', e.x, e.y - 50, '#aef'); }
-  if (has('giga-drain') && (p.drain += d) >= (combo('vine') ? 12 : 25)) { p.drain -= combo('vine') ? 12 : 25; heal(1); say('체력을 흡수했다!', p.x, p.y - 60, '#8f8'); }
-  if (has('sludge-bomb') && Math.random() < 0.35 * proc) puddles.push({ x: e.x, y: e.y, r: 40, t: 2.5, tick: 0 });
-  if (has('rock-slide') && Math.random() < 0.3 * proc) for (let i = 0; i < 3; i++) pstrikes.push({ x: e.x + Math.random() * 100 - 50, y: e.y + Math.random() * 100 - 50, t: 0.4 + i * 0.1 });
-  if (has('earthquake') && Math.random() < proc * 0.6) {
-    const R = combo('rift') ? 180 : 90;
+  if (has('rock-slide') && Math.random() < 0.3 * proc) for (let i = 0; i < 3; i++) pstrikes.push({ x: e.x + Math.random() * 100 - 50, y: e.y + Math.random() * 100 - 50, t: 0.4 + i * 0.1, r: 40 * s });
+  if (has('crunch')) e.broken = 3;
+  if (has('moonblast') && Math.random() < 0.2 * proc) { e.weak = 4; say('공격이 뜸해졌다!', e.x, e.y - 50, '#fbd'); }
+  if (has('earth-power') && Math.random() < 0.25 * proc) pstrikes.push({ x: e.x, y: e.y, t: 0.25, r: 45 * s, mul: 0.9, type: 'ground' });
+  if (has('stone-edge') && crit) pstrikes.push({ x: e.x, y: e.y, t: 0.1, r: 55 * s, mul: 1, type: 'rock' });
+  if (combo('meteor') && crit) for (let i = 0; i < 3; i++) pstrikes.push({ x: e.x + Math.random() * 120 - 60, y: e.y + Math.random() * 120 - 60, t: 0.35 + i * 0.12, r: 45 * s, mul: 1, type: 'rock' });
+  if (combo('ironfist') && near) e.stun = Math.max(e.stun, 0.4);
+  if (has('thunder-wave') && Math.random() < 0.25 * proc) { e.stun = Math.max(e.stun, 1); say('마비되었다!', e.x, e.y - 50, '#ff8'); }
+  // 원뿔 기술의 효과를 다른 공격 방식에 얹을 때: 지진 충격파, 벌레의야단법석 음파
+  if (ride && has('earthquake') && Math.random() < proc * 0.6) {
+    const R = (combo('rift') ? 180 : 90) * s;
     fx.push({ kind: 'ring', x: e.x, y: e.y, t: 0.3, max: 0.3 });
     for (const o of enemiesNear(e.x, e.y, R, e)) if (!o.flying || combo('rift')) damage(o, p.dmg * 0.5, 'ground', false, true);
   }
-  if (tick) return;
-  if (has('thunderbolt')) {
-    // 자력선 조합이면 튄 전기가 2마리 더 이어진다
+  if (ride && has('bug-buzz') && !tick && (p.buzz = (p.buzz ?? 0) + 1) % 5 === 0) {
+    fx.push({ kind: 'ring', x: p.x, y: p.y, t: 0.35, max: 0.35 });
+    for (const o of enemiesNear(p.x, p.y, 120 * s)) { damage(o, p.dmg * 0.5, 'bug', false, true); if (!isBig(o)) { const d2 = Math.hypot(o.x - p.x, o.y - p.y) || 1; moveBody(o, (o.x - p.x) / d2 * 50, (o.y - p.y) / d2 * 50); } }
+  }
+  // 전기자석파: 옆의 적에게 전기가 튄다 (자력선 조합이면 2마리 더)
+  if (has('thunder-wave') && Math.random() < (tick ? 0.15 : 1)) {
     let from = e;
     const done = new Set([e]);
     for (let k = 0; k < (combo('magnet') ? 3 : 1); k++) {
-      const o = map.enemies.filter(o => !done.has(o) && o.hp > 0 && !untargetable(o) && Math.hypot(o.x - from.x, o.y - from.y) < (combo('storm') ? 260 : 160))
+      const o = map.enemies.filter(o => !done.has(o) && o.hp > 0 && !untargetable(o) && Math.hypot(o.x - from.x, o.y - from.y) < (combo('storm') ? 260 : 160) * s)
         .sort((a, b) => Math.hypot(a.x - from.x, a.y - from.y) - Math.hypot(b.x - from.x, b.y - from.y))[0];
       if (!o) break;
       damage(o, p.dmg * (combo('storm') ? 1.2 : 0.6), 'electric', false, true); fx.push({ kind: 'zap', x: from.x, y: from.y, x2: o.x, y2: o.y, t: 0.15 });
       done.add(o); from = o;
     }
   }
-  if (has('dragon-pulse')) {
-    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 45, t: 0.2, max: 0.2, color: TYPE_COLOR.dragon });
-    for (const o of enemiesNear(e.x, e.y, 45, e)) damage(o, p.dmg * 0.5, 'dragon', false, true);
+  if (has('dragon-pulse') && Math.random() < (tick ? 0.06 : 1)) {
+    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 45 * s, t: 0.2, max: 0.2, color: TYPE_COLOR.dragon });
+    for (const o of enemiesNear(e.x, e.y, 45 * s, e)) damage(o, p.dmg * 0.5, 'dragon', false, true);
   }
-  if (has('thunder') && Math.random() < (combo('tempest') ? 0.3 : 0.15)) {
-    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 75, t: 0.3, max: 0.3, color: TYPE_COLOR.electric }); shake = 0.12;
-    for (const o of [e, ...enemiesNear(e.x, e.y, 75, e)]) damage(o, p.dmg * 1.5, 'electric', false, true);
+  // 번개: 벼락. 천둥 폭풍이면 두 배, 뇌신이면 마비된 적에게는 거의 반드시
+  if (has('thunder') && Math.random() < 0.15 * (combo('tempest') ? 2 : 1) * (combo('raijin') && e.stun > 0 ? 6 : 1) * (tick ? 0.3 : 1)) {
+    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 75 * s, t: 0.3, max: 0.3, color: TYPE_COLOR.electric }); fx.push({ kind: 'zap', x: e.x, y: e.y - 220, x2: e.x, y2: e.y, t: 0.2 }); shake = 0.12;
+    for (const o of [e, ...enemiesNear(e.x, e.y, 75 * s, e)]) damage(o, p.dmg * 1.5, 'electric', false, true);
   }
-  if (has('energy-ball') && Math.random() < 0.2) {
-    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 50, t: 0.2, max: 0.2, color: TYPE_COLOR.grass });
-    for (const o of enemiesNear(e.x, e.y, 50, e)) damage(o, p.dmg * 0.6, 'grass', false, true);
+  if (tick) return;
+  // 구슬: 맞은 자리에서 폭발 (에너지볼은 더 넓게)
+  if (orbCount()) {
+    const R = 50 * s * (has('energy-ball') ? 1.4 : 1), ot = moveDef(lastOf(ORBS)).type;
+    fx.push({ kind: 'boom', x: e.x, y: e.y, r: R, t: 0.22, max: 0.22, color: p.pcol?.[0] ?? TYPE_COLOR[ot] });
+    for (const o of enemiesNear(e.x, e.y, R, e)) damage(o, p.dmg * 0.55, ot, false, true);
   }
-  if (has('bug-buzz') && (p.buzz = (p.buzz ?? 0) + 1) % 5 === 0) {
-    fx.push({ kind: 'ring', x: p.x, y: p.y, t: 0.35, max: 0.35 });
-    for (const o of enemiesNear(p.x, p.y, 120)) { damage(o, p.dmg * 0.5, 'bug', false, true); if (!isBig(o)) { const d2 = Math.hypot(o.x - p.x, o.y - p.y) || 1; moveBody(o, (o.x - p.x) / d2 * 50, (o.y - p.y) / d2 * 50); } }
+  if (has('dragon-claw')) {
+    fx.push({ kind: 'slash', x: e.x, y: e.y, t: 0.2, max: 0.2 });
+    for (const o of [e, ...enemiesNear(e.x, e.y, 50 * s, e)]) damage(o, p.dmg * 0.35, 'dragon', true, true);
   }
+  if (hasFx('shard') && Math.random() < 0.3) for (let i = 0; i < 6; i++) playerShot(e.x, e.y, i / 6 * Math.PI * 2 + Math.random() * 0.5, { type: 'rock', mul: 0.5, r: 6, life: 0.35, hit: new Set([e]), color: '#e8f8ff', accent: '#ff9fe0' });
   // 전설의 기술 효과
   if (hasFx('smite') && Math.random() < 0.35) {
     damage(e, p.dmg * 2.5, 'electric', false, true);
@@ -141,29 +142,36 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   }
   if (hasFx('rend')) {
     fx.push({ kind: 'slash', x: e.x, y: e.y, t: 0.25, max: 0.25 });
-    for (const o of enemiesNear(e.x, e.y, 110, e)) damage(o, p.dmg * 0.7, 'dragon', false, true);
+    for (const o of enemiesNear(e.x, e.y, 110 * s, e)) damage(o, p.dmg * 0.7, 'dragon', false, true);
   }
   if (hasFx('erupt') && p.eruptCd <= 0) {
     p.eruptCd = 0.35;
     const d0 = Math.hypot(e.x - p.x, e.y - p.y) || 1, ux = (e.x - p.x) / d0, uy = (e.y - p.y) / d0;
-    for (let i = 0; i < 4; i++) pstrikes.push({ x: e.x + ux * 55 * i, y: e.y + uy * 55 * i, t: 0.08 + i * 0.1, r: 45, mul: 1.2, type: 'ground' });
+    for (let i = 0; i < 4; i++) pstrikes.push({ x: e.x + ux * 55 * i, y: e.y + uy * 55 * i, t: 0.08 + i * 0.1, r: 45 * s, mul: 1.2, type: 'ground' });
   }
   if (hasFx('flare')) {
-    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 55, t: 0.25, max: 0.25, color: TYPE_COLOR.grass });
-    for (const o of enemiesNear(e.x, e.y, 55, e)) damage(o, p.dmg * 0.8, 'grass', false, true);
+    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 55 * s, t: 0.25, max: 0.25, color: TYPE_COLOR.grass });
+    for (const o of enemiesNear(e.x, e.y, 55 * s, e)) damage(o, p.dmg * 0.8, 'grass', false, true);
   }
   if (hasFx('madness') && !big && e.hp > 0 && Math.random() < 0.2) { e.hp /= 2; say('자연의 분노!', e.x, e.y - 60, '#f9c'); }
 }
 
+// 광선: 가장 최근에 배운 광선 기술의 타입으로 나가고, 위력·굵기·차징은 가진 광선 기술 중 센 쪽을 따른다
 function beamCfg() {
-  let type = has('flamethrower') ? 'fire' : 'normal', mul = has('hyper-beam') ? 1.8 : 1, wm = has('hyper-beam') ? 1.4 : 1, cm = has('hyper-beam') ? 1.3 : 1, crit = 0;
+  const last = lastOf(BEAMS);
+  let type = last ? moveDef(last).type : 'normal', mul = 1, wm = 1, cm = 1, crit = 0;
+  if (has('hyper-beam')) { mul = Math.max(mul, 1.8); wm *= 1.4; cm *= 1.3; }
+  if (has('dragon-pulse')) mul = Math.max(mul, 1.3);
+  if (has('hydro-pump')) { mul = Math.max(mul, 1.25); wm *= 1.2; }
+  if (has('thunder')) mul = Math.max(mul, 1.2);
   if (has('aeroblast')) { type = 'flying'; mul = Math.max(mul, 1.5); cm *= 0.5; crit = 0.3; }
   if (has('moongeist-beam')) { type = 'ghost'; mul = Math.max(mul, 2); }
   if (has('blue-flare')) { type = 'fire'; mul = Math.max(mul, 2.2); }
   if (has('eternabeam')) { type = 'dragon'; mul = Math.max(mul, 2.6); wm *= 1.8; cm *= 1.5; }
-  return { type, mul, wm, cm, crit };
+  return { type, mul, wm: wm * fxScale(), cm, crit };
 }
-function carrier() { return has('egg-bomb') ? 'bomb' : has('flamethrower') || has('hyper-beam') || hasFx('beam') ? 'beam' : 'tear'; }
+// 공격 방식: 알폭탄 > 광선 > 레이저 > 원뿔 > 보통 탄
+function carrier() { return has('egg-bomb') ? 'bomb' : BEAMS.some(has) || hasFx('beam') ? 'beam' : LASERS.some(has) ? 'laser' : CONES.some(has) ? 'cone' : 'tear'; }
 const shotScale = () => clamp(1 + (player.dmg * legendPow - 3) * 0.05, 1, 2);
 const spread = () => has('pin-missile') ? [-0.26, 0, 0.26] : has('razor-leaf') ? [-0.12, 0.12] : [0];
 const chargeTime = () => player.fireDelay * 2.2 * beamCfg().cm * (has('bullet-seed') ? 0.6 : 1);
@@ -173,14 +181,14 @@ function aimAngle(sd) {
   return e ? Math.atan2(e.y - p.y, e.x - p.x) : Math.atan2(sd[1], sd[0]);
 }
 
-// 유도 세기: 사이코 계열 > 스피드스타. 탄·알·광선(알에서 나온 광선 포함) 모두 같은 값을 쓴다
+// 유도 세기: 사이코 계열 > 스피드스타. 탄·알·광선·레이저(알에서 나온 것 포함) 모두 같은 값을 쓴다
 const homing = () => hasFx('psy') ? 9 : has('swift') ? 5 : 0;
 function shootTear(a, extra = {}) {
-  const p = player, sp = p.shotSpeed * moveShot(), big = has('shadow-ball') || has('surf'), psy = hasFx('psy');
+  const p = player, sp = p.shotSpeed * moveShot(), psy = hasFx('psy'), orb = orbCount() > 0;
   if (has('bullet-seed')) a += (Math.random() - 0.5) * 0.16;  // 씨앗은 조금씩 흩어진다
-  tears.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: p.range, life0: p.range, r: ((big ? 11 : 7) + (hasFx('blade') ? 3 : 0) + (has('focus-blast') ? 4 : 0)) * shotScale(), from: 'p', type: p.type,
-    pierce: big || has('psychic') || psy || has('x-scissor') || hasFx('blade'), ghost: has('shadow-ball') || p.ghostShot || has('aerial-ace'), boom: has('psychic'), home: homing(), hit: new Set(),
-    blast: has('focus-blast'), split2: combo('skyfall'), color: p.pcol?.[0], accent: p.pcol?.[1],
+  tears.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: p.range, life0: p.range, r: ((orb ? 17 : 7) + (hasFx('blade') ? 3 : 0)) * shotScale() * fxScale(), from: 'p', type: p.type,
+    pierce: has('shadow-ball') || has('psychic') || psy || has('x-scissor') || hasFx('blade'), ghost: has('shadow-ball') || p.ghostShot, boom: has('psychic'), home: homing(), hit: new Set(),
+    xs: has('x-scissor') ? 1 : 0, blade: has('air-slash'), split2: combo('skyfall'), fire: has('will-o-wisp'), psn: has('sludge-bomb'), color: p.pcol?.[0], accent: p.pcol?.[1],
     mul: (has('bullet-seed') ? 0.55 : 1) * (psy ? 1.4 : 1) * (has('razor-leaf') && !has('pin-missile') ? 0.7 : 1), ...extra });
 }
 // 플레이어 쪽 탄을 아무 자리에서나 쏜다 (파편, 갈라지는 탄)
@@ -189,27 +197,65 @@ function playerShot(x, y, a, o = {}) {
   tears.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life, life0: life, r: 7, from: 'p', type: p.type, hit: new Set(), mul: 1, color: p.pcol?.[0], accent: p.pcol?.[1], ...o });
 }
 
+// 레이저(10만볼트·냉동빔): 아이작의 테크놀로지처럼 쏠 때마다 가늘고 긴 선이 한 번 지나가며 닿은 적을 모두 꿰뚫는다
+const laserType = () => moveDef(lastOf(LASERS) ?? 'thunderbolt').type;
+function fireLaser(a, o = {}) {
+  const p = player;
+  beams.push({ a, laser: true, ltype: laserType(), t: 0.2, t0: 0.2, tick: 0, w: 7 * fxScale(), len: Math.min(560, p.range * p.shotSpeed * 1.5), bounce: combo('psyspark'), ...o });
+}
+function laserHits(b) {
+  const p = player, pts = b.pts = beamPath(b), [x0, y0] = pts[0];
+  const hit = map.enemies.filter(e => e.hp > 0 && !untargetable(e) && pts.some(([x, y]) => Math.hypot(e.x - x, e.y - y) < b.w / 2 + e.r))
+    .sort((u, v) => Math.hypot(u.x - x0, u.y - y0) - Math.hypot(v.x - x0, v.y - y0));
+  let m = 1;
+  for (const e of hit) { damage(e, p.dmg * (b.mul ?? 1) * m, b.ltype); if (has('x-scissor')) m = Math.min(m * 2, 16); }  // 시저크로스: 꿰뚫을 때마다 2배
+}
+
+// 원뿔(얼다바람·지진·파도타기·매지컬샤인·스톤샤워·눈보라·벌레의야단법석·대지의힘): 탄 대신 앞쪽 부채꼴을 한 번에 친다
+// 가장 최근에 배운 원뿔 기술의 타입으로 맞고, 가진 원뿔 기술의 효과는 모두 얹힌다
+function fireCone(a) {
+  const p = player, s = fxScale(), type = moveDef(lastOf(CONES)).type;
+  const len = (120 + p.range * p.shotSpeed * 0.3) * s * (has('bug-buzz') ? 1.25 : 1) * (combo('rift') ? 1.5 : 1);
+  const half = (has('surf') ? 0.62 : 0.45) * (1 + 0.25 * (spread().length - 1));
+  fx.push({ kind: 'cone', x: p.x, y: p.y, a, len, half, t: 0.28, max: 0.28, color: p.pcol?.[0] ?? TYPE_COLOR[type], accent: p.pcol?.[1] ?? '#ffffff' });
+  if (has('earthquake')) shake = 0.15;
+  for (const e of [...map.enemies]) {
+    if (e.hp <= 0 || untargetable(e)) continue;
+    const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1;
+    if (d > len + e.r) continue;
+    const off = Math.abs(((Math.atan2(dy, dx) - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+    if (off > half + Math.atan2(e.r, d) || losBlocked(p.x, p.y, e.x, e.y)) continue;
+    const quake = !has('earthquake') ? 1 : e.flying && !combo('rift') ? 0.5 : 1.4;
+    damage(e, p.dmg * 1.1 * quake, type);
+    if (isBig(e) || e.act || e.hp <= 0) continue;
+    if (combo('psychill')) moveBody(e, -dx / d * 60, -dy / d * 60);  // 염동 냉기: 끌어당긴다
+    else if (has('surf') || has('bug-buzz')) moveBody(e, dx / d * (has('surf') ? 70 : 40), dy / d * (has('surf') ? 70 : 40));
+  }
+  if (has('rock-slide')) for (let i = 0; i < 3; i++) { const r = len * (0.4 + Math.random() * 0.6), aa = a + (Math.random() * 2 - 1) * half; pstrikes.push({ x: p.x + Math.cos(aa) * r, y: p.y + Math.sin(aa) * r, t: 0.3 + i * 0.12, r: 40 * s, mul: 0.8, type: 'rock' }); }
+}
+
 function attack(dt) {
   const p = player, kind = carrier();
   const sd = keys.ArrowUp ? [0, -1] : keys.ArrowDown ? [0, 1] : keys.ArrowLeft ? [-1, 0] : keys.ArrowRight ? [1, 0] : null;
   if (sd && sd[0]) p.flip = sd[0] > 0;
   if (sd) p.face = faceRow(sd[0], sd[1]);
-  // 어떤 공격 방식(탄·광선·알)이든 공격할 때마다 붙는 추가 공격
+  // 어떤 공격 방식이든 공격할 때마다 붙는 추가 공격
   const waves = base => {
     if (hasFx('fan5')) for (const off of [-0.7, -0.35, 0.35, 0.7]) shootTear(base + off, { r: 11, pierce: true, type: 'water', mul: 0.8 });
-    if (has('flash-cannon') && (p.cannon = (p.cannon ?? 0) + 1) % 5 === 0) shootTear(base, { r: 15, pierce: true, type: 'steel', mul: 1.5, color: '#d8e0f0', accent: '#8090b0', ghost: true });
     if (combo('tidal') && (p.tide = (p.tide ?? 0) + 1) % 6 === 0) {
       fx.push({ kind: 'wave', x: p.x, y: p.y, t: 0.45, max: 0.45 });
-      for (const o of enemiesNear(p.x, p.y, 150)) { damage(o, p.dmg * 0.6, 'water', false, true); if (!isBig(o)) { const d2 = Math.hypot(o.x - p.x, o.y - p.y) || 1; moveBody(o, (o.x - p.x) / d2 * 90, (o.y - p.y) / d2 * 90); } }
+      for (const o of enemiesNear(p.x, p.y, 150 * fxScale())) { damage(o, p.dmg * 0.6, 'water', false, true); if (!isBig(o)) { const d2 = Math.hypot(o.x - p.x, o.y - p.y) || 1; moveBody(o, (o.x - p.x) / d2 * 90, (o.y - p.y) / d2 * 90); } }
     }
+    // 매지컬샤인: 4번째(요정의 장난이면 3번째) 공격마다 사방으로 빛. 유전자쐐기가 있으면 매 공격마다
+    if (has('dazzling-gleam') && (p.backShot || (p.shots = (p.shots ?? 0) + 1) % (combo('prank') ? 3 : 4) === 0)) for (let i = 0; i < 8; i++) shootTear(i / 8 * Math.PI * 2, { type: 'fairy', mul: 0.6, freeze: combo('aurora') ? 0.3 : 0 });
   };
   if (kind === 'beam') {
     // 혈사포처럼: 누르고 있으면 충전, 다 찬 상태에서 떼면 발사
     if (sd) { p.charge = Math.min(p.charge + dt, chargeTime()); p.aim = sd; return; }
     if (p.charge >= chargeTime()) {
       // 광선은 누른 방향으로 나가서 휘어 들어간다(beamPath). 처음부터 적을 조준하면 곧은 선이 된다
-      const base = Math.atan2(p.aim[1], p.aim[0]), w = ((has('shadow-ball') ? 32 : 20) + (has('thunderbolt') ? 10 : 0)) * beamCfg().wm * shotScale();
-      for (const off of spread()) beams.push({ a: base + off, t: 0.4, tick: 0, w });
+      const base = Math.atan2(p.aim[1], p.aim[0]), w = ((has('shadow-ball') ? 32 : 20) + (LASERS.some(has) ? 10 : 0)) * beamCfg().wm * shotScale();
+      for (const off of spread()) beams.push({ a: base + off, t: 0.4, tick: 0, w, bounce: combo('psyflame') });
       sfx('beam'); p.fired = true;
       waves(base);
     }
@@ -219,32 +265,37 @@ function attack(dt) {
   if (!sd || p.cd > 0) return;
   sfx('shot'); p.fired = true;
   const base = kind === 'bomb' ? aimAngle(sd) : Math.atan2(sd[1], sd[0]);
-  for (const off of spread()) {
+  if (kind === 'cone') fireCone(base);
+  else for (const off of spread()) {
     const a = base + off;
     if (kind === 'bomb') {
       // 유도 기술이 있으면 알이 날아가는 동안 목표를 따라간다
       const target = homing() && nearestEnemy(p.x, p.y, null, 420), dist = target ? Math.hypot(target.x - p.x, target.y - p.y) : p.range * p.shotSpeed * 0.7;
       bombs.push({ sx: p.x, sy: p.y, x: p.x, y: p.y, z: 0, t: 0, dur: 0.55, tx: p.x + Math.cos(a) * dist, ty: p.y + Math.sin(a) * dist, target });
-    } else shootTear(a);
+    } else if (kind === 'laser') fireLaser(a);
+    else shootTear(a);
   }
   waves(base);
   if (p.backShot && kind === 'tear') shootTear(base + Math.PI);
-  if (has('dazzling-gleam') && ++p.shots % (combo('prank') ? 3 : 4) === 0) for (let i = 0; i < 8; i++) shootTear(i / 8 * Math.PI * 2, { type: 'fairy', mul: 0.6, freeze: combo('aurora') ? 0.3 : 0 });
-  p.cd = p.fireDelay * (kind === 'bomb' ? 1.8 : 1) * moveRate() / (combo('gale') ? 1.25 : 1);
+  if (p.backShot && kind === 'laser') fireLaser(base + Math.PI);
+  p.cd = p.fireDelay * (kind === 'bomb' ? 1.8 : kind === 'cone' ? 1.15 : 1) * moveRate() / (combo('gale') ? 1.25 : 1);
 }
 
-// 플레이어 광선은 장애물을 지나가고 건물/벽에서 멈춘다. 적의 광선은 장애물에도 막혀서 숨으면 피할 수 있다
-// 플레이어 광선 경로: 12px씩 나아가며, 유도 기술(스피드스타·사이코 계열)이 있으면 앞쪽의 가장 가까운 적으로 조금씩 휜다
+// 플레이어 광선·레이저는 장애물을 지나가고 건물/벽에서 멈춘다. 적의 광선은 장애물에도 막혀서 숨으면 피할 수 있다
+// 경로: 12px씩 나아가며, 유도 기술(스피드스타·사이코 계열)이 있으면 앞쪽의 가장 가까운 적으로 조금씩 휜다
+// bounce(염동 화염·염동 전류): 벽에 막히거나 끝에 닿으면 한 번 꺾여 되돌아온다
 function beamPath(b) {
-  const p = player, home = hasFx('psy') ? 0.08 : has('swift') ? 0.05 : 0;  // 알에서 터져 나온 광선도 휜다
-  let x = b.ox ?? p.x, y = b.oy ?? p.y, a = b.a;
+  const p = player, home = hasFx('psy') ? 0.08 : has('swift') ? 0.05 : 0, len = b.len ?? 520;
+  let x = b.ox ?? p.x, y = b.oy ?? p.y, a = b.a, turned = !b.bounce, s = 0, limit = len;
   const pts = [[x, y]];
-  for (let s = 0; s < 520; s += 12) {
+  while (s < limit) {
     const t = home && nearestEnemy(x, y, null, 260);
     if (t) { const d = ((Math.atan2(t.y - y, t.x - x) - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI; if (Math.abs(d) < 1.6) a += clamp(d, -home, home); }
-    x += Math.cos(a) * 12; y += Math.sin(a) * 12;
-    if (shotBlocked(Math.floor(x / TS), Math.floor(y / TS), true)) break;
-    pts.push([x, y]);
+    const nx = x + Math.cos(a) * 12, ny = y + Math.sin(a) * 12;
+    s += 12;
+    if (shotBlocked(Math.floor(nx / TS), Math.floor(ny / TS), true)) { if (turned) break; turned = true; a += Math.PI; limit = s + len * 0.6; continue; }
+    x = nx; y = ny; pts.push([x, y]);
+    if (s >= limit && !turned) { turned = true; a += Math.PI; limit = s + len * 0.6; }
   }
   return pts;
 }
@@ -255,13 +306,16 @@ function beamLen(ox, oy, dx, dy, blockedByObstacles = false) {
 }
 
 function explode(b) {
-  const rad = (has('shadow-ball') ? 80 : 56) * (b.mini ? 0.6 : 1);
-  fx.push({ kind: 'boom', x: b.x, y: b.y - b.z * 0.5, r: rad, t: 0.25, max: 0.25, color: player.pcol?.[0] });
-  for (const e of map.enemies) if (Math.hypot(e.x - b.x, e.y - b.y) < rad + e.r) damage(e, player.dmg * 2.5 * (has('bullet-seed') ? 0.55 : 1) * (b.mini ? 0.45 : 1), 'normal');
+  const p = player, s = fxScale(), rad = (has('shadow-ball') ? 80 : 56) * (b.mini ? 0.6 : 1) * s;
+  fx.push({ kind: 'boom', x: b.x, y: b.y - b.z * 0.5, r: rad, t: 0.25, max: 0.25, color: p.pcol?.[0] });
+  for (const e of map.enemies) if (Math.hypot(e.x - b.x, e.y - b.y) < rad + e.r) damage(e, p.dmg * 2.5 * (has('bullet-seed') ? 0.55 : 1) * (b.mini ? 0.45 : 1), 'normal');
   if (b.mini) return;
   const n = combo('eggfire') ? 8 : 4;
-  if (has('flamethrower') || has('hyper-beam') || hasFx('beam')) for (let i = 0; i < n; i++) beams.push({ ox: b.x, oy: b.y, a: i * Math.PI * 2 / n, t: 0.3, tick: 0, w: 16 });
+  if (BEAMS.some(has) || hasFx('beam')) for (let i = 0; i < n; i++) beams.push({ ox: b.x, oy: b.y, a: i * Math.PI * 2 / n, t: 0.3, tick: 0, w: 16 * s, bounce: combo('psyflame') });
+  if (LASERS.some(has)) for (let i = 0; i < 4; i++) fireLaser(i * Math.PI / 2 + Math.PI / 4, { ox: b.x, oy: b.y, len: 300 });
   if (combo('eggstorm')) for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + Math.random(); bombs.push({ sx: b.x, sy: b.y, x: b.x, y: b.y, z: 0, t: 0, dur: 0.35, tx: b.x + Math.cos(a) * 70, ty: b.y + Math.sin(a) * 70, mini: true }); }
+  // 염동 알: 한 번 튀어 올라 플레이어 쪽으로 반쯤 돌아오며 다시 터진다
+  if (combo('psyegg') && !b.bounced) bombs.push({ sx: b.x, sy: b.y, x: b.x, y: b.y, z: 0, t: 0, dur: 0.45, tx: b.x + (p.x - b.x) * 0.5, ty: b.y + (p.y - b.y) * 0.5, bounced: true });
 }
 
 // o: 탄 속성 덮어쓰기. x·y(쏘는 자리), r(크기), seek(이 시간 동안 플레이어를 따라감), split(이 시간 뒤 터지며 splitN발로 갈라짐)
@@ -508,6 +562,8 @@ function updateEnemyInner(e, dt) {
   if (combo('nightmare') && e.stun > 0) e.nightmare = 3;
   if (e.nightmare > 0) { e.nightmare -= dt; if ((e.nmTick = (e.nmTick ?? 0) - dt) <= 0) { e.nmTick = 0.5; damage(e, p.dmg * 0.3, 'ghost', true, true); } }
   if (e.burn > 0) { e.burn -= dt; if ((e.burnTick -= dt) <= 0) { e.burnTick = 0.5; damage(e, p.dmg * 0.3 * (e.holy ? 2 : 1) * (combo('toxic') ? 2 : 1), 'fire', true, true); } }
+  // 독(오물폭탄): 화상과 따로 쌓인다
+  if (e.psn > 0) { e.psn -= dt; if ((e.psnTick = (e.psnTick ?? 0) - dt) <= 0) { e.psnTick = 0.5; damage(e, p.dmg * 0.25 * (combo('toxic') ? 2 : 1), 'poison', true, true); } }
   if (e.burst > 0 && (e.burstT -= dt) <= 0) { enemyShot(e, Math.atan2(p.y - e.y, p.x - e.x), 220); e.burst--; e.burstT = 0.15; }
   e.moving = false;
   if (e.frozen > 0) { e.frozen -= dt; return; }

@@ -127,6 +127,8 @@ function update(dt) {
   const bc = beamCfg();
   for (const b of beams) {
     b.t -= dt;
+    // 레이저: 쏜 순간 한 번 지나가며 닿은 적을 모두 친다
+    if (b.laser) { if (!b.fired) { b.fired = true; laserHits(b); } continue; }
     if ((b.tick -= dt) > 0) continue;
     b.tick = 0.05;
     const pts = beamPath(b);
@@ -135,8 +137,18 @@ function update(dt) {
       damage(e, p.dmg * 0.45 * bc.mul * (combo('steam') ? 1.4 : 1) * (combo('solar') ? 1.4 : 1), bc.type, true, false, bc.crit);
       if (combo('solar') && Math.random() < 0.04) { fx.push({ kind: 'boom', x: e.x, y: e.y, r: 50, t: 0.2, max: 0.2, color: '#f8ff80' }); for (const o of enemiesNear(e.x, e.y, 50)) damage(o, p.dmg * 0.5, 'grass', false, true); }
       if (has('blue-flare')) e.burn = 3;
+      // 광선 + 레이저: 광선에 감긴 전기·얼음 레이저가 함께 지진다
       if (has('thunderbolt')) damage(e, p.dmg * 0.2, 'electric', true, true);
+      if (has('ice-beam')) damage(e, p.dmg * 0.2, 'ice', true, true);
+      // 하이드로펌프: 물줄기가 적을 밀어내고, 벽에 부딪히면 추가 피해
+      if (has('hydro-pump') && !isBig(e) && !e.act && e.hp > 0) {
+        const ex = e.x, ey = e.y;
+        moveBody(e, Math.cos(b.a) * 14, Math.sin(b.a) * 14);
+        if (Math.hypot(e.x - ex, e.y - ey) < 7 && (e.slamCd ?? 0) < now) { e.slamCd = now + 0.6; damage(e, p.dmg * 0.8, 'water', false, true); say('벽에 부딪혔다!', e.x, e.y - 50, '#8cf'); }
+      }
     }
+    // 폭풍우: 광선이 지나가는 자리에 벼락
+    if (combo('stormfront') && pts.length > 2 && Math.random() < 0.12) { const [x, y] = pts[1 + Math.floor(Math.random() * (pts.length - 1))]; pstrikes.push({ x, y, t: 0.15, r: 45 * fxScale(), mul: 1.2, type: 'electric' }); }
   }
   beams = beams.filter(b => b.t > 0);
 
@@ -169,9 +181,9 @@ function update(dt) {
       if (e) { const na = turnToward(Math.atan2(t.vy, t.vx), Math.atan2(e.y - t.y, e.x - t.x), t.home * dt), sp = Math.hypot(t.vx, t.vy); t.vx = Math.cos(na) * sp; t.vy = Math.sin(na) * sp; }
     }
     // 사이코키네시스: 사거리 절반에서 플레이어 쪽으로 되돌아온다
-    if (t.boom && !t.back && t.life < t.life0 / 2) { t.back = true; t.hit.clear(); t.life = t.life0; }
+    if (t.boom && !t.back && t.life < t.life0 / 2) { t.back = true; t.hit.clear(); t.life = t.life0; if (combo('psycut') && t.xs) t.xs = Math.min(t.xs * 2, 32); }
     // 하늘 가르기: 사거리 절반에서 둘로 갈라진다
-    if (t.split2 && t.life < t.life0 / 2) { t.split2 = false; const a = Math.atan2(t.vy, t.vx); for (const o of [-0.35, 0.35]) playerShot(t.x, t.y, a + o, { type: t.type, mul: t.mul, r: t.r, life: t.life, pierce: t.pierce, ghost: t.ghost, home: t.home, blast: t.blast, hit: new Set(t.hit), color: t.color, accent: t.accent }); }
+    if (t.split2 && t.life < t.life0 / 2) { t.split2 = false; const a = Math.atan2(t.vy, t.vx); for (const o of [-0.35, 0.35]) playerShot(t.x, t.y, a + o, { type: t.type, mul: t.mul, r: t.r, life: t.life, pierce: t.pierce, ghost: t.ghost, home: t.home, blade: t.blade, xs: t.xs, fire: t.fire, psn: t.psn, hit: new Set(t.hit), color: t.color, accent: t.accent }); }
     if (t.back) { const d = Math.hypot(p.x - t.x, p.y - t.y) || 1, sp = Math.hypot(t.vx, t.vy); t.vx = (p.x - t.x) / d * sp; t.vy = (p.y - t.y) / d * sp; if (d < 20) t.life = 0; }
     t.x += t.vx * dt; t.y += t.vy * dt; t.life -= dt;
     if (t.life > 0 && shotBlocked(Math.floor(t.x / TS), Math.floor(t.y / TS), t.ghost && t.from === 'p')) { t.life = 0; fx.push({ kind: 'splash', x: t.x, y: t.y, t: 0.2, max: 0.2, color: TYPE_COLOR[t.type] }); }
@@ -180,16 +192,11 @@ function update(dt) {
       for (const e of enemies) {
         if (t.hit.has(e) || e.hp <= 0 || untargetable(e) || Math.hypot(e.x - t.x, e.y - t.y) > e.r + t.r) continue;
         t.hit.add(e);
-        damage(e, p.dmg * t.mul, t.type);
+        // 시저크로스: 꿰뚫을 때마다 피해 2배 (최대 16배, 사이코 커터로 돌아오면 더)
+        damage(e, p.dmg * t.mul * (t.xs || 1), t.type);
+        if (t.xs) t.xs = Math.min(t.xs * 2, combo('psycut') && t.back ? 32 : 16);
         if (t.freeze && Math.random() < t.freeze) { e.frozen = 1; say('얼어붙었다!', e.x, e.y - 50, '#aef'); }
-        if (t.blast) { fx.push({ kind: 'boom', x: e.x, y: e.y, r: 45, t: 0.2, max: 0.2, color: t.color }); for (const o of enemiesNear(e.x, e.y, 45, e)) damage(o, p.dmg * 0.5, 'fighting', false, true); }
-        // 밀어내기: 파도타기·하이드로펌프는 멀리. 하이드로펌프로 밀린 적이 벽에 부딪히면 추가 피해
-        const push = has('hydro-pump') ? 0.13 : has('surf') ? 0.09 : 0.03;
-        if (!isBig(e) && !e.act) {
-          const ex = e.x, ey = e.y, want = Math.hypot(t.vx, t.vy) * push;
-          moveBody(e, t.vx * push, t.vy * push);
-          if (has('hydro-pump') && Math.hypot(e.x - ex, e.y - ey) < want * 0.5 && (e.slamCd ?? 0) < now) { e.slamCd = now + 0.6; damage(e, p.dmg * 0.8, 'water', false, true); say('벽에 부딪혔다!', e.x, e.y - 50, '#8cf'); }
-        }
+        if (!isBig(e) && !e.act) moveBody(e, t.vx * 0.03, t.vy * 0.03);
         if (!t.pierce) { t.life = 0; break; }
       }
     } else if (Math.hypot(p.x - t.x, p.y - t.y) < p.r + t.r) { hurt(t.type, 1, t); t.life = 0; }
