@@ -169,7 +169,8 @@ function startRoom(r) {
   } });
   // 사천왕 → 이기면 위쪽 방 문이 열린다. 마지막 방은 챔피언
   startBattle({ who: r.who.leader, title: r.who.title, queue: [...r.who.team], ...at, rank: 'boss', tier: 8, wait: champ ? 4 : 1,
-    say: champ && ((i, ace) => ace ? CHAMP_ACE : CHAMP_SAY[Math.min(i, CHAMP_SAY.length - 1)]), onWin: bt => {
+    // 사천왕은 대사 없음: false가 아니라 null을 넣는다 (bt.say?.()는 null·undefined만 건너뛰고, false는 호출하다 멈춘다)
+    say: champ ? (i, ace) => ace ? CHAMP_ACE : CHAMP_SAY[Math.min(i, CHAMP_SAY.length - 1)] : null, onWin: bt => {
     open(); gainMoney(3000, at.x, at.y + 2 * TS);
     if (!champ) { heal(Math.ceil(p.maxHp / 2)); banner = { text: `${r.who.leader}에게 이겼다! 위쪽 방의 문이 열렸다`, t: 3 }; return; }
     recordClear(); clearSave(); p.champion = true;
