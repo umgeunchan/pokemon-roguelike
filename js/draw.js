@@ -259,7 +259,7 @@ function drawSparkle(a, top, w) {
 function drawActor(a, scale, alpha = 1, battle = false) {
   const art = a.megaArt ?? (a.shiny && a.mon.shinyArt || a.mon), b = art.box ?? a.mon.box, f = !battle && art.field, { lift, sx, sy } = pose(a, scale);
   const jitter = a.act?.phase === 0 && a.act.kind === 'charge' ? Math.sin(now * 70) * 2 : 0;
-  if (a === player) drawGimmickBack(a, scale);
+  if (a === player) { drawAbilityBack(a); drawGimmickBack(a, scale); }
   ctx.save();
   ctx.globalAlpha = alpha * (1 - (a.fade ?? 0));
   ctx.translate(Math.round(a.x + jitter), Math.round(a.y - lift));
@@ -285,7 +285,7 @@ function drawActor(a, scale, alpha = 1, battle = false) {
   if (a.slow > 0) dots('#aef');
   if (a.stun > 0) { ctx.fillStyle = '#ff8'; ctx.fillRect(Math.round(a.x - 8 + Math.sin(now * 8) * 10), Math.round(top - 6), 4, 4); }
   if (a.shiny) drawSparkle(a, top, w);
-  if (a === player) drawGimmick(a, top, w);
+  if (a === player) { drawGimmick(a, top, w); drawAbility(a, top, w); }
   if (a.rank && a.rank !== 'wild' && !isBig(a) && a.hp < a.maxHp) { ctx.fillStyle = '#000'; ctx.fillRect(a.x - 16, top - 10, 32, 5); ctx.fillStyle = '#e44'; ctx.fillRect(a.x - 15, top - 9, 30 * Math.max(0, a.hp / a.maxHp), 3); }
 }
 
@@ -433,6 +433,7 @@ function drawPanel() {
   ctx.fillStyle = '#222'; ctx.fillRect(6, HUD + 55, 146, 5);
   ctx.fillStyle = '#4ac0ff'; ctx.fillRect(6, HUD + 55, 146 * (p.level >= MAX_LEVEL ? 1 : Math.min(1, p.exp / expNeed(p.level))), 5);
   text(`₽ ${p.money.toLocaleString()}`, 6, HUD + 76, 12, '#fd6', 'left');
+  const ab = curAb(); if (ab) text(ab.ko, 152, HUD + 76, 11, ab.color ?? '#9cf', 'right');  // 특성
   STATS.forEach(([label, icon, f, dg], i) => {
     const y = HUD + 84 + i * 30;
     ctx.drawImage(IMG[icon], 2, y, 30, 30);

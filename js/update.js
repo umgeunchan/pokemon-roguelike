@@ -14,6 +14,7 @@ function update(dt) {
   if (map.hoopaT > 0 && (map.hoopaT -= dt) <= 0) openHoopaRing();
   p.time += dt; p.hop -= dt; if (p.webbed > 0) p.webbed -= dt;
   if (p.regen && (p.regenT -= dt) <= 0) { p.regenT = 12; heal(1); }
+  abTick(dt);
   // 지오컨트롤: 12초마다 4초 동안 대지의 힘이 넘친다
   if (hasFx('geo') && (p.geoT = (p.geoT ?? 6) - dt) <= 0) { p.geoT = combo('gaia') ? 8 : 12; p.surge = combo('gaia') ? 5 : 4; banner = { text: '대지의 힘이 넘쳐흐른다!', t: 1.5, glow: '#f9c' }; }
   if (p.surge > 0) p.surge -= dt;
@@ -29,7 +30,7 @@ function update(dt) {
     p.dashQ = false;
     sfx('dash'); p.dashed = true;
     // 구르기 대기 1초. 돌진 기술(화룡점정·라이트닝드라이브 등)은 0.25초에, 가까운 적에게 자동으로 돌진한다
-    p.dash = hasFx('dashStrike') ? 0.26 : 0.2; p.dashCd = hasFx('dashStrike') ? 0.25 : 1; p.dashDir = vx || vy ? [vx, vy] : [p.flip ? 1 : -1, 0]; p.dashHit = new Set(); p.dashAt = p.time;
+    p.dash = hasFx('dashStrike') ? 0.26 : 0.2; p.dashCd = hasFx('dashStrike') ? 0.25 : abStat('dash'); p.dashDir = vx || vy ? [vx, vy] : [p.flip ? 1 : -1, 0]; p.dashHit = new Set(); p.dashAt = p.time;
     const tg = hasFx('dashStrike') && nearestEnemy(p.x, p.y, null, 320);
     if (tg) { const d = Math.hypot(tg.x - p.x, tg.y - p.y) || 1; p.dashDir = [(tg.x - p.x) / d, (tg.y - p.y) / d]; }
     if (hasFx('vanish')) p.vanish = 0.6;
@@ -69,7 +70,7 @@ function update(dt) {
     if (hitN && p.time >= (p.dashHealAt ?? 0)) { p.dashHealAt = p.time + 1.5; heal(1); say('체력을 회복했다!', p.x, p.y - 60, '#8f8'); }
   }
   if (vx && !(keys.ArrowLeft || keys.ArrowRight)) p.flip = vx > 0;
-  moveBody(p, vx * p.speed * dt * (p.webbed > 0 ? 0.5 : 1), vy * p.speed * dt * (p.webbed > 0 ? 0.5 : 1)); clampBody(p);  // 실 장판 위에서는 느려진다
+  moveBody(p, vx * p.speed * dt * (p.webbed > 0 && !abStat('clear', false) ? 0.5 : 1) * abStat('speed'), vy * p.speed * dt * (p.webbed > 0 && !abStat('clear', false) ? 0.5 : 1) * abStat('speed')); clampBody(p);  // 실 장판 위에서는 느려진다
   p.velX = (p.x - ox) / dt; p.velY = (p.y - oy) / dt;  // 라이벌의 읽어내기가 쓰는 이동 속도
   p.walk += Math.hypot(p.x - ox, p.y - oy); p.moving = p.x !== ox || p.y !== oy;
   if (vx || vy) p.face = faceRow(vx, vy);

@@ -95,7 +95,7 @@ const every = (a, gap, dt) => (a.tick = (a.tick ?? 0) - dt) <= 0 && (a.tick = ga
 const lv = e => e.lvl ?? 0, few = e => isBig(e) ? 1 : 0.6;
 // 플레이어를 보스 쪽으로 끌어당긴다 (구르는 동안은 안 끌린다)
 function pullPlayer(e, v, dt) {
-  const p = player; if (p.dash > 0) return;
+  const p = player; if (p.dash > 0 || abStat('clear', false)) return;
   const d = Math.hypot(p.x - e.x, p.y - e.y) || 1; if (d < e.r + 30) return;
   moveBody(p, (e.x - p.x) / d * v * dt, (e.y - p.y) / d * v * dt);
 }

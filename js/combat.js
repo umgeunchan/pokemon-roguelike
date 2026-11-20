@@ -27,7 +27,9 @@ function hurt(type, amount = 1, src = null) {
   const m = eff(type, p.mon.types);
   let d = m === 0 ? 0 : amount + (m > 1 ? 1 : 0) + (who?.awake ? 1 : 0);  // 각성한 상대의 공격은 반 칸 더
   if (hasFx('bulwark') && d > 0) { d -= 1; if (d === 0 && Math.random() < 0.5) d = 1; if (d === 0) { p.inv = 0.5; return say('막아냈다!', p.x, p.y - 60, '#ccf'); } }
-  p.inv = p.invTime; p.streak = 0; p.hits = (p.hits ?? 0) + 1;
+  // 특성: 막거나 줄이거나 회복으로 바꾼다
+  if (d > 0) { d = abHurt(type, d, who, src); if (d <= 0) { p.inv = 0.4; return; } }
+  p.inv = p.invTime + abStat('inv', 0); p.streak = 0; p.hits = (p.hits ?? 0) + 1;
   if (p.balloon && d > 0) { p.balloon = p.flying = false; say('풍선이 터졌다!', p.x, p.y - 80, '#f88'); unstick(p); }
   if (m > 1 && p.weaknessPolicy) { p.weaknessPolicy = false; withDelta(p => p.dmg += 0.6); say('약점보험 발동!', p.x, p.y - 90, '#ff8'); }
   if (d > 0) sfx('hurt');
@@ -54,10 +56,10 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   let d = base * moveDmgMul() * Math.max(raw, 0.25) * (raw > 1 && p.expert ? 1.3 : 1) * (p.metronome ? 1 + Math.min(p.streak, 20) * 0.03 : 1) * (e.frozen > 0 ? 1.5 : 1)
     * (hasFx('blade') && big ? 1.4 : 1) * (hasFx('madness') && big ? (combo('calamity') ? 1.5 : 1.25) : 1) * (has('moonblast') && big ? 1.3 : 1) * (has('earth-power') && big ? 1.25 : 1)
     * (combo('scorch') && dot ? 1.4 : 1) * (combo('quake') && big ? 1.35 : 1) * (combo('dragon') ? 1.25 : 1) * (combo('mind') && e.stun > 0 ? 1.5 : 1)
-    * stab(type) * zTypeMul(type) * (has('close-combat') && near ? 1.4 : 1) * (has('play-rough') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1)
+    * stab(type) * zTypeMul(type) * abDamageMul(type, near) * (has('close-combat') && near ? 1.4 : 1) * (has('play-rough') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1)
     * (combo('inferno') && e.burn > 0 ? 1.5 : 1) * (combo('timewarp') && timeStop > 0 ? 2 : 1);
   const crit = Math.random() < p.crit + extraCrit + moveCrit() + (combo('venom') && e.psn > 0 ? 0.25 : 0);
-  if (crit) d *= has('crunch') ? 2.2 : 1.5;
+  if (crit) d *= (has('crunch') ? 2.2 : 1.5) * (abStat('sniper', false) ? 1.5 : 1);
   if (crit && combo('fang') && !tick && Math.random() < 0.15) heal(1);
   if (e.battle || e.rank === 'legend') p.fD = (p.fD ?? 0) + Math.min(d, Math.max(0, e.hp));
   e.hp -= d; e.hit = 0.1; e.aggro = true;
@@ -405,7 +407,7 @@ function pathDir(e) {
 }
 
 const aimAt = (a, e) => { const p = player, d = Math.hypot(p.x - e.x, p.y - e.y) || 1; a.dx = (p.x - e.x) / d; a.dy = (p.y - e.y) / d; };
-const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) * (e.hoopa ? 0.85 : 1) * (e.weak > 0 ? 1.4 : 1) * (isBig(e) ? Math.min(1, diffAt(DIFF_CD, e.tier ?? 0)) : diffAt(DIFF_CD, e.tier ?? 0)) + Math.random() * 0.5;
+const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) * (e.hoopa ? 0.85 : 1) * (e.weak > 0 ? 1.4 : 1) * (isBig(e) ? Math.min(1, diffAt(DIFF_CD, e.tier ?? 0)) : diffAt(DIFF_CD, e.tier ?? 0)) * abFoes(e) + Math.random() * 0.5;
 // 관장·라이벌 등 보스급은 초반에도 공격 빈도를 늦추지 않는다 (DIFF_CD의 초반 완화는 잡몹·트레이너만)
 // 필살기(필살 일격·필살 광선) 피해: 체력 2칸, 마지막 단계(사천왕·챔피언·후반 전설)는 3칸
 const heavyDmg = e => (e.tier ?? 0) >= 7 ? 3 : 2;
@@ -579,6 +581,7 @@ function wildShot(e) {
 function contact(e) {
   const p = player;
   if (untargetable(e) || Math.hypot(p.x - e.x, p.y - e.y) >= e.r + p.r - 4) return;
+  abContact(e);
   if ((p.rockyHelmet || hasFx('bulwark')) && p.inv <= 0 && p.dash <= 0) damage(e, p.dmg * (hasFx('bulwark') ? 3 : 2) * (combo('juggernaut') ? 2 : 1), 'steel', false, true);
   hurt(e.mon.types[0], e.act?.kind === 'charge' && e.act.phase === 1 && isBig(e) ? 2 : 1);
 }
@@ -729,6 +732,7 @@ function checkLegends() {
 
 function onKill(e) {
   const p = player;
+  abKill();
   fx.push({ kind: 'poof', x: e.x, y: e.y, t: 0.3, max: 0.3 });
   sfx(isBig(e) ? 'boss' : 'faint');
   p.seen.add(e.mon.id); p.defeated[e.mon.id] = (p.defeated[e.mon.id] ?? 0) + 1;

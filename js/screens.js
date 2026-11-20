@@ -97,6 +97,7 @@ function drawPartyScreen(x, y) {
   plain(`경험치 ${p.exp} / ${expNeed(p.level)}`, x + 220, y + 122, 13);
   bar(y + 128, p.exp / expNeed(p.level), '#4ac0ff');
   plain(next ? `Lv.${next.level}에 ${MON[next.id]?.name}(으)로 진화` : '더 이상 진화하지 않는다', x + 220, y + 154, 12, '#506080');
+  const ab = curAb(); if (ab) { plain(`특성 ${ab.ko}`, x + 220, y + 178, 13, '#303060'); lines(ab.desc, 230, 10).slice(0, 2).forEach((l, j) => plain(l, x + 220, y + 194 + j * 12, 10, '#505060')); }
   STATS.forEach(([label, , f, dg], i) => plain(`${label} ${f(p).toFixed(dg)}${label === '급소' ? '%' : ''}`, x + 450 + (i % 2) * 110, y + 40 + Math.floor(i / 2) * 22, 12));
   plain(`회피 ${Math.round(p.dodge * 100)}%`, x + 450, y + 110, 12);
   plain(`이로치 확률 ${+(shinyRate() * 100).toFixed(1)}%`, x + 560, y + 110, 12, '#b08000');
@@ -307,8 +308,9 @@ function drawSelect() {
   if (shinyOk(m.id)) text(shiny ? '★ 이로치 (X 키로 바꾸기)' : '이로치 있음 (X 키)', px, 128, 11, '#fd6');
   text(m.name, px, 286, 18, LEGEND_MOVE[m.id] ? '#c8f' : '#fff');
   text(m.types.map(t => TYPE_KO[t]).join('/'), px, 306, 12, TYPE_COLOR[m.types[0]]);
-  text(`체력 ${st.hp / 2}칸 · 공격 ${st.dmg.toFixed(1)} · 속도 ${(st.speed / 200).toFixed(2)}`, px, 328, 11, '#ccc');
-  if (mv) { nameText(mv, `시작 기술 ${mv.name}`, px, 356, 13, mv.legend ? '#fd6' : TYPE_COLOR[mv.type], 'center'); wrap(mv.desc, px, 376, 200, 10, '#aaa', text, 'center'); }
+  text(`체력 ${st.hp / 2}칸 · 공격 ${st.dmg.toFixed(1)} · 속도 ${(st.speed / 200).toFixed(2)}`, px, 324, 11, '#ccc');
+  const ab = monAb(m); if (ab) text(`특성 ${ab.ko}${LEGEND_MOVE[m.id] && !AB[m.abilities[0]]?.mul ? ' (+전설의 기운)' : ''}`, px, 341, 11, '#9cf');
+  if (mv) { nameText(mv, `시작 기술 ${mv.name}`, px, 362, 13, mv.legend ? '#fd6' : TYPE_COLOR[mv.type], 'center'); wrap(mv.desc, px, 380, 200, 10, '#aaa', text, 'center'); }
   text('WASD 이동 · 방향키 공격 · Space 구르기 · E 대화 · 배지 8개 → 포켓몬리그 → 챔피언', CW / 2, CH - 14, 12, '#888');
 }
 

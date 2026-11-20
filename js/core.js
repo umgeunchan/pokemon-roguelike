@@ -98,6 +98,7 @@ async function loadMon(id) {
   const types = p.types.map(t => t.type.name);
   MON[id] = { id, name: s.names.find(n => n.language.name === 'ko')?.name ?? p.name, img, field, box: spriteBox(img), types, species: s,
     flying: types.includes('flying') || p.abilities.some(a => a.ability.name === 'levitate'),
+    abilities: p.abilities.filter(a => !a.is_hidden).sort((a, b) => a.slot - b.slot).map(a => a.ability.name),  // 특성 (ability.js)
     st: Object.fromEntries(p.stats.map(s => [s.stat.name, s.base_stat])) };
 }
 

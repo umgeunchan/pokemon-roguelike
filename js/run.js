@@ -29,7 +29,7 @@ function evolve() {
 }
 
 function gainMoney(n, x, y) {
-  const v = Math.round(n * player.moneyMul);
+  const v = Math.round(n * player.moneyMul * abStat('money'));
   player.money += v; sfx('coin');
   texts.push({ text: `+₽${v}`, x, y: y - 40, t: 0.9, color: '#fd6', size: 11 });
 }
