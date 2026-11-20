@@ -161,7 +161,7 @@ function update(dt) {
     const pts = beamPath(b);
     for (const e of enemies) {
       if (!pts.some(([x, y]) => Math.hypot(e.x - x, e.y - y) < b.w / 2 + e.r)) continue;
-      damage(e, p.dmg * 0.45 * bc.mul * (combo('steam') ? 1.4 : 1) * (combo('solar') ? 1.4 : 1), bc.type, true, false, bc.crit);
+      damage(e, p.dmg * 0.45 * bc.mul * (b.mul ?? 1) * (combo('steam') ? 1.4 : 1) * (combo('solar') ? 1.4 : 1), bc.type, true, false, bc.crit);
       if (combo('solar') && Math.random() < 0.04) { fx.push({ kind: 'boom', x: e.x, y: e.y, r: 50, t: 0.2, max: 0.2, color: '#f8ff80' }); for (const o of enemiesNear(e.x, e.y, 50)) damage(o, p.dmg * 0.5, 'grass', false, true); }
       if (has('blue-flare')) e.burn = 3;
       // 광선 + 레이저: 광선에 감긴 전기·얼음 레이저가 함께 지진다

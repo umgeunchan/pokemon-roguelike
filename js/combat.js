@@ -235,10 +235,10 @@ function laserHits(b) {
 
 // 원뿔(얼다바람·지진·파도타기·매지컬샤인·스톤샤워·눈보라·벌레의야단법석·대지의힘): 탄 대신 앞쪽 부채꼴을 한 번에 친다
 // 가장 최근에 배운 원뿔 기술의 타입으로 맞고, 가진 원뿔 기술의 효과는 모두 얹힌다
-function fireCone(a) {
-  const p = player, s = fxScale(), type = moveDef(lastOf(CONES)).type;
+function fireCone(a, o = {}) {
+  const p = player, s = fxScale(), type = moveDef(lastOf(CONES) ?? 'icy-wind').type;
   const len = (120 + p.range * p.shotSpeed * 0.3) * s * (has('bug-buzz') ? 1.25 : 1) * (combo('rift') ? 1.5 : 1);
-  const half = (has('surf') ? 0.62 : 0.45) * (1 + 0.25 * (spread().length - 1));
+  const half = o.half ?? (has('surf') ? 0.62 : 0.45) * (1 + 0.25 * (spread().length - 1));
   fx.push({ kind: 'cone', x: p.x, y: p.y, a, len, half, t: 0.28, max: 0.28, color: p.pcol?.[0] ?? TYPE_COLOR[type], accent: p.pcol?.[1] ?? '#ffffff' });
   if (has('earthquake')) shake = 0.15;
   for (const e of [...map.enemies]) {
@@ -248,12 +248,24 @@ function fireCone(a) {
     const off = Math.abs(((Math.atan2(dy, dx) - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
     if (off > half + Math.atan2(e.r, d) || losBlocked(p.x, p.y, e.x, e.y)) continue;
     const quake = !has('earthquake') ? 1 : e.flying && !combo('rift') ? 0.5 : 1.4;
-    damage(e, p.dmg * 1.1 * quake, type);
+    damage(e, p.dmg * 1.1 * quake * (o.mul ?? 1), type);
     if (isBig(e) || e.act || e.hp <= 0) continue;
     if (combo('psychill')) moveBody(e, -dx / d * 60, -dy / d * 60);  // 염동 냉기: 끌어당긴다
     else if (has('surf') || has('bug-buzz')) moveBody(e, dx / d * (has('surf') ? 70 : 40), dy / d * (has('surf') ? 70 : 40));
   }
-  if (has('rock-slide')) for (let i = 0; i < 3; i++) { const r = len * (0.4 + Math.random() * 0.6), aa = a + (Math.random() * 2 - 1) * half; pstrikes.push({ x: p.x + Math.cos(aa) * r, y: p.y + Math.sin(aa) * r, t: 0.3 + i * 0.12, r: 40 * s, mul: 0.8, type: 'rock' }); }
+  if (has('rock-slide') && !o.half) for (let i = 0; i < 3; i++) { const r = len * (0.4 + Math.random() * 0.6), aa = a + (Math.random() * 2 - 1) * half; pstrikes.push({ x: p.x + Math.cos(aa) * r, y: p.y + Math.sin(aa) * r, t: 0.3 + i * 0.12, r: 40 * s, mul: 0.8, type: 'rock' }); }
+}
+
+const beamWidth = () => ((has('shadow-ball') ? 32 : 20) + (LASERS.some(has) ? 10 : 0)) * beamCfg().wm * shotScale();
+// 지금 공격 방식(탄·레이저·광선·원뿔·알) 그대로 a 방향으로 한 번 더 쏜다. 유전자쐐기(뒤로 한 발)·매지컬샤인(사방)·근원의파동(5갈래)이 모든 공격 방식에 적용되게
+// o.mul: 위력 배수, o.tear: 보통 탄일 때 덮어쓸 탄 속성, o.wide: 원뿔일 때 여러 갈래 대신 넓은 원뿔 하나(반각)
+function fireAt(kind, a, o = {}) {
+  const p = player, mul = o.mul ?? 1;
+  if (kind === 'tear') shootTear(a, o.tear ?? {});
+  else if (kind === 'laser') fireLaser(a, { mul });
+  else if (kind === 'beam') beams.push({ a, t: 0.4, tick: 0, w: beamWidth() * (mul < 1 ? 0.6 : 1), bounce: combo('psyflame'), mul });
+  else if (kind === 'cone') fireCone(a, { mul, half: o.wide });
+  else if (kind === 'bomb') { const d = p.range * p.shotSpeed * 0.5; bombs.push({ sx: p.x, sy: p.y, x: p.x, y: p.y, z: 0, t: 0, dur: 0.45, tx: p.x + Math.cos(a) * d, ty: p.y + Math.sin(a) * d, mini: mul < 1 }); }
 }
 
 function attack(dt) {
@@ -263,21 +275,30 @@ function attack(dt) {
   if (sd) p.face = faceRow(sd[0], sd[1]);
   // 어떤 공격 방식이든 공격할 때마다 붙는 추가 공격
   const waves = base => {
-    if (hasFx('fan5')) for (const off of combo('tsunami') ? [-1.05, -0.7, -0.35, 0.35, 0.7, 1.05] : [-0.7, -0.35, 0.35, 0.7]) shootTear(base + off, { r: combo('tsunami') ? 16 : 11, pierce: true, type: 'water', mul: combo('tsunami') ? 1.2 : 0.8 });
+    if (hasFx('fan5')) {
+      const offs = combo('tsunami') ? [-1.05, -0.7, -0.35, 0.35, 0.7, 1.05] : [-0.7, -0.35, 0.35, 0.7], m = combo('tsunami') ? 1.2 : 0.8;
+      if (kind === 'cone') fireCone(base, { mul: m, half: Math.max(...offs) + 0.3 });  // 원뿔은 갈래 대신 아주 넓은 원뿔 하나
+      else for (const off of offs) fireAt(kind, base + off, { mul: m, tear: { r: combo('tsunami') ? 16 : 11, pierce: true, type: 'water', mul: m } });
+    }
     if (combo('tidal') && (p.tide = (p.tide ?? 0) + 1) % 6 === 0) {
       fx.push({ kind: 'wave', x: p.x, y: p.y, t: 0.45, max: 0.45 });
       for (const o of enemiesNear(p.x, p.y, 150 * fxScale())) { damage(o, p.dmg * 0.6, 'water', false, true); if (!isBig(o)) { const d2 = Math.hypot(o.x - p.x, o.y - p.y) || 1; moveBody(o, (o.x - p.x) / d2 * 90, (o.y - p.y) / d2 * 90); } }
     }
     // 매지컬샤인: 4번째(요정의 장난이면 3번째) 공격마다 사방으로 빛. 유전자쐐기가 있으면 매 공격마다
-    if (has('dazzling-gleam') && (p.backShot || (p.shots = (p.shots ?? 0) + 1) % (combo('prank') ? 3 : 4) === 0)) for (let i = 0; i < 8; i++) shootTear(i / 8 * Math.PI * 2, { type: 'fairy', mul: 0.6, freeze: combo('aurora') ? 0.3 : 0 });
+    if (has('dazzling-gleam') && (p.backShot || (p.shots = (p.shots ?? 0) + 1) % (combo('prank') ? 3 : 4) === 0)) {
+      // 원뿔이면 내 둘레 전체를 한 번에, 나머지는 지금 공격 방식으로 8방향
+      if (kind === 'cone') fireCone(base, { mul: 0.6, half: Math.PI });
+      else for (let i = 0; i < 8; i++) fireAt(kind, base + i / 8 * Math.PI * 2, { mul: 0.6, tear: { type: 'fairy', mul: 0.6, freeze: combo('aurora') ? 0.3 : 0 } });
+    }
   };
   if (kind === 'beam') {
     // 혈사포처럼: 누르고 있으면 충전, 다 찬 상태에서 떼면 발사
     if (sd) { p.charge = Math.min(p.charge + dt, chargeTime()); p.aim = sd; return; }
     if (p.charge >= chargeTime()) {
       // 광선은 누른 방향으로 나가서 휘어 들어간다(beamPath). 처음부터 적을 조준하면 곧은 선이 된다
-      const base = Math.atan2(p.aim[1], p.aim[0]), w = ((has('shadow-ball') ? 32 : 20) + (LASERS.some(has) ? 10 : 0)) * beamCfg().wm * shotScale();
+      const base = Math.atan2(p.aim[1], p.aim[0]), w = beamWidth();
       for (const off of spread()) beams.push({ a: base + off, t: 0.4, tick: 0, w, bounce: combo('psyflame') });
+      if (p.backShot) beams.push({ a: base + Math.PI, t: 0.4, tick: 0, w, bounce: combo('psyflame') });
       sfx('beam'); p.fired = true;
       waves(base);
     }
@@ -298,8 +319,8 @@ function attack(dt) {
     else shootTear(a);
   }
   waves(base);
-  if (p.backShot && kind === 'tear') shootTear(base + Math.PI);
-  if (p.backShot && kind === 'laser') fireLaser(base + Math.PI);
+  // 유전자쐐기: 어떤 공격 방식이든 뒤로도 한 번 더 (바늘미사일·잎날가르기 갈래도 함께)
+  if (p.backShot) for (const off of kind === 'cone' ? [0] : spread()) fireAt(kind, base + Math.PI + off);
   p.cd = p.fireDelay * (kind === 'bomb' ? 1.8 : kind === 'cone' ? 1.15 : 1) * moveRate() / (combo('gale') ? 1.25 : 1);
 }
 
