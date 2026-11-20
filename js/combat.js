@@ -381,7 +381,10 @@ function pathDir(e) {
 }
 
 const aimAt = (a, e) => { const p = player, d = Math.hypot(p.x - e.x, p.y - e.y) || 1; a.dx = (p.x - e.x) / d; a.dy = (p.y - e.y) / d; };
-const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) * (e.hoopa ? 0.85 : 1) * (e.weak > 0 ? 1.4 : 1) * diffAt(DIFF_CD, e.tier ?? 0) + Math.random() * 0.5;
+const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) * (e.hoopa ? 0.85 : 1) * (e.weak > 0 ? 1.4 : 1) * (isBig(e) ? Math.min(1, diffAt(DIFF_CD, e.tier ?? 0)) : diffAt(DIFF_CD, e.tier ?? 0)) + Math.random() * 0.5;
+// 관장·라이벌 등 보스급은 초반에도 공격 빈도를 늦추지 않는다 (DIFF_CD의 초반 완화는 잡몹·트레이너만)
+// 필살기(필살 일격·필살 광선) 피해: 체력 2칸, 마지막 단계(사천왕·챔피언·후반 전설)는 3칸
+const heavyDmg = e => (e.tier ?? 0) >= 7 ? 3 : 2;
 const isBig = e => e.rank === 'boss' || e.rank === 'legend';
 const CC_MAX = 1.5, CC_IMMUNE = 4;  // 보스급 멈춤 면역: 멈춘 시간이 합쳐서 CC_MAX초가 되면 CC_IMMUNE초 동안 면역
 
@@ -396,7 +399,10 @@ function startAct(e, [kind, name], opts = {}) {
   if (name) say(`${e.mon.name}의 ${name}!`, e.x, e.y - bodyH(e, e.scale) - 24, TYPE_COLOR[type]);
   const a = e.act = { kind, name, type, t: 0, phase: 0, ...opts };
   if (kind === 'charge') { a.reps ??= name === '역린' ? 3 : 1 + (e.lvl >= 2 ? 1 : 0); a.wind ??= 0.6; a.dur ??= 0.7; a.speed ??= e.rank === 'trainer' ? 380 : 470; aimAt(a, e); }
-  if (kind === 'beam') a.ang = Math.atan2(p.y - e.y, p.x - e.x);
+  if (kind === 'hbeam') { a.kind = 'beam'; a.heavy = true; }
+  if (a.kind === 'beam') a.ang = Math.atan2(p.y - e.y, p.x - e.x);
+  // 필살 일격: 플레이어 자리에 아주 큰 표식이 찍히고 오래 기다렸다가 크게 터진다. 피하지 못하면 체력이 크게 깎인다
+  if (kind === 'smash') for (let i = 0; i < (e.lvl >= 2 ? 2 : 1); i++) hazards.push({ kind: 'strike', type, r: 95, t: 1.3 + i * 0.7, t0: 1.3 + i * 0.7, dmg: heavyDmg(e), src: e, move: name, x: p.x, y: p.y, follow: i > 0 });
   if (kind === 'summon') a.count = Math.min(e.lvl >= 2 ? 3 : 2, MAX_MINIONS - map.enemies.filter(o => o.summoner === e && o.hp > 0).length);
   if (kind === 'strike') for (let i = 0; i < (e.rank === 'trainer' ? 2 : 4 + 2 * (e.lvl ?? 0)); i++) hazards.push({ kind: 'strike', type, r: 38, t: 0.9 + i * 0.15, src: e, move: name,
     x: p.x + (i ? Math.random() * 180 - 90 : 0), y: p.y + (i ? Math.random() * 180 - 90 : 0) });
@@ -441,12 +447,14 @@ function updateAct(e, dt) {
       if (k >= 1) { e.z = 0; unstick(e); land(e); next(); }
     } else if (a.t >= 0.45) end();
   } else if (a.kind === 'beam') {
-    if (a.phase === 0) { if (a.t < 0.45) a.ang = turnToward(a.ang, Math.atan2(p.y - e.y, p.x - e.x), 1.8 * dt); if (a.t >= 0.85) next(); return; }
+    if (a.phase === 0) { if (a.t < (a.heavy ? 0.6 : 0.45)) a.ang = turnToward(a.ang, Math.atan2(p.y - e.y, p.x - e.x), 1.8 * dt); if (a.t >= (a.heavy ? 1.2 : 0.85)) { next(); if (a.heavy) shake = 0.3; } return; }
     if (a.t >= 0.5) return end();
     const dx = Math.cos(a.ang), dy = Math.sin(a.ang), rx = p.x - e.x, ry = p.y - e.y, s = rx * dx + ry * dy;
-    if (s > 0 && s < beamLen(e.x, e.y, dx, dy, true) && Math.abs(rx * dy - ry * dx) < 14 + p.r) hurt(a.type);
+    if (s > 0 && s < beamLen(e.x, e.y, dx, dy, true) && Math.abs(rx * dy - ry * dx) < (a.heavy ? 22 : 14) + p.r) hurt(a.type, a.heavy ? heavyDmg(e) : 1);
   } else if (a.kind === 'strike') {
     if (a.t >= 0.7) end();
+  } else if (a.kind === 'smash') {
+    if (a.t >= 1.0) end();
   } else if (a.kind === 'quake') {
     if (a.phase === 0) { if (a.t >= 0.35) { hazards.push({ kind: 'quake', x: e.x, y: e.y, R: e.r, type: a.type, hit: false, src: e, move: a.name }); shake = 0.25; next(); } }
     else if (a.t >= 0.4) end();

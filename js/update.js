@@ -102,9 +102,12 @@ function update(dt) {
   }
 
   if (!frozenTime) for (const h of hazards) {
+    // 두 번째 필살 일격 표식은 터지기 직전까지 플레이어를 천천히 따라온다
+    if (h.follow && h.t > 0.6) { const d = Math.hypot(p.x - h.x, p.y - h.y) || 1, v = Math.min(d, 120 * dt); h.x += (p.x - h.x) / d * v; h.y += (p.y - h.y) / d * v; }
     if (h.kind === 'strike' && (h.t -= dt) <= 0) {
       fx.push({ kind: 'boom', x: h.x, y: h.y, r: h.r, t: 0.25, max: 0.25, color: TYPE_COLOR[h.type] });
-      if (Math.hypot(p.x - h.x, p.y - h.y) < h.r + p.r * 0.5) hurt(h.type, 1, h);
+      if (h.dmg > 1) shake = 0.3;
+      if (Math.hypot(p.x - h.x, p.y - h.y) < h.r + p.r * 0.5) hurt(h.type, h.dmg ?? 1, h);
       h.done = true;
     }
     if (h.kind === 'quake') {

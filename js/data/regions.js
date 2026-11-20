@@ -5,7 +5,7 @@ const TS = 48, CELL = 34, MARGIN = 20, TEAR_Z = 22, FLY_Z = 30, DAY = 300;
 const DIRS = [[0, -1], [0, 1], [-1, 0], [1, 0]];
 const DIRS8 = [...DIRS, [-1, -1], [1, -1], [-1, 1], [1, 1]];
 const LEGEND_KEY = 'pokemon-dungeon-legends', DEX_KEY = 'pokemon-dungeon-dex', SHINY_KEY = 'pokemon-dungeon-shiny', SHINY_RATE = 0.01, NAMES_KEY = 'pokemon-dungeon-names-v2', STARTER_KEY = 'pokemon-dungeon-starters';
-const MAX_MOVES = 4, MAX_LEVEL = 100, HP_EVERY = 10;  // 최대 체력은 HP_EVERY레벨마다 1칸(2) 늘고, 레벨은 MAX_LEVEL까지
+const MAX_MOVES = 4, MAX_LEVEL = 100;  // 레벨은 MAX_LEVEL까지
 
 // 체육관 관장 / 사천왕·챔피언: [이름, 트레이너 스프라이트, 타입, 엔트리(마지막이 에이스)]
 const G = (leader, sprite, type, team, mobs, title = '체육관 관장') => ({ leader, sprite, type, team, mobs, title });

@@ -65,7 +65,7 @@ function rivalStarter() {
 // 배지가 많을수록 마릿수가 늘고 진화한다. 마지막(에이스)은 늘 스타팅
 function rivalTeam(badges) {
   const [, , mates] = RIVALS[region.name], s = player.rival.starter + (badges >= 6 ? 2 : badges >= 2 ? 1 : 0);
-  const n = clamp(Math.ceil(badges / 2), 0, mates.length);
+  const n = clamp(Math.max(1, Math.ceil(badges / 2)), 0, mates.length);
   return [...mates.slice(0, n).map(([a, b]) => badges >= 4 ? b : a), s].filter(id => MON[id]);
 }
 
@@ -113,7 +113,7 @@ function startRival(n) {
   resetCombat(); p.warpIn = 0.6;
   const r = map.room, at = { x: r.cx, y: (r.y0 + 1.6) * TS };
   p.x = r.cx; p.y = (map.th - 2.5) * TS;
-  startBattle({ who: n.name, title: '라이벌', queue: rivalTeam(b), ...at, rank: b ? 'boss' : 'trainer', tier: clamp(b - 1, 0, 7), rival: true, wait: 2.5,
+  startBattle({ who: n.name, title: '라이벌', queue: rivalTeam(b), ...at, rank: 'boss', tier: clamp(b - 1, 0, 7), hpMul: b ? 1.15 : 0.55, rival: true, wait: 2.5,
     say: (i, ace) => ace && i > 0 ? '아직 끝나지 않았어! 내 파트너, 가자!' : i === 0 ? hi : null, onWin: () => {
     n.fighting = false; n.defeated = true; n.leaveT = 5; p.rival.done.add(n.rival); r.cleared = true;
     ach('rival1'); if (RIVAL_EVENTS.every(ev => p.rival.done.has(ev))) ach('rival6');
@@ -205,6 +205,7 @@ function updateBattle(dt) {
   if (bt.queue.length && (bt.wait -= dt) <= 0) {
     const m = MON[bt.queue.shift()], ang = Math.atan2(p.y - bt.y, p.x - bt.x), e = spawnEnemy(m, bt.x + Math.cos(ang) * 50, bt.y + Math.sin(ang) * 50, bt.rank, bt.tier);
     if (!bt.queue.length && bt.rank === 'boss') { e.hp *= 1.3; e.maxHp = e.hp; }  // 마지막 에이스는 더 단단하게
+    if (bt.hpMul) { e.hp *= bt.hpMul; e.maxHp = e.hp; }  // 라이벌 체력 보정 (첫 승부는 보스급이지만 체력은 낮게)
     bt.hpSum = (bt.hpSum ?? 0) + e.maxHp;
     e.battle = true; keepInRoom(e);
     map.enemies.push(e); bt.wait = 1.2;

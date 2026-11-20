@@ -11,8 +11,8 @@ function gainExp(n) {
 function levelUp() {
   const p = player;
   p.level++;
-  withDelta(p => { p.dmg += 0.12; p.speed += 1; if (p.level % HP_EVERY === 0) { p.maxHp += 2; p.hp += 2; } });
-  say(p.level >= MAX_LEVEL ? '최고 레벨 100 달성!' : p.level % HP_EVERY === 0 ? `레벨 ${p.level}! 최대 체력 1칸 증가` : `레벨 ${p.level}!`, p.x, p.y - 80, '#8ff'); sfx('level');
+  withDelta(p => { p.dmg += 0.12; p.speed += 1; });  // 최대 체력은 레벨로 오르지 않는다 (도구·도핑약으로만)
+  say(p.level >= MAX_LEVEL ? '최고 레벨 100 달성!' : `레벨 ${p.level}!`, p.x, p.y - 80, '#8ff'); sfx('level');
   if (p.evo[0] && p.level >= p.evo[0].level) evolve();
 }
 

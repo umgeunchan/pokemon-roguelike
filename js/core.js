@@ -174,7 +174,7 @@ const expNeed = lv => Math.round(20 * 2 ** ((lv - 8) / 7));
 // 플레이어 화력이 단계마다 1.5배쯤 크는 것(dps 시뮬레이션)에 맞춘 값
 // 관장·라이벌·사천왕 체력 보정: 단계(tier = 들어갈 때 가진 배지 수)별로 곱한다. 초반을 가볍게, 배지 5개부터는 원래대로
 // 배지 0개(첫 체육관) ~ 4개까지 차례로. 숫자를 바꾸면 바로 반영된다
-const BOSS_HP_EARLY = [0.45, 0.55, 0.65, 0.75, 0.88];
+const BOSS_HP_EARLY = [0.6, 0.68, 0.76, 0.84, 0.92];
 const bossEase = t => t >= BOSS_HP_EARLY.length ? 1 : BOSS_HP_EARLY[Math.max(0, Math.floor(t))];
 // 트레이너(체육관 트레이너·필드 트레이너) 체력: 야생의 TRAINER_HP배에, 단계별 보정을 곱한다. 5단계부터는 보정 없음
 const TRAINER_HP = 2.2, TRAINER_HP_EARLY = [0.6, 0.7, 0.8, 0.9];

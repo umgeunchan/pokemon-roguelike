@@ -370,6 +370,8 @@ function spawnEnemy(m, x, y, rank, tier = 0) {
   // 관장·사천왕·챔피언·전설은 강할수록 피하기 까다로운 기술이 늘어난다. 모두 예고(조준선·낙하 지점·부채꼴)가 있어 피할 수 있다
   if (big) e.moves.push(...ADV_MOVES.slice(0, rank === 'legend' ? ADV_MOVES.length : [2, 4, 5][e.lvl]));
   if (rank === 'legend') e.moves.push(['summon', '동료 부르기']);
+  // 후반(배지 4개~) 보스급은 필살기를 쓴다: 맞으면 체력 2칸(마지막 단계 3칸). 예고가 길고 크게 보인다
+  if (big && tier >= 4) e.moves.push(['smash', '필살 일격'], ['hbeam', '필살 광선']);
   if (rank === 'legend') e.aggro = false;  // 전설도 다가가야 덤빈다
   unstick(e); clampBody(e);
   return e;

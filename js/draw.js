@@ -554,10 +554,10 @@ function drawWarp() {
 }
 
 // 적 광선 한 줄 (조준 광선·휩쓸기 광선 공용)
-function enemyBeamAt(e, ang, c) {
+function enemyBeamAt(e, ang, c, s = 1) {
   const len = beamLen(e.x, e.y, Math.cos(ang), Math.sin(ang), true);
   ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y - TEAR_Z)); ctx.rotate(ang);
-  for (const [k, col] of [[1, mix(c, '#000000', 0.3)], [0.6, c], [0.25, '#fff']]) { ctx.fillStyle = col; ctx.fillRect(0, -14 * k, len, 28 * k); }
+  for (const [k, col] of [[1, mix(c, '#000000', 0.3)], [0.6, c], [0.25, '#fff']]) { ctx.fillStyle = col; ctx.fillRect(0, -14 * k * s, len, 28 * k * s); }
   ctx.restore();
 }
 
@@ -621,9 +621,10 @@ function drawTelegraphs(e, layer) {
     if (a.phase === 0) {
       const len = beamLen(e.x, e.y, Math.cos(a.ang), Math.sin(a.ang), true);
       ctx.save(); ctx.translate(Math.round(e.x), Math.round(e.y - TEAR_Z)); ctx.rotate(a.ang);
-      ctx.globalAlpha = pulse; ctx.fillStyle = '#f33'; ctx.fillRect(0, -2, len, 4);
+      ctx.globalAlpha = pulse; ctx.fillStyle = a.heavy ? '#d00' : '#f33';
+      if (a.heavy) { ctx.globalAlpha = pulse * 0.35; ctx.fillRect(0, -24, len, 48); ctx.globalAlpha = pulse; ctx.fillRect(0, -4, len, 8); } else ctx.fillRect(0, -2, len, 4);
       ctx.restore();
-    } else enemyBeamAt(e, a.ang, c);
+    } else enemyBeamAt(e, a.ang, c, a.heavy ? 1.6 : 1);
   }
   // 휩쓸기 광선 예고: 쓸고 지나갈 부채꼴, 시작하는 선, 도는 방향 화살표
   if (a.kind === 'sweep') {
@@ -643,6 +644,16 @@ function drawTelegraphs(e, layer) {
 
 function drawHazard(h) {
   const c = TYPE_COLOR[h.type];
+  if (h.kind === 'strike' && h.dmg > 1) {
+    // 필살 일격: 굵은 붉은 이중 원과 느낌표
+    const k = 1 - clamp(h.t / h.t0, 0, 1), pulse = 0.5 + Math.abs(Math.sin(now * 12)) * 0.5;
+    ctx.strokeStyle = `rgba(255,40,40,${pulse})`; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r, h.r * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r + 8, (h.r + 8) * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = `rgba(200,0,0,${0.15 + k * 0.4})`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * k, h.r * 0.55 * k, 0, 0, Math.PI * 2); ctx.fill();
+    text('!!', h.x, h.y - 6, 22, `rgba(255,230,230,${pulse})`, 'center');
+    return;
+  }
   if (h.kind === 'strike') {
     const k = 1 - clamp(h.t / 0.9, 0, 1);
     ctx.strokeStyle = c; ctx.lineWidth = 3;
