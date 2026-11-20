@@ -172,7 +172,7 @@ function startRoom(r) {
   // 사천왕 → 이기면 위쪽 방 문이 열린다. 마지막 방은 챔피언
   // 챔피언 방에 들어서면 한 번 완전 회복 (사천왕을 연달아 치른 뒤 숨 돌리기)
   if (champ && p.hp < p.maxHp) { heal(p.maxHp); sfx('heal'); say('기운을 되찾았다! 체력 완전 회복', p.x, p.y - 80, '#8f8'); }
-  startBattle({ who: r.who.leader, title: r.who.title, queue: [...r.who.team], ...at, rank: 'boss', tier: 8, wait: champ ? 4 : 1, elite: !champ,
+  startBattle({ who: r.who.leader, title: r.who.title, queue: [...r.who.team], ...at, rank: 'boss', tier: 8, wait: champ ? 4 : 1, elite: true,
     // 사천왕은 대사 없음: false가 아니라 null을 넣는다 (bt.say?.()는 null·undefined만 건너뛰고, false는 호출하다 멈춘다)
     say: champ ? (i, ace) => ace ? CHAMP_ACE : CHAMP_SAY[Math.min(i, CHAMP_SAY.length - 1)] : null, onWin: bt => {
     open(); gainMoney(3000, at.x, at.y + 2 * TS);
@@ -209,7 +209,7 @@ function updateBattle(dt) {
   if (bt.queue.length && (bt.wait -= dt) <= 0) {
     const m = MON[bt.queue.shift()], ang = Math.atan2(p.y - bt.y, p.x - bt.x), e = spawnEnemy(m, bt.x + Math.cos(ang) * 50, bt.y + Math.sin(ang) * 50, bt.rank, bt.tier);
     if (bt.rival) e.moves = pickPatterns(e, 'rival');
-    if (bt.elite) e.elite = true;  // 사천왕: 각성하면 반 칸 더 아프다
+    if (bt.elite) e.elite = true;  // 사천왕·챔피언: 각성하면 반 칸 더 아프다
     if (!bt.queue.length && bt.rank === 'boss') { e.hp *= 1.3; e.maxHp = e.hp; }  // 마지막 에이스는 더 단단하게
     if (bt.hpMul) { e.hp *= bt.hpMul; e.maxHp = e.hp; }  // 라이벌 체력 보정 (첫 승부는 보스급이지만 체력은 낮게)
     bt.hpSum = (bt.hpSum ?? 0) + e.maxHp;
