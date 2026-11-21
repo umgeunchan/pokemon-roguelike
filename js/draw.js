@@ -455,7 +455,8 @@ function drawPanel() {
     if (m && p.stabTypes?.has(m.type)) text(`자속 x${STAB}`, 154, y, 9, '#fd6', 'right');  // 내 타입과 같은 기술: 그 타입 공격 1.5배
   }
   p.items.filter(i => i.r === 'k').forEach((it, i) => ctx.drawImage(IMG[it.id], 4 + i * 26, y + 6, 26, 26));
-  text(TOUCH ? '화면 터치 대화·왼쪽 위 지도·메뉴' : 'Space 구르기·E 대화·M 지도·N 소리·Esc 메뉴·H 안내', 4, CH - 6, 9, '#777', 'left');
+  if (TOUCH) text('화면 터치 대화·왼쪽 위 지도·메뉴', 4, CH - 6, 9, '#777', 'left');
+  else { text('Space 구르기·E 대화·M 지도', 4, CH - 18, 9, '#777', 'left'); text('Esc 메뉴·N 소리·F 전체 화면', 4, CH - 6, 9, '#777', 'left'); }
 }
 
 function drawBadges(x, y) {

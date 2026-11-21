@@ -157,7 +157,7 @@ function drawTitle() {
   text(who, CW / 2, y0 + items.length * (h + 12) + 18, 12, '#cfe');
   const note = acct.status || (!FIREBASE_CONFIG ? 'Google 로그인은 아직 준비 중 · 게스트 기록은 이 기기의 브라우저에만 저장됩니다' : !acct.ready ? '계정 확인 중...' : 'Google로 로그인하면 다른 기기에서도 기록이 이어집니다');
   text(acct.busy ? `${note} ${'.'.repeat(Math.floor(now * 3) % 4)}` : note, CW / 2, y0 + items.length * (h + 12) + 38, 11, '#9ab');
-  text(TOUCH ? '버튼을 누르세요' : '↑ ↓ 고르기 · Enter 결정', CW / 2, CH - 16, 11, 'rgba(255,255,255,.55)');
+  text(TOUCH ? '버튼을 누르세요' : '↑ ↓ 고르기 · Enter 결정 · F 전체 화면', CW / 2, CH - 16, 11, 'rgba(255,255,255,.55)');
 }
 function drawGoogleG(x, y) {
   ctx.save(); ctx.lineWidth = 4;

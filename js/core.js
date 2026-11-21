@@ -1,6 +1,17 @@
 // 공통 도구, 저장소, 전역 상태, 데이터·그림 불러오기
 const $ = s => document.querySelector(s);
 const cv = $('#game'), ctx = cv.getContext('2d');
+// 캔버스 실제 해상도를 화면에 보이는 크기(× 기기 픽셀 비율)에 맞춘다. 게임 좌표는 그대로 880×492, draw()에서 배율만 곱한다
+let SCALE = 1;
+function fitCanvas() {
+  const w = cv.getBoundingClientRect().width || 880, s = Math.max(1, Math.min(3, w * (devicePixelRatio || 1) / 880));
+  const pw = Math.round(880 * s), ph = Math.round(492 * s);
+  if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
+  SCALE = pw / 880;
+}
+addEventListener('resize', fitCanvas); document.addEventListener('fullscreenchange', () => setTimeout(fitCanvas, 50));
+// 컴퓨터: F 키나 화면 더블클릭으로 전체 화면 켜고 끄기
+const toggleFullscreen = () => document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const randDir = () => { const a = Math.random() * Math.PI * 2; return [Math.cos(a), Math.sin(a)]; };

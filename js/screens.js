@@ -73,7 +73,7 @@ function drawMenu() {
 }
 
 function drawSettingsScreen(x, y) {
-  plain('↑ ↓ 고르기 · ← → 조절 · N 키 = 모든 소리 끄기/켜기', x + 20, y + 40, 12, '#707080');
+  plain('↑ ↓ 고르기 · ← → 조절 · N 키 = 모든 소리 끄기/켜기 · F 키 = 전체 화면', x + 20, y + 40, 12, '#707080');
   [['배경음', 'bgm'], ['효과음', 'sfx']].forEach(([label, k], i) => {
     const yy = y + 90 + i * 60, on = menu.sel === i;
     if (on) plain('▶', x + 20, yy, 15);
@@ -322,6 +322,7 @@ function drawSelect() {
 }
 
 function draw() {
+  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   ctx.imageSmoothingEnabled = false;
   taps = [];
   if (state === 'loading' || state === 'error') {

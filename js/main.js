@@ -31,6 +31,7 @@ function selfCheck() {
   }
 }
 
+fitCanvas();
 state = 'loading';
 loadCommon().then(() => { selfCheck(); state = 'title'; loadTitleMons(); initAccount(); }).catch(e => { loadError = `로딩 실패: ${e.message}`; state = 'error'; });
 requestAnimationFrame(loop);

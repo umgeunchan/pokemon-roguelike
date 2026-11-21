@@ -2,6 +2,7 @@
 addEventListener('keydown', e => {
   keys[e.code] = true; initAudio();
   if (e.code === 'KeyN') muted = !muted;
+  if (e.code === 'KeyF' && !e.repeat && !TOUCH) toggleFullscreen();
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   const d = /^Digit[0-9]$/.test(e.code) ? +e.code.slice(5) : null;
   if (state === 'title') {
