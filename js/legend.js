@@ -48,11 +48,11 @@ function updateBurst(dt) {
 
 function fireBurst(t) {
   const p = player, m = burstMove(), b = LEGEND_BURST[m.fx], strong = combo(LEGEND_BURST_COMBO[m.fx]);
-  const mul = b.mul * (isLegendMon() ? 1.3 : 1) * (strong ? 1.5 : 1), c1 = b.c1 ?? TYPE_COLOR[m.type], c2 = b.c2 ?? '#ffffff';
+  const mul = (b.mul + (b.shape === 'nova' ? 1.2 : 0)) * (isLegendMon() ? 1.3 : 1) * (strong ? 1.5 : 1), c1 = b.c1 ?? TYPE_COLOR[m.type], c2 = b.c2 ?? '#ffffff';
   p.lg = 0;
   const hit = (o, k = 1) => { if (o.hp <= 0) return; damage(o, p.dmg * mul * k, m.type, false, true, 0.25); b.then?.(o); if (b.push && !isBig(o)) { const d = Math.hypot(o.x - p.x, o.y - p.y) || 1; moveBody(o, (o.x - p.x) / d * b.push, (o.y - p.y) / d * b.push); } };
   if (b.shape === 'nova') {
-    const R = b.R * (strong ? 1.25 : 1);
+    const R = b.R * 1.3 * (strong ? 1.25 : 1);  // 파동형: 범위 x1.3
     fx.push({ kind: 'lnova', x: p.x, y: p.y, r: R, c1, c2, t: 0.9, max: 0.9 });
     for (const o of enemiesNear(p.x, p.y, R)) hit(o);
   }

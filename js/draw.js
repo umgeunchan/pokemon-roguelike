@@ -501,8 +501,6 @@ function drawItemInfo() {
   const k = near ?? (lastInfo?.t > 0 ? lastInfo.k : null);
   if (!k) return;
   const it = k.kind === 'tm' ? k.tm : k.item, x = SIDE + W - 266, y = HUD + 8, ls = lines(it.desc, 206, 11);
-  // 기술머신: 배우면 공격 방식이 어떻게 바뀌는지 미리 보여 준다
-  if (near && k.kind === 'tm' && !p.moves.has(it.id)) { const a = carrierOf([...p.moves]), b = carrierOf([...p.moves, it.id]); ls.push(a === b ? `공격 방식: ${CARRIER_KO[a]} 그대로` : `공격 방식: ${CARRIER_KO[a]} → ${CARRIER_KO[b]}`); }
   const ts = lines(`${near ? '' : '획득! '}${k.kind === 'tm' ? `기술머신 · ${it.name}` : it.name}`, 206, 13), h = 26 + ts.length * 18 + ls.length * 16;
   ctx.fillStyle = 'rgba(0,0,0,.8)'; ctx.fillRect(x, y, 258, h);
   ctx.strokeStyle = k.kind === 'tm' ? (k.tm.legend ? '#fd6' : TYPE_COLOR[k.tm.type]) : { c: '#aaa', r: '#d4a017', l: '#c8f', k: '#6cf', g: '#f8c' }[k.item.r]; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, 256, h - 2);

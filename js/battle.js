@@ -129,6 +129,7 @@ function startRival(n) {
     banner = { text: `라이벌 ${n.name}에게 이겼다! 원래 자리로 돌아간다`, t: 3 };
     world.pickups.push({ ...rollContent(Math.random, { tm: 0.45, c: b ? 0 : 0.5, r: 0.6, l: b >= 5 ? 0.4 : 0.1 }), x: n.x, y: n.y + 40, ball: true });
     world.pickups.push({ kind: 'candy', x: n.x + 40, y: n.y + 40 });
+    world.pickups.push({ ...masterReward(), x: n.x, y: n.y + 90, ball: true });  // 마스터볼 급
     if (Math.random() < 0.35) { const g = rollGimmick(Math.random); if (g) world.pickups.push({ ...g, x: n.x - 40, y: n.y + 40, ball: true }); }
     map.returnT = 3.5;
   } });
@@ -194,6 +195,7 @@ function startRoom(r) {
     if (map.roadPortal) dialog = { name: r.who.leader, text: `배지 ${region.gyms.length}개를 다 모았구나. 저 고리를 타면 ${roadNode().name}까지 단숨에 갈 수 있어!`, t: 6, keep: true };
     map.pickups.push({ ...rollContent(Math.random, { tm: 0.55, c: 0, r: 0.7, l: 0.3 }), x: r.cx, y: (r.y0 + 4.5) * TS });
     map.pickups.push({ kind: 'candy', x: r.cx + 60, y: (r.y0 + 4.5) * TS });
+    map.pickups.push({ ...masterReward(), x: r.cx, y: (r.y0 + 6) * TS, ball: true });  // 마스터볼 급
     if (Math.random() < 0.35) gimmickReward(r.cx - 60, (r.y0 + 4.5) * TS);
   } });
   // 사천왕 → 이기면 위쪽 방 문이 열린다. 마지막 방은 챔피언

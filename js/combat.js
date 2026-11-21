@@ -49,6 +49,8 @@ function hurt(type, amount = 1, src = null) {
 
 const nearestEnemy = (x, y, except, maxD) => map.enemies.filter(e => e !== except && e.hp > 0 && !untargetable(e) && Math.hypot(e.x - x, e.y - y) < maxD)
   .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+// 인파이트: 적이 나와 붙어 있으면 x3, 거리가 멀어질수록 줄어서 260px(약 5칸) 밖에서는 x1
+const closeMul = e => 1 + 2 * clamp(1 - (Math.hypot(e.x - player.x, e.y - player.y) - e.r - player.r) / 260, 0, 1);
 const enemiesNear = (x, y, rad, except) => map.enemies.filter(o => o !== except && o.hp > 0 && Math.hypot(o.x - x, o.y - y) < rad + o.r);
 
 // 상성 배수 완화: 효과가 별로(0.5배) → 0.75배, 0.25배 → 0.6배, 효과 없음(0배) → 0.5배. 효과가 굉장하면 그대로
@@ -65,7 +67,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   let d = base * moveDmgMul() * effMul(raw) * (raw > 1 && p.expert ? 1.3 : 1) * (p.metronome ? 1 + Math.min(p.streak, 20) * 0.03 : 1) * (e.frozen > 0 ? 1.5 : 1)
     * (hasFx('blade') && big ? 1.4 : 1) * (hasFx('madness') && big ? (combo('calamity') ? 1.5 : 1.25) : 1) * (has('moonblast') && big ? 1.3 : 1) * (has('earth-power') && big ? 1.25 : 1)
     * (combo('scorch') && dot ? 1.4 : 1) * (combo('quake') && big ? 1.35 : 1) * (combo('dragon') ? 1.25 : 1) * (combo('mind') && e.stun > 0 ? 1.5 : 1)
-    * stab(type) * zTypeMul(type) * abDamageMul(type, near) * (has('close-combat') && near ? 1.4 : 1) * (has('play-rough') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1)
+    * stab(type) * zTypeMul(type) * abDamageMul(type, near) * (has('close-combat') ? closeMul(e) : 1) * (has('play-rough') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1)
     * (combo('inferno') && e.burn > 0 ? 1.5 : 1) * (combo('timewarp') && timeStop > 0 ? 2 : 1);
   const crit = Math.random() < p.crit + extraCrit + moveCrit() + (combo('venom') && e.psn > 0 ? 0.25 : 0);
   if (crit) d *= (has('crunch') ? 2.2 : 1.5) * (abStat('sniper', false) ? 1.5 : 1);

@@ -133,7 +133,7 @@ const TMS = [
   { id: 'energy-ball', tm: 'tm-grass', name: '에너지볼', type: 'grass', desc: '구슬 · 넓은 폭발' },
   { id: 'bug-buzz', tm: 'tm-bug', name: '벌레의야단법석', type: 'bug', desc: '원뿔 · 긴 음파, 밀어냄' },
   { id: 'air-slash', tm: 'tm-flying', name: '에어슬래시', type: 'flying', desc: '강화 · 빠른 칼날, 풀죽음' },
-  { id: 'close-combat', tm: 'tm-fighting', name: '인파이트', type: 'fighting', desc: '강화 · 위력 증가, 근접 강화' },
+  { id: 'close-combat', tm: 'tm-fighting', name: '인파이트', type: 'fighting', desc: '강화 · 위력 증가, 가까울수록 강함 (바로 앞 x3)' },
   { id: 'play-rough', tm: 'tm-fairy', name: '치근거리기', type: 'fairy', desc: '강화 · 위력 증가, 근접 강화' },
   { id: 'earth-power', tm: 'tm-ground', name: '대지의힘', type: 'ground', desc: '원뿔 · 땅 솟음, 보스에게 강함' },
 ];
@@ -270,6 +270,8 @@ const LEGEND_KO = { psystrike: '사이코브레이크', 'mist-ball': '미스트�
   'seed-flare': '시드플레어', 'natures-madness': '자연의분노', ruination: '카타스트로피', 'diamond-storm': '다이아스톰',
   'photon-geyser': '포톤가이저', 'glacial-lance': '블리자드랜스', 'astral-barrage': '아스트랄비트', 'wicked-blow': '암흑강타', 'surging-strikes': '수류연타', 'ivy-cudgel': '덩굴방망이', 'tera-starstorm': '테라클러스터' };
 for (const t of LTMS) t.name = LEGEND_KO[t.id] ?? t.name;
+// 게임 안에서는 공격 방식(광선·원뿔·탄…) 말머리를 보여 주지 않는다. 효과만 남긴다
+for (const t of [...TMS, ...LTMS]) t.desc = t.desc.replace(/^(강화|광선|원뿔|구슬|탄|돌진|레이저|알폭탄|구르기) · /, '');
 // 전설의 포켓몬 → 상징적인 기술
 const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'fusion-bolt', 146: 'sacred-fire', 150: 'psystrike', 151: 'psystrike', 243: 'fusion-bolt', 244: 'sacred-fire', 245: 'origin-pulse',
   249: 'aeroblast', 250: 'sacred-fire', 251: 'seed-flare', 377: 'thousand-arrows', 378: 'sheer-cold', 379: 'behemoth-bash', 380: 'mist-ball', 381: 'luster-purge',
