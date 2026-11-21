@@ -20,7 +20,7 @@ addEventListener('keydown', e => {
     else if (e.code === 'KeyX') selShiny = !selShiny;
     else if (e.code === 'Escape') state = 'region';
   }
-  else if (state === 'play') { if (e.code === 'Space') player.dashQ = true; if (e.code === 'KeyE') talk(); else if (e.code === 'KeyM') { state = 'map'; player.opened = true; } else if (e.code === 'Escape') { openMenu(); player.opened = true; } else if (e.code === 'KeyH') skipTutorial(); }
+  else if (state === 'play') { if (e.code === 'KeyR' && !e.repeat) player.quitArm = true; if (e.code === 'Space') player.dashQ = true; if (e.code === 'KeyE') talk(); else if (e.code === 'KeyM') { state = 'map'; player.opened = true; } else if (e.code === 'Escape') { openMenu(); player.opened = true; } else if (e.code === 'KeyH') skipTutorial(); }
   else if (state === 'pause') menuKey(e.code);
   else if (state === 'map') { if (e.code === 'KeyM' || e.code === 'Escape') state = 'play'; }
   else if (state === 'zpick') { if (d >= 1 && d <= player.moves.size) setZ([...player.moves][d - 1]); }

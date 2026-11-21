@@ -455,7 +455,7 @@ function drawPanel() {
   p.items.filter(i => i.r === 'k').forEach((it, i) => ctx.drawImage(IMG[it.id], 4 + i * 26, y + 6, 26, 26));
   drawBurstGauge(CH - 44);
   if (TOUCH) text('화면 터치 대화·왼쪽 위 지도·메뉴', 4, CH - 6, 9, '#777', 'left');
-  else { text('Space 구르기·E 대화·M 지도', 4, CH - 18, 9, '#777', 'left'); text('Esc 메뉴·N 소리·F 전체 화면', 4, CH - 6, 9, '#777', 'left'); }
+  else { text('Space 구르기·E 대화·M 지도', 4, CH - 18, 9, '#777', 'left'); text('Esc 메뉴·F 전체 화면·R 꾹 그만두기', 4, CH - 6, 9, '#777', 'left'); }
 }
 
 function drawBadges(x, y) {
@@ -896,6 +896,13 @@ function drawPlay() {
     ls.forEach((l, i) => plain(l, x + 20, y + 54 + i * 22, 15));
   }
 
+  // R 꾹 누르기: 그만두기 진행 막대
+  if (p.quitHold > 0) {
+    const w = 360, x = SIDE + (W - w) / 2, y = HUD + H / 2 - 30, v = Math.min(1, p.quitHold / QUIT_HOLD);
+    ctx.fillStyle = 'rgba(0,0,0,.8)'; ctx.fillRect(x, y, w, 60);
+    text('R을 계속 누르면 모험을 그만둡니다 (이어하기 기록 삭제)', x + w / 2, y + 22, 12, '#fcc');
+    ctx.fillStyle = '#333'; ctx.fillRect(x + 20, y + 34, w - 40, 12); ctx.fillStyle = '#e04848'; ctx.fillRect(x + 20, y + 34, (w - 40) * v, 12);
+  }
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, CW, HUD);
   for (let k = 0; k < Math.ceil(p.maxHp / 2); k++) drawHeart(10 + (k % 12) * 24, k < 12 ? 14 : 36, clamp(p.hp - k * 2, 0, 2));
   drawBadges(SIDE + W / 2 - 72, 14);

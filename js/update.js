@@ -2,8 +2,20 @@
 // ---------- 메인 업데이트 ----------
 // 돌진 기술 위력 배수 = 이동 속도 (능력치 창의 속도 값, 기본 1 안팎)
 const dashSpd = () => Math.max(2, player.speed * moveSpeed() / 200);  // 최소 2배
+// R 키를 1.5초 꾹 누르면 모험 그만두기 (모험 중에 새로 누른 경우만. 결과 화면에서 누르던 R이 이어져도 그만두지 않는다)
+const QUIT_HOLD = 1.5;
+function updateQuit(dt) {
+  const p = player;
+  if (keys.KeyR && p.quitArm) p.quitHold = (p.quitHold ?? 0) + dt;
+  else { p.quitHold = 0; p.quitArm = false; }
+  if (p.quitHold < QUIT_HOLD) return false;
+  p.quitHold = 0; p.quitArm = false; clearSave(); state = 'region';
+  return true;
+}
+
 function update(dt) {
   const p = player;
+  if (updateQuit(dt)) return;
   refreshFx();
   now += dt; dayTime += map === world ? dt : 0; p.cd -= dt; p.inv -= dt; p.dashCd -= dt; p.eruptCd -= dt; textCd -= dt; shake -= dt; timeStop -= dt;
   if (banner && !dangerNow() && (banner.t -= dt) <= 0) banner = null;  // 필살기 예고 중에는 문구를 멈춰 두었다가 나중에
