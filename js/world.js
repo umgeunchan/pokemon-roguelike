@@ -223,7 +223,7 @@ function genWorld(seed) {
   for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [cands[i], cands[j]] = [cands[j], cands[i]]; }
   // 이미 챔피언이 된 지방이면 서로 다른 전설 두 마리
   const picked = [];
-  for (const c of cands) if (picked.length < (CLEARED.has(region.name) ? 2 : 1) && !picked.some(o => o.id === c.id)) picked.push(c);
+  for (const c of cands) if (picked.length < (CLEARED.has(region.name) ? 2 : 1) && !picked.some(o => o.id === c.id || o.n === c.n)) picked.push(c);  // 같은 장소에 둘이 몰리지 않게
   w.legends = picked.map((c, i) => { const [x, y] = c.n.legends.includes(c.id) ? [(c.n.tx + 0.5 + (i % 2) * 2) * TS, (c.n.ty + 0.5) * TS] : spotNear(c.n, true); return { i, id: c.id, n: c.n, x, y, done: false, alive: false }; });
   w.start = [(start.tx + 0.5) * TS, (start.ty + 3.5) * TS];
   return w;
