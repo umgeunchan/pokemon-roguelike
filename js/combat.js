@@ -79,6 +79,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
     const msg = crit ? '급소에 맞았다!' : raw > 1 ? '효과가 굉장했다!' : raw === 0 ? '효과가 없는 것 같다...' : raw < 1 ? '효과가 별로인 듯하다' : null;
     if (msg) say(msg, e.x, e.y - 70, raw > 1 ? '#ff4' : '#ccc');
   }
+  burstGain(tick ? 0.004 : secondary ? 0 : 0.035);  // 전설의 힘
   if (secondary) return;
   p.streak++;
   // proc: 광선처럼 촘촘히 들어가는 피해는 확률 효과를 낮춰서 건다. ride: 원뿔 기술의 적중 효과는 공격 방식이 원뿔이 아닐 때만 따로 얹는다 (원뿔이면 원뿔 자체가 그 효과)
@@ -155,9 +156,9 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
     for (const o of enemiesNear(e.x, e.y, 170, e).slice(0, combo('thundergod') ? 4 : 2)) { damage(o, p.dmg, 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.2 }); }
   }
   if (hasFx('rend')) {
-    fx.push({ kind: 'slash', x: e.x, y: e.y, t: 0.25, max: 0.25 });
-    const R = 110 * s * (combo('dimension') ? 1.6 : 1);
-    for (const o of enemiesNear(e.x, e.y, R, e)) damage(o, p.dmg * 0.7 * (combo('dimension') ? 1.5 : 1), 'dragon', false, true);
+    const R = 130 * s * (combo('dimension') ? 2 : 1), a = Math.random() * Math.PI, L = R * 1.6;
+    fx.push({ kind: 'lrift', x: e.x, y: e.y, x1: e.x - Math.cos(a) * L / 2, y1: e.y - Math.sin(a) * L / 2, x2: e.x + Math.cos(a) * L / 2, y2: e.y + Math.sin(a) * L / 2, c1: '#ff6ad5', c2: '#ffe2f6', t: 0.35, max: 0.35, seed: Math.random() * 1000 });
+    for (const o of enemiesNear(e.x, e.y, R, e)) damage(o, p.dmg * 0.9 * (combo('dimension') ? 2 : 1), 'dragon', false, true);
   }
   if (hasFx('erupt') && p.eruptCd <= 0) {
     const tc = combo('tectonic');
@@ -760,6 +761,7 @@ function checkLegends() {
 }
 
 function onKill(e) {
+  burstGain(isBig(e) ? 0.3 : 0.08);
   const p = player;
   abKill();
   fx.push({ kind: 'poof', x: e.x, y: e.y, t: 0.3, max: 0.3 });

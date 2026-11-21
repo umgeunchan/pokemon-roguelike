@@ -84,7 +84,7 @@ const AB = {
   'hadron-engine': { ko: '하드론엔진', desc: '일렉트릭필드: 공격 x1.33, 전기 공격 x1.2', mul: 1.33, type: { electric: 1.2 }, style: 'spark', color: '#a060ff' },
   'serene-grace': { ko: '하늘의은총', desc: '공격 x1.2, 급소 +10%', mul: 1.2, crit: 0.1, style: 'aura', color: '#fff0a0' },
 };
-const LEGEND_AB_MUL = 1.2;
+const LEGEND_AB_MUL = 1.3;
 // 이번 포켓몬의 특성 (포켓몬이 바뀔 때만 다시 계산)
 let abCache = { id: null, ab: null };
 function curAb() {

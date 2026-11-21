@@ -188,7 +188,7 @@ const COMBOS = [
   { id: 'thundergod', name: '뇌격신', need: ['fusion-bolt', 'thunder'], desc: '낙뢰 확률 60%, 연쇄 번개가 4마리까지', color: '#ffff90' },
   { id: 'tsunami', name: '근원의 해일', need: ['origin-pulse', 'surf'], desc: '파동이 7갈래로, 더 크고 세게', color: '#2060ff' },
   { id: 'tectonic', name: '지각 붕괴', need: ['fx:erupt', 'earthquake'], desc: '땅의 칼날이 7개, 더 넓고 더 자주 솟는다', color: '#d07030' },
-  { id: 'dimension', name: '차원 절단', need: ['spacial-rend', 'x-scissor'], desc: '공간 베기 범위 x1.6, 피해 x1.5', color: '#ff90e0' },
+  { id: 'dimension', name: '차원 절단', need: ['spacial-rend', 'x-scissor'], desc: '공간 베기 범위 x2, 피해 x2, 전설 오의 x1.5', color: '#ff90e0' },
   { id: 'timewarp', name: '시간 역행', need: ['roar-of-time', 'dragon-pulse'], desc: '시간이 5초마다 멈추고, 멈춘 동안 피해 x2', color: '#6080ff' },
   { id: 'lunar', name: '월식', need: ['moongeist-beam', 'moonblast'], desc: '광선 위력 x1.4, 50% 확률로 적의 공격이 뜸해짐', color: '#a080ff' },
   { id: 'eclipse', name: '일식', need: ['fx:blade', 'flash-cannon'], desc: '맞힐 때마다 강철 폭발', color: '#ffb040' },
@@ -221,7 +221,7 @@ const typeMove = m => m.types.map(t => TMS.find(x => x.type === t)).find(Boolean
 // 전설의 기술: 전설의 포켓몬으로 시작하면 처음부터 갖고 있고, 아주 드물게 기술머신으로도 나온다. 일반 기술보다 확실히 강하다
 // 전설 기술 보너스: 전설 기술 하나마다 모든 공격 위력 x1.25 (LEGEND_POW). 전설 포켓몬은 기본 능력치가 높아서 보너스는 작게 둔다
 // 전설 기술 설명: 기술 자체 위력 숫자에 보너스를 곱해 하나로 합친다. 구르기 공격은 배수로 바꿔 쓰고, 나머지 공격에 붙는 보너스는 뒤에 한 번만
-const LEGEND_POW = 1.25;
+const LEGEND_POW = 1.3;
 // 기술 설명은 짧게: 공격 방식 · 핵심 효과만 (전설 기술 보너스는 '전설'이라고만 덧붙인다)
 const legendDesc = d => `${d} · 전설`;
 const L = (id, type, fx, desc, onLearn) => ({ id, tm: `tm-${type}`, name: id, type, fx, desc: legendDesc(desc), legend: true, onLearn });

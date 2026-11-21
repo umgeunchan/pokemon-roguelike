@@ -112,6 +112,7 @@ function update(dt) {
 
   // 시간의포효: 주기적으로 적과 적의 공격이 멈춘다
   if (hasFx('timeStop') && (p.stopCd -= dt) <= 0 && map.enemies.some(e => Math.hypot(e.x - p.x, e.y - p.y) < 500)) { p.stopCd = combo('timewarp') ? 5 : 7; timeStop = 1.8; banner = { text: '시간이 멈췄다!', t: 1.5 }; }
+  updateBurst(dt);
   const frozenTime = timeStop > 0;
 
   if ((flowT -= dt) <= 0) { flowT = 0.25; buildFlow(); }

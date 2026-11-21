@@ -453,6 +453,7 @@ function drawPanel() {
     if (m && p.stabTypes?.has(m.type)) text(`자속 x${STAB}`, 154, y, 9, '#fd6', 'right');  // 내 타입과 같은 기술: 그 타입 공격 1.5배
   }
   p.items.filter(i => i.r === 'k').forEach((it, i) => ctx.drawImage(IMG[it.id], 4 + i * 26, y + 6, 26, 26));
+  drawBurstGauge(CH - 44);
   if (TOUCH) text('화면 터치 대화·왼쪽 위 지도·메뉴', 4, CH - 6, 9, '#777', 'left');
   else { text('Space 구르기·E 대화·M 지도', 4, CH - 18, 9, '#777', 'left'); text('Esc 메뉴·N 소리·F 전체 화면', 4, CH - 6, 9, '#777', 'left'); }
 }
@@ -677,7 +678,7 @@ function drawHazard(h) {
 
 function drawFx(f) {
   const k = 1 - f.t / (f.max ?? f.t);
-  drawGimmickFx(f, k); drawPatternFx(f, k);
+  drawGimmickFx(f, k); drawPatternFx(f, k); drawLegendFx(f, k);
   if (f.kind === 'zap') {
     ctx.strokeStyle = '#fff36a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(f.x, f.y - TEAR_Z);
     for (let i = 1; i < 6; i++) ctx.lineTo(f.x + (f.x2 - f.x) * i / 6 + Math.random() * 12 - 6, f.y + (f.y2 - f.y) * i / 6 - TEAR_Z + Math.random() * 12 - 6);
