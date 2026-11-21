@@ -216,13 +216,14 @@ function genWorld(seed) {
       w.npcs.push({ id: npcId++, kind: 'trainer', sprite, name, x, y, hx: x, hy: y, r: 14, dir: [0, 0], turn: rnd() * 2, node: n });
     }
   }
-  // 전설의 포켓몬: 한 판에 한 마리가 지방 명소(떠돌이 전설은 아무 길)에 반드시 나온다
+  // 전설의 포켓몬: 한 판에 한 마리(챔피언이 된 지방은 두 마리)가 지방 명소(떠돌이 전설은 아무 길)에 반드시 나온다
   const cands = nodes.flatMap(n => n.legends.map(id => ({ id, n })));
   const wild = nodes.filter(n => n.kind !== 'T' && !n.gym && !n.league);
   region.roam.forEach(id => cands.push({ id, n: wild[Math.floor(rnd() * wild.length)] }));
   for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [cands[i], cands[j]] = [cands[j], cands[i]]; }
+  // 이미 챔피언이 된 지방이면 서로 다른 전설 두 마리
   const picked = [];
-  if (cands.length) picked.push(cands[0]);
+  for (const c of cands) if (picked.length < (CLEARED.has(region.name) ? 2 : 1) && !picked.some(o => o.id === c.id)) picked.push(c);
   w.legends = picked.map((c, i) => { const [x, y] = c.n.legends.includes(c.id) ? [(c.n.tx + 0.5 + (i % 2) * 2) * TS, (c.n.ty + 0.5) * TS] : spotNear(c.n, true); return { i, id: c.id, n: c.n, x, y, done: false, alive: false }; });
   w.start = [(start.tx + 0.5) * TS, (start.ty + 3.5) * TS];
   return w;
