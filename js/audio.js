@@ -76,7 +76,7 @@ function applyVolume() {
   store.set(VOL_KEY, VOL);
   if (musicBus) musicBus.gain.value = VOL.bgm;
   if (sfxBus) sfxBus.gain.value = VOL.sfx;
-  for (const a of Object.values(BGM_FILES)) a.volume = 0.5 * VOL.bgm;
+  for (const a of Object.values(BGM_FILES)) if (a instanceof Audio) a.volume = 0.5 * VOL.bgm;
 }
 const PULSE = {};
 
@@ -226,43 +226,57 @@ function sfx(name) {
   SFX[name](t + 0.01);
 }
 
-// 지금 장소와 상대에 맞는 곡: 라이벌 > 전설 > 리그(챔피언) > 체육관 > 마을·숲·동굴·도로
+// 지금 장소와 상대에 맞는 곡 후보: 구체적인 것(그 장소·관장·전설 이름)부터 일반적인 것(마을·도로…)까지
+// 우선순위: 라이벌 > 전설 > 리그(챔피언) > 체육관(관장) > 트레이너와 승부 > 장소
+// 음원 파일이 있는 첫 후보를 튼다. 하나도 없으면 후보 중 합성곡이 있는 것을 튼다
 function bgmFor() {
-  if (state === 'title' || state === 'region' || state === 'select' || state === 'ach') return 'town';
+  if (state === 'title' || state === 'region' || state === 'select' || state === 'ach') return ['타이틀', 'town'];
   if (!['play', 'pause', 'map', 'learn', 'zpick', 'shop'].includes(state) || !map) return null;
-  if (map.sub === 'rival') return 'rival';
-  if (map.sub === 'hoopa') return map.enemies.some(e => e.hoopa) ? 'legend' : 'champion';
-  if (map.battle?.rival || map.npcs.some(n => n.rival && !n.defeated)) return 'rival';
-  if (map.enemies.some(e => e.rank === 'legend' && Math.hypot(e.x - player.x, e.y - player.y) < 900)) return 'legend';
-  if (map.sub === 'league') return map.room?.who === region.league.at(-1) ? 'champion' : 'league';
-  if (map.sub === 'gym') return 'gym';
-  const k = nodeAt(player.x, player.y).kind;
-  return k === 'T' ? 'town' : k === 'F' ? 'forest' : k === 'C' || k === 'S' ? 'cave' : 'route';
+  const p = player, legend = map.enemies.find(e => e.rank === 'legend' && Math.hypot(e.x - p.x, e.y - p.y) < 900);
+  if (map.sub === 'rival') return ['라이벌전', 'rival'];
+  if (map.sub === 'hoopa') { const h = map.enemies.find(e => e.hoopa); return h ? [`전설_${h.mon.name}`, '전설전', 'legend'] : ['champion']; }
+  if (map.battle?.rival || map.npcs.some(n => n.rival && !n.defeated)) return ['라이벌전', 'rival'];
+  if (legend) return [`전설_${legend.mon.name}`, '전설전', 'legend'];
+  if (map.sub === 'league') { const w = map.room?.who, champ = w === region.league.at(-1); return [...(w && map.room.started ? [`리그_${w.leader}`] : []), champ ? '챔피언전' : '사천왕전', champ ? 'champion' : 'league']; }
+  if (map.sub === 'gym') {
+    const leader = map.battle && map.room?.who;
+    return leader ? [`관장_${leader.leader}`, '관장전', 'gym'] : [...(map.battle ? ['트레이너전'] : []), '체육관', 'gym'];
+  }
+  const n = nodeAt(p.x, p.y), k = n.kind, place = k === 'T' ? 'town' : k === 'F' ? 'forest' : k === 'C' || k === 'S' ? 'cave' : 'route';
+  return [...(map.battle ? ['트레이너전'] : []), n.name, place];
 }
 
-// 음원 파일: bgm/<지방>/<곡>.mp3, 없으면 bgm/<곡>.mp3를 튼다. 둘 다 없는 곡만 위의 합성곡으로 대신한다
-const BGM_FILES = {};
-function probeBgm(rg) {
-  for (const k in BGM_FILES) delete BGM_FILES[k];
-  for (const n of Object.keys(SONGS)) {
-    const tryUrl = ([url, ...rest]) => {
-      if (!url) return;
-      const a = new Audio(url); a.loop = true; a.volume = 0.5 * VOL.bgm; a.preload = 'auto';
-      a.addEventListener('canplaythrough', () => { if (rg === region) BGM_FILES[n] = a; }, { once: true });
-      a.addEventListener('error', () => tryUrl(rest), { once: true });
-    };
-    tryUrl([`bgm/${rg.name}/${n}.mp3`, `bgm/${n}.mp3`]);
-  }
+// 음원 파일: bgm/<지방>/<이름>.mp3, 없으면 bgm/<이름>.mp3. 처음 필요할 때 한 번만 확인하고 결과를 기억한다
+// 파일은 저장소에 올리지 않는다(.gitignore). 직접 가진 음원을 이 컴퓨터의 bgm 폴더에 넣어 쓴다
+const BGM_FILES = {};  // 주소 → Audio(있음) | false(없음) | 'wait'(확인 중)
+function bgmProbe(url) {
+  if (url in BGM_FILES) return BGM_FILES[url];
+  BGM_FILES[url] = 'wait';
+  const a = new Audio(url); a.loop = true; a.volume = 0.5 * VOL.bgm; a.preload = 'auto';
+  a.addEventListener('canplaythrough', () => { BGM_FILES[url] = a; }, { once: true });
+  a.addEventListener('error', () => { BGM_FILES[url] = false; }, { once: true });
+  return 'wait';
 }
+// 후보 중 파일이 있는 첫 곡. 앞 후보를 아직 확인 중이면 기다린다(그동안은 합성곡)
+function bgmFile(names) {
+  for (const n of names) for (const url of [`bgm/${region?.name ?? '_'}/${n}.mp3`, `bgm/${n}.mp3`]) {
+    const st = bgmProbe(url);
+    if (st === 'wait') return null;
+    if (st) return st;
+  }
+  return null;
+}
+// 지방을 고르면 그 지방의 기본 곡들을 미리 확인해 둔다
+function probeBgm(rg) { for (const n of [...Object.keys(SONGS), '관장전', '트레이너전', '라이벌전', '전설전', '사천왕전', '챔피언전']) { bgmProbe(`bgm/${rg.name}/${n}.mp3`); bgmProbe(`bgm/${n}.mp3`); } }
 
 function tickMusic() {
   if (!audio) return;
-  const want = muted ? null : bgmFor(), file = want ? BGM_FILES[want] ?? null : null;
+  const names = muted ? null : bgmFor(), file = names ? bgmFile(names) : null, want = names ? names.find(n => SONGS[n]) ?? null : null;
   if (want !== music.name || file !== music.file) {
     if (music.out) { music.out.gain.setTargetAtTime(0, audio.currentTime, 0.12); const old = music.out; setTimeout(() => old.disconnect(), 1500); }
     music.file?.pause();
     music = { name: want, file, sec: 0, step: 0, next: audio.currentTime + 0.1, ...(want && !file ? makeBus(SONGS[want].bpm) : {}) };
-    if (file) { file.currentTime = 0; file.play().catch(() => {}); }
+    if (file) { file.volume = 0.5 * VOL.bgm; file.currentTime = 0; file.play().catch(() => {}); }
   }
   if (!want || file) return;
   const s = SONGS[want], dur = 15 / s.bpm;
