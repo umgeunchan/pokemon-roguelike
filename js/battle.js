@@ -154,16 +154,16 @@ const CHAMP_ACE = '이게 마지막 한 마리다. 네가 챔피언이 될 자�
 // 하이퍼볼 급 보상: 다른 전설의 전용 도구나 다른 타입 테라피스, 없으면 아주 희귀한 도구
 function hyperReward() {
   const p = player, own = id => taken.has(id) || p.items.some(i => i.id === id);
-  const pool = [...Object.keys(LEGEND_FORMS), ...Object.keys(TYPE_KO).map(t => `${t}-tera-shard`)].filter(id => !own(id) && itemById(id) && ballGrade({ kind: 'item', item: itemById(id) }) === 2);
+  const pool = [...new Set([...Object.values(LEGEND_FORMS).map(f => f.item), ...Object.keys(TYPE_KO).map(t => `${t}-tera-shard`)])].filter(id => !own(id) && itemById(id) && ballGrade({ kind: 'item', item: itemById(id) }) === 2);
   if (pool.length && Math.random() < 0.6) { const id = pick(pool); taken.add(id); return { kind: 'item', item: itemById(id) }; }
   return rollContent(Math.random, { c: 0, r: 0, l: 1, g: 0 });
 }
 function masterReward() {
   const p = player, own = id => taken.has(id) || p.moves.has(id) || p.items.some(i => i.id === id), give = id => (taken.add(id), { kind: 'item', item: itemById(id) });
   // 자기 전설 전용 도구, 자기 타입 테라피스가 남아 있으면 그것부터
-  const mine = Object.keys(LEGEND_FORMS).find(id => LEGEND_FORMS[id].mon === p.mon.id && !own(id));
+  const mines = [...new Set(Object.values(LEGEND_FORMS).filter(f => f.mon === p.mon.id && !own(f.item)).map(f => f.item))], mine = mines.length ? pick(mines) : null;
   if (mine && Math.random() < 0.75) return give(mine);
-  const tera = p.mon.types.map(t => `${t}-tera-shard`).find(id => !own(id));
+  const tera = myTypes().map(t => `${t}-tera-shard`).find(id => !own(id));
   if (tera && Math.random() < 0.35) return give(tera);
   const lt = LTMS.filter(t => !own(t.id));
   if (lt.length && Math.random() < 0.6) { const t = pick(lt); taken.add(t.id); return { kind: 'tm', tm: t }; }

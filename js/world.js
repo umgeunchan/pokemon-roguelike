@@ -27,9 +27,10 @@ const BALLS = ['poke-ball', 'great-ball', 'ultra-ball', 'master-ball'];
 const ballGrade = k => k.kind === 'tm' ? (k.tm.legend ? 3 : 2) : k.kind === 'item' ? itemGrade(k.item) : 0;
 // 테라피스는 내 타입일 때만, 전설 전용 도구는 그 전설로 플레이할 때만 마스터볼 급. 아니면 하이퍼볼 급
 function itemGrade(it) {
-  const p = player, tera = it.id.endsWith('-tera-shard') ? it.id.slice(0, -11) : null, lf = LEGEND_FORMS[it.id];
-  if (tera) return p?.mon.types.includes(tera) ? 3 : 2;
-  if (lf) return p?.mon.id === lf.mon ? 3 : 2;
+  const p = player, tera = it.id.endsWith('-tera-shard') ? it.id.slice(0, -11) : null, fs = formsOf(it.id);
+  if (tera) return myTypes().includes(tera) ? 3 : 2;
+  if (fs.length && fs.some(f => f.mon === p?.mon.id)) return 3;
+  if (fs.length && it.r !== 'g') return 2;  // 다이맥스밴드처럼 원래 마스터볼 급인 기믹 도구는 그대로
   return { c: 0, r: 1, l: 2, k: 2, g: 3 }[it.r] ?? 0;
 }
 // 상자 내용물. tm = 일반 기술머신 확률, 나머지(c·r·l)는 아이템 등급 비율

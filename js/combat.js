@@ -24,7 +24,7 @@ function hurt(type, amount = 1, src = null) {
   // 거대방패: 8초마다 다시 차오르는 방패가 공격 한 번을 완전히 막는다
   if (hasFx('bulwark') && p.shieldUp) { p.shieldUp = false; p.shieldT = 8; p.inv = 0.6; fx.push({ kind: 'boom', x: p.x, y: p.y, r: 50, t: 0.25, max: 0.25, color: '#c8d4e8' }); sfx('crit'); return say('방패가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   if (combo('fortress') && Math.random() < 0.2) { p.inv = 0.5; return say('강철 요새가 막아냈다!', p.x, p.y - 60, '#ccf'); }
-  const m = eff(type, p.mon.types);
+  const m = eff(type, myTypes());
   let d = m === 0 ? 0 : amount + (m > 1 ? 1 : 0) + (who?.awake ? (who.elite ? 2 : 1) : 0);  // 각성한 상대의 공격은 반 칸 더 (사천왕·챔피언은 1칸 더)
   if (amount >= 2) d = Math.min(d, amount + 1);  // 필살기·큰 공격은 약점·각성이 겹쳐도 반 칸까지만 더
   // 쉬움 모드: 피해 절반 (반 칸 단위라 남는 반은 모아 두었다가 다음에 더한다)
@@ -32,6 +32,7 @@ function hurt(type, amount = 1, src = null) {
   if (hasFx('bulwark') && d > 0) { d -= 1; if (d === 0 && Math.random() < 0.5) d = 1; if (d === 0) { p.inv = 0.5; return say('막아냈다!', p.x, p.y - 60, '#ccf'); } }
   // 특성: 막거나 줄이거나 회복으로 바꾼다
   if (d > 0) { d = abHurt(type, d, who, src); if (d <= 0) { p.inv = 0.4; return; } }
+  if (d > 0 && curForm()?.guard) d = 1;  // 테오키스 디펜스폼: 받는 피해는 늘 반 칸
   p.inv = p.invTime + abStat('inv', 0); p.streak = 0;
   // 사망 화면에 보여 줄 최근 맞은 공격 3개
   p.lastHits = [...(p.lastHits ?? []), { who: who?.mon.name, move, d, heavy: amount >= 2, type }].slice(-3); p.hits = (p.hits ?? 0) + 1;

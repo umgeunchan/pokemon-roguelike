@@ -114,6 +114,7 @@ async function continueRun() {
     if (p.shiny) await loadShiny(p.mon);
     banner = { text: `${region.name}지방 모험을 이어서 한다`, t: 2.5 };
     state = 'play';
+    if (p.legendForm && !LEGEND_FORMS[p.legendForm]) p.legendForm = formFor(p.legendForm, p.mon.id);  // v2.7.0 기록은 도구 이름으로 저장됐다
     if (p.legendForm) loadFormArt(); else if (p.mega) loadMegaArt();
     if (p.zPending && p.moves.size) startZ();
   } catch (e) { loadError = `이어하기 실패: ${e.message}`; state = 'error'; }
