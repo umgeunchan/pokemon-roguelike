@@ -24,7 +24,14 @@ function makeNoise(rnd) {
 
 // 바닥에 놓인 볼의 종류로 내용물의 희귀도를 알린다: 흔한 도구·나무열매 < 희귀한 도구 < 기술머신·아주 희귀한 도구·중요한 물건 < 특별한 기술머신
 const BALLS = ['poke-ball', 'great-ball', 'ultra-ball', 'master-ball'];
-const ballGrade = k => k.kind === 'tm' ? (k.tm.legend ? 3 : 2) : k.kind === 'item' ? { c: 0, r: 1, l: 2, k: 2, g: 3 }[k.item.r] ?? 0 : 0;
+const ballGrade = k => k.kind === 'tm' ? (k.tm.legend ? 3 : 2) : k.kind === 'item' ? itemGrade(k.item) : 0;
+// 테라피스는 내 타입일 때만, 전설 전용 도구는 그 전설로 플레이할 때만 마스터볼 급. 아니면 하이퍼볼 급
+function itemGrade(it) {
+  const p = player, tera = it.id.endsWith('-tera-shard') ? it.id.slice(0, -11) : null, lf = LEGEND_FORMS[it.id];
+  if (tera) return p?.mon.types.includes(tera) ? 3 : 2;
+  if (lf) return p?.mon.id === lf.mon ? 3 : 2;
+  return { c: 0, r: 1, l: 2, k: 2, g: 3 }[it.r] ?? 0;
+}
 // 상자 내용물. tm = 일반 기술머신 확률, 나머지(c·r·l)는 아이템 등급 비율
 // 전설의 기술머신(ltm)은 여기서 나오지 않는다: 전설의 포켓몬을 쓰러뜨리면 그 상징 기술머신이 떨어질 때만 얻는다 (ltm 값은 무시)
 // 흔한 도구(c: 능력치가 조금씩 오르는 도구)는 같은 것이 몇 번이고 나올 수 있다. 희귀 이상은 한 판에 한 번

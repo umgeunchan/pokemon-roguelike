@@ -74,10 +74,17 @@ function rivalDue() {
   if (!r.done.has('start')) { const i = tutStep(); return i === null || i < 0 || i >= 3 ? 'start' : null; }
   // 배지 이벤트는 가장 최근 것 하나만. 앞의 것을 놓쳤으면 건너뛴다
   const badge = ['b7', 'b5', 'b3'].find(ev => b >= +ev.slice(1) && !r.done.has(ev));
-  if (badge) { ['b3', 'b5', 'b7'].forEach(ev => +ev.slice(1) <= +badge.slice(1) && r.done.add(ev)); r.done.delete(badge); return badge; }
-  if (r.legend && !r.done.has('legend')) return 'legend';
+  if (badge) { ['b3', 'b5', 'b7'].forEach(ev => +ev.slice(1) <= +badge.slice(1) && r.done.add(ev)); r.done.delete(badge); return afterNextTown(badge); }
+  if (r.legend && !r.done.has('legend')) return afterNextTown('legend');
   if (b >= region.gyms.length && !r.done.has('road') && at && (at.league || at.name.includes('챔피언로드'))) return 'road';
   return null;
+}
+
+// 배지·전설 이벤트는 바로 덤비지 않는다: 이벤트가 생긴 곳을 기억해 두고, 다른 마을에 들어섰을 때 나타난다 (준비할 시간)
+function afterNextTown(ev) {
+  const r = player.rival, at = curNode;
+  if (r.waitEv !== ev) { r.waitEv = ev; r.waitNode = at?.i ?? -1; return null; }
+  return at && (at.kind === 'T' || at.gym) && !at.league && at.i !== r.waitNode ? ev : null;
 }
 
 function rivalCheck() {
@@ -144,8 +151,20 @@ const CHAMP_SAY = ['배지 8개, 그리고 사천왕까지. 여기까지 올라�
 const CHAMP_ACE = '이게 마지막 한 마리다. 네가 챔피언이 될 자격이 있는지, 이 녀석으로 확인하겠어!';
 
 // 마스터볼 급 보상: 아직 없는 전설의 기술머신, 없으면 기믹 아이템, 그것도 없으면 아주 희귀한 도구
+// 하이퍼볼 급 보상: 다른 전설의 전용 도구나 다른 타입 테라피스, 없으면 아주 희귀한 도구
+function hyperReward() {
+  const p = player, own = id => taken.has(id) || p.items.some(i => i.id === id);
+  const pool = [...Object.keys(LEGEND_FORMS), ...Object.keys(TYPE_KO).map(t => `${t}-tera-shard`)].filter(id => !own(id) && itemById(id) && ballGrade({ kind: 'item', item: itemById(id) }) === 2);
+  if (pool.length && Math.random() < 0.6) { const id = pick(pool); taken.add(id); return { kind: 'item', item: itemById(id) }; }
+  return rollContent(Math.random, { c: 0, r: 0, l: 1, g: 0 });
+}
 function masterReward() {
-  const own = id => taken.has(id) || player.moves.has(id) || player.items.some(i => i.id === id);
+  const p = player, own = id => taken.has(id) || p.moves.has(id) || p.items.some(i => i.id === id), give = id => (taken.add(id), { kind: 'item', item: itemById(id) });
+  // 자기 전설 전용 도구, 자기 타입 테라피스가 남아 있으면 그것부터
+  const mine = Object.keys(LEGEND_FORMS).find(id => LEGEND_FORMS[id].mon === p.mon.id && !own(id));
+  if (mine && Math.random() < 0.75) return give(mine);
+  const tera = p.mon.types.map(t => `${t}-tera-shard`).find(id => !own(id));
+  if (tera && Math.random() < 0.35) return give(tera);
   const lt = LTMS.filter(t => !own(t.id));
   if (lt.length && Math.random() < 0.6) { const t = pick(lt); taken.add(t.id); return { kind: 'tm', tm: t }; }
   return rollGimmick(Math.random) ?? (lt.length ? (t => (taken.add(t.id), { kind: 'tm', tm: t }))(pick(lt)) : rollContent(Math.random, { c: 0, r: 0, l: 1 }));
@@ -188,6 +207,7 @@ function startRoom(r) {
       heal(Math.ceil(p.maxHp / 2)); banner = { text: `${r.who.leader}에게 이겼다! 위쪽 방의 문이 열렸다`, t: 3 };
       // 사천왕 보상: 마스터볼 급(전설의 기술머신·기믹 아이템) 하나
       map.pickups.push({ ...masterReward(), x: r.cx, y: (r.y0 + 4.5) * TS, ball: true });
+      map.pickups.push({ ...hyperReward(), x: r.cx - 60, y: (r.y0 + 4.5) * TS, ball: true });
       map.pickups.push({ kind: 'candy', x: r.cx + 60, y: (r.y0 + 4.5) * TS });
       // 마지막 사천왕을 이기면 챔피언전 전에 준비할 수 있게 간호순과 프렌들리숍 점원이 나온다
       if (region.league.indexOf(r.who) === region.league.length - 2) {
@@ -354,7 +374,7 @@ function talk() {
 
 const shopPrice = s => Math.round(s.price * (s.grow ? 1.25 ** (player.bought[s.id] ?? 0) : 1));
 const shopSpecial = n => !n.sold && n.special.kind !== 'berry' ? n.special : null;
-const specialPrice = sp => sp.kind === 'tm' ? (sp.tm.legend ? 15000 : 5000) : sp.item.r === 'g' ? 15000 : sp.item.r === 'l' ? 12000 : 6000;
+const specialPrice = sp => sp.kind === 'tm' ? (sp.tm.legend ? 15000 : 5000) : ballGrade(sp) >= 3 ? 15000 : ballGrade(sp) === 2 ? 12000 : 6000;
 
 function buy(i) {
   const p = player, n = shopNpc, s = SHOP[i], sp = i === SHOP.length ? shopSpecial(n) : null;
