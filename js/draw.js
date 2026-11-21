@@ -517,6 +517,7 @@ function drawPortal(o) {
     ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(o.x, o.y, r, r * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
   });
   text(o.label ?? '밖으로', o.x, o.y - 26, 11, '#c8bcff');
+  if (nearPortal(o)) text(TOUCH ? '화면을 눌러 들어가기' : 'E 키로 들어가기', o.x, o.y + 34, 12, '#fff');
 }
 
 // 후파의 고리: 금빛 고리 안쪽에 보랏빛 소용돌이. 나타날 때 커지면서 열린다

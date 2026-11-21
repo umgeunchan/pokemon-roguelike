@@ -80,9 +80,7 @@ function update(dt) {
 
   if (map.kind === 'indoor') {
     if (p.y > (map.th - 1) * TS + 10) return leaveBuilding();
-    if (map.portal && Math.hypot(p.x - map.portal.x, p.y - map.portal.y) < 28) { if (map.portal.win) { state = 'win'; return; } return leaveBuilding(); }
     if (map.hoopa && Math.hypot(p.x - map.hoopa.x, p.y - map.hoopa.y) < 30) return enterHoopa();
-    if (map.roadPortal && Math.hypot(p.x - map.roadPortal.x, p.y - map.roadPortal.y) < 28) { const n = roadNode(); leaveBuilding(openSpot(n)); banner = { text: `${n.name}(으)로 이동했다!`, t: 2.5 }; return; }
     if (map.returnT > 0 && (map.returnT -= dt) <= 0) return leaveBuilding();  // 라이벌 결투장: 이기면 원래 자리로
     const r = roomAt(Math.floor(p.y / TS));
     if (r && !r.started && !map.battle && p.y < (r.y1 - 1.2) * TS) startRoom(r);

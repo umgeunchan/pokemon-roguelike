@@ -352,7 +352,18 @@ function updateNpcs(dt) {
   }
 }
 
+// 관장 방의 고리(밖으로·챔피언로드·모험 끝내기)는 밟아도 들어가지 않는다: 앞에서 E(휴대폰은 화면 터치)를 눌러야 들어간다
+const PORTAL_R = 56;
+const nearPortal = o => o && Math.hypot(player.x - o.x, player.y - o.y) < PORTAL_R;
+function usePortal() {
+  if (map.kind !== 'indoor' || map.battle) return false;
+  if (nearPortal(map.portal)) { if (map.portal.win) state = 'win'; else leaveBuilding(); return true; }
+  if (nearPortal(map.roadPortal)) { const n = roadNode(); leaveBuilding(openSpot(n)); banner = { text: `${n.name}(으)로 이동했다!`, t: 2.5 }; return true; }
+  return false;
+}
+
 function talk() {
+  if (usePortal()) return;
   const p = player, n = map.npcs.find(n => n.kind !== 'gymtrainer' && Math.hypot(n.x - p.x, n.y - p.y) < 90);
   if (!n || map.battle) return;
   p.talked = true;
