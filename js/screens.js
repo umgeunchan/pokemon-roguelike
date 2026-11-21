@@ -277,7 +277,7 @@ function drawRegionSelect() {
     if (done) text('챔피언 달성', c.x + c.w / 2, c.y + 122, 11, '#8cf');
     if (!rg) text('열린 지방 중에서', c.x + c.w / 2, c.y + 98, 11, '#999');
   });
-  text(loadSave() ? '새 지방을 고르면 이어하기 기록은 사라집니다' : `도감 ${DEX.size}마리 · 스타팅 계열이나 전설·환상의 포켓몬을 쓰러뜨리면 다음 판 스타팅으로 고를 수 있습니다`, CW / 2, 470, 12, loadSave() ? '#f99' : '#8cf');
+  text(loadSave() ? '새 지방을 고르면 이어하기 기록은 사라집니다' : `도감 ${DEX.size}마리 · 전설·환상의 포켓몬을 쓰러뜨리면 다음 판 스타팅으로 고를 수 있습니다 (스타팅은 그 지방 세대 3마리)`, CW / 2, 470, 12, loadSave() ? '#f99' : '#8cf');
 }
 
 // 스타팅 도감: 8x3 칸씩 페이지로 넘긴다. 오른쪽에 고른 포켓몬의 능력치와 시작 기술
@@ -304,7 +304,7 @@ function drawSelect() {
   });
   const pages = Math.ceil(ids.length / SEL_PAGE);
   if (pages > 1) text(`${Math.floor(selCur / SEL_PAGE) + 1} / ${pages} 페이지`, 324, 430, 12, '#888');
-  text(`도감 ${DEX.size}마리 · 스타팅 계열·전설·환상을 쓰러뜨리면 여기에 추가됩니다`, 324, 452, 11, '#777');
+  text(`도감 ${DEX.size}마리 · 전설·환상을 쓰러뜨리면 도감 번호 순으로 여기에 추가됩니다`, 324, 452, 11, '#777');
   // 오른쪽 상세
   const m = MON[ids[selCur]], st = baseOf(m), mv = moveDef(LEGEND_MOVE[m.id] ?? typeMove(m)), px = 760;
   ctx.fillStyle = '#23232e'; ctx.fillRect(650, 112, 220, 296);

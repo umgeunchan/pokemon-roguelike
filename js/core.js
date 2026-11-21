@@ -177,7 +177,8 @@ const eff = (atk, defTypes) => defTypes.reduce((m, t) => m * (CHART[atk]?.[t] ??
 const has = id => player.moves.has(id);
 const hasFx = f => FX.has(f);
 const refreshFx = () => { FX = new Set([...player.moves].map(id => moveDef(id)?.fx).filter(Boolean)); legendPow = LEGEND_POW ** [...player.moves].filter(id => moveDef(id)?.legend).length; refreshCombos(); };
-const starterIds = () => [...new Set([...region.starters, 25, ...achRewards(), ...[...STARTERS].sort((a, b) => a - b), ...loadUnlocked()])].filter(id => MON[id]);
+// 스타팅 고르기: 이 지방 세대의 스타팅 3마리 → 쓰러뜨려 연 전설·환상(도감 번호 순) → 피카츄·도전과제 보상. 다른 세대 스타팅은 나오지 않는다
+const starterIds = () => [...new Set([...region.starters, ...[...loadUnlocked()].sort((a, b) => a - b), 25, ...achRewards()])].filter(id => MON[id]);
 const untargetable = e => e.z > 30 || e.fade > 0.5;
 const baseOf = m => ({ hp: Math.round(m.st.hp / 7.5), dmg: Math.max(m.st.attack, m.st['special-attack']) / 20, speed: 120 + m.st.speed * 1.5 });
 // 레벨업 필요 경험치: 초반엔 적게, 갈수록 기하급수로 (5레벨 15, 30레벨 177, 60레벨 3400쯤)
