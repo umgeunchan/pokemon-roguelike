@@ -44,6 +44,9 @@ const LEGEND_SIG = {
   'behemoth-blade': ['nightSlash', 0, 'meteorMash', 0.5], 'behemoth-bash': ['dynamicPunch', 0, 'dynamicPunch', 1.6], geomancy: ['flowerBloom', 0, 'moonlight', 0.6],
   'oblivion-wing': ['whirlpool', 0, 'swarm', 0.5], 'seed-flare': ['leechSeed', 0, 'petalDance', 0.3], 'natures-madness': ['domain', 0, 'feint', 0.6],
   ruination: ['domain', 0, 'nightShade', 0.5], 'diamond-storm': ['stealthRock', 0, 'ancientPower', 0.3],
+  'photon-geyser': ['psyField', 0, 'trackBeam', 0.5], 'glacial-lance': ['iceLattice', 0, 'hailGrid', 0.4], 'astral-barrage': ['wispCircle', 0, 'teleBarrage', 0.6],
+  'wicked-blow': ['nightSlash', 0, 'dynamicPunch', 0.6], 'surging-strikes': ['aquaRing', 0, 'whirlpool', 0.3], 'ivy-cudgel': ['leechSeed', 0, 'petalDance', 0.4],
+  'tera-starstorm': ['stealthRock', 0, 'trackBeam', 0.5],
 };
 const legendSig = m => { const id = LEGEND_MOVE[m.id], d = id && moveDef(id); return d && LEGEND_SIG[id] ? S(d.name, 'legendCombo', { parts: LEGEND_SIG[id], type: d.type, legendSig: true }) : null; };
 

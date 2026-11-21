@@ -254,13 +254,21 @@ const LTMS = [
   L('natures-madness', 'fairy', 'madness', '강화 · 체력 절반 확률'),
   L('ruination', 'dark', 'madness', '강화 · 체력 절반 확률'),
   L('diamond-storm', 'rock', 'shard', '강화 · 급소, 다이아 파편'),
+  L('photon-geyser', 'psychic', 'beam', '광선 · 아주 강한 빛'),
+  L('glacial-lance', 'ice', 'freeze', '강화 · 얼림'),
+  L('astral-barrage', 'ghost', 'psy', '탄 · 강한 유도, 관통'),
+  L('wicked-blow', 'dark', 'blade', '강화 · 관통, 보스에게 강함'),
+  L('surging-strikes', 'water', 'fan5', '강화 · 파동 5갈래 추가'),
+  L('ivy-cudgel', 'grass', 'flare', '강화 · 맞으면 폭발'),
+  L('tera-starstorm', 'normal', 'beam', '광선 · 별빛, 아주 강함'),
 ];
 // 전설 기술 한국어 이름 (PokeAPI에 한국어 이름이 없을 때 대신 쓴다)
 const LEGEND_KO = { psystrike: '사이코브레이크', 'mist-ball': '미스트볼', 'luster-purge': '러스터퍼지', aeroblast: '에어로블라스트', 'blue-flare': '푸른불꽃', 'moongeist-beam': '섀도레이',
   eternabeam: '무한다이빔', 'sacred-fire': '성스러운불꽃', 'origin-pulse': '근원의파동', 'precipice-blades': '단애의칼', 'thousand-arrows': '사우전드애로', 'dragon-ascent': '화룡점정',
   'collision-course': '액셀브레이크', 'electro-drift': '라이트닝드라이브', 'roar-of-time': '시간의포효', 'spacial-rend': '공간절단', 'shadow-force': '섀도다이브', 'fusion-bolt': '크로스썬더',
   'sheer-cold': '절대영도', 'sunsteel-strike': '메테오드라이브', 'behemoth-blade': '거대검돌격', 'behemoth-bash': '거대방패돌격', geomancy: '지오컨트롤', 'oblivion-wing': '데스윙',
-  'seed-flare': '시드플레어', 'natures-madness': '자연의분노', ruination: '카타스트로피', 'diamond-storm': '다이아스톰' };
+  'seed-flare': '시드플레어', 'natures-madness': '자연의분노', ruination: '카타스트로피', 'diamond-storm': '다이아스톰',
+  'photon-geyser': '포톤가이저', 'glacial-lance': '블리자드랜스', 'astral-barrage': '아스트랄비트', 'wicked-blow': '암흑강타', 'surging-strikes': '수류연타', 'ivy-cudgel': '덩굴방망이', 'tera-starstorm': '테라클러스터' };
 for (const t of LTMS) t.name = LEGEND_KO[t.id] ?? t.name;
 // 전설의 포켓몬 → 상징적인 기술
 const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'fusion-bolt', 146: 'sacred-fire', 150: 'psystrike', 151: 'psystrike', 243: 'fusion-bolt', 244: 'sacred-fire', 245: 'origin-pulse',
@@ -270,6 +278,7 @@ const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'fusion-bolt', 146: 'sacred-fire',
   716: 'geomancy', 717: 'oblivion-wing', 718: 'thousand-arrows', 719: 'diamond-storm', 785: 'natures-madness', 786: 'natures-madness', 787: 'natures-madness',
   788: 'natures-madness', 791: 'sunsteel-strike', 792: 'moongeist-beam', 888: 'behemoth-blade', 889: 'behemoth-bash', 890: 'eternabeam',
   1001: 'ruination', 1002: 'ruination', 1003: 'ruination', 1004: 'ruination', 1007: 'collision-course', 1008: 'electro-drift',
+  800: 'photon-geyser', 898: 'glacial-lance', 892: 'wicked-blow', 1017: 'ivy-cudgel', 1024: 'tera-starstorm',
   // 환상의 포켓몬: 지방 지도에는 없고 후파의 고리 너머에서만 만난다
   385: 'psystrike', 386: 'psystrike', 490: 'origin-pulse', 491: 'ruination', 492: 'seed-flare', 493: 'geomancy', 494: 'blue-flare', 647: 'origin-pulse',
   648: 'psystrike', 649: 'sunsteel-strike', 720: 'psystrike', 721: 'blue-flare', 801: 'sunsteel-strike', 802: 'shadow-force', 807: 'electro-drift', 893: 'seed-flare' };

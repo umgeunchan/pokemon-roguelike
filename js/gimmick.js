@@ -107,6 +107,20 @@ const LEGEND_FORMS = {
   'deoxys-speed': { item: 'speed-meteorite', mon: 386, pmd: '/0003', base: '테오키스', name: '테오키스 스피드폼', spd: 1.35, note: '스피드폼, 이동 속도 x1.35', say: '운석이 빛난다! 테오키스는 스피드폼이 되었다!' },
   'deoxys-normal': { item: 'balance-meteorite', mon: 386, form: null, base: '테오키스', name: '테오키스 밸런스', mul: 1.15, spd: 1.1, rate: 0.9, shot: 1.1, hp: 2, note: '노말폼, 공격·연사·속도·탄속·체력 고루 증가', say: '운석이 빛난다! 테오키스는 균형 잡힌 노말폼이 되었다!' },
 };
+// 네크로즈마·버드렉스·우라오스·오거폰·테라파고스. types: 내 타입이 이것으로 바뀐다
+Object.assign(LEGEND_FORMS, {
+  'necrozma-dusk': { item: 'n-solarizer', mon: 800, pmd: '/0001', base: '네크로즈마', name: '황혼의 갈기 네크로즈마', mul: 1.3, types: ['psychic', 'steel'], note: '황혼의 갈기, 강철 타입 추가·화력 x1.3', say: '네크로즈마가 솔가레오와 합체했다! 황혼의 갈기!' },
+  'necrozma-dawn': { item: 'n-lunarizer', mon: 800, pmd: '/0002', base: '네크로즈마', name: '새벽의 날개 네크로즈마', mul: 1.2, rate: 0.85, types: ['psychic', 'ghost'], note: '새벽의 날개, 고스트 타입 추가·화력 x1.2·연사 증가', say: '네크로즈마가 루나아라와 합체했다! 새벽의 날개!' },
+  'necrozma-ultra': { item: 'ultranecrozium-z', mon: 800, pmd: '/0003', base: '네크로즈마', name: '울트라네크로즈마', mul: 1.5, hp: 4, types: ['psychic', 'dragon'], note: '울트라네크로즈마, 화력 x1.5·최대 체력 +2칸', say: '빛이 넘쳐흐른다! 울트라네크로즈마!' },
+  'calyrex-ice': { item: 'ice-reins', mon: 898, pmd: '/0001', base: '버드렉스', name: '백마 버드렉스', mul: 1.35, hp: 4, types: ['psychic', 'ice'], note: '백마 탄 모습, 화력 x1.35·최대 체력 +2칸', say: '버드렉스가 블리자포스에 올라탔다!' },
+  'calyrex-shadow': { item: 'shadow-reins', mon: 898, pmd: '/0002', base: '버드렉스', name: '흑마 버드렉스', mul: 1.2, rate: 0.8, spd: 1.15, types: ['psychic', 'ghost'], note: '흑마 탄 모습, 화력 x1.2·연사·속도 증가', say: '버드렉스가 레이스포스에 올라탔다!' },
+  'urshifu-single-strike': { item: 'scroll-of-darkness', mon: 892, form: null, base: '우라오스', name: '일격의 우라오스', mul: 1.35, note: '일격의 태세, 화력 x1.35', say: '악의 족자를 읽었다! 우라오스는 일격의 태세를 갈고닦았다!' },
+  'urshifu-rapid-strike': { item: 'scroll-of-waters', mon: 892, pmd: '/0001', base: '우라오스', name: '연격의 우라오스', mul: 1.1, rate: 0.75, types: ['fighting', 'water'], shotType: 'water', note: '연격의 태세, 물 타입·연사 크게 증가', say: '물의 족자를 읽었다! 우라오스는 연격의 태세가 되었다!' },
+  'ogerpon-wellspring-mask': { item: 'wellspring-mask', mon: 1017, pmd: '/0005', base: '오거폰', name: '우물의 가면 오거폰', mul: 1.25, rate: 0.85, types: ['grass', 'water'], shotType: 'water', note: '우물의 가면, 물 타입·화력 x1.25·연사 증가', say: '오거폰이 우물의 가면을 썼다!' },
+  'ogerpon-hearthflame-mask': { item: 'hearthflame-mask', mon: 1017, pmd: '/0006', base: '오거폰', name: '화덕의 가면 오거폰', mul: 1.4, types: ['grass', 'fire'], shotType: 'fire', note: '화덕의 가면, 불꽃 타입·화력 x1.4', say: '오거폰이 화덕의 가면을 썼다!' },
+  'ogerpon-cornerstone-mask': { item: 'cornerstone-mask', mon: 1017, pmd: '/0007', base: '오거폰', name: '주춧돌의 가면 오거폰', mul: 1.2, hp: 6, types: ['grass', 'rock'], shotType: 'rock', note: '주춧돌의 가면, 바위 타입·화력 x1.2·최대 체력 +3칸', say: '오거폰이 주춧돌의 가면을 썼다!' },
+  'terapagos-stellar': { item: 'tera-orb', mon: 1024, pmd: '/0002', base: '테라파고스', name: '스텔라 테라파고스', mul: 1.4, hp: 6, note: '스텔라폼, 화력 x1.4·최대 체력 +3칸', say: '테라스탈오브가 빛난다! 테라파고스는 스텔라폼이 되었다!' },
+});
 // 아르세우스: 플레이트마다 그 타입의 아르세우스 (내 타입이 바뀐다). PMD 폼 번호는 아래 순서
 ['bug', 'dark', 'dragon', 'electric', 'fighting', 'fire', 'flying', 'ghost', 'grass', 'ground', 'ice', 'poison', 'psychic', 'rock', 'steel', 'water', 'fairy'].forEach((t, i) => {
   if (PLATES[t]) LEGEND_FORMS[`arceus-${t}`] = { item: PLATES[t], mon: 493, pmd: `/${String(i + 1).padStart(4, '0')}`, base: '아르세우스', name: `${TYPE_KO[t]} 아르세우스`, mul: 1.2, type: t, note: '그 타입의 아르세우스로 바뀜, 화력 x1.2', say: `아르세우스는 ${TYPE_KO[t]} 타입이 되었다!` };
@@ -124,13 +138,24 @@ ITEMS.push(
   { ...I('defense-meteorite', 'l', '디펜스운석', '최대 체력 +1.5칸', notDeoxys(p => { p.maxHp += 3; p.hp += 3; })), icon: 'meteorite' },
   ...[['douse', '아쿠아카세트'], ['shock', '번개카세트'], ['burn', '블레이즈카세트'], ['chill', '프리즈카세트']].map(([k, ko]) => I(`${k}-drive`, 'l', ko, '탄속 x1.1, 공격 +0.3', p => { p.shotSpeed *= 1.1; p.dmg += 0.3; })),
   I('zygarde-cube', 'l', '지가르데큐브', '최대 체력 +1칸', p => { p.maxHp += 2; p.hp += 2; }),
+  { ...I('n-solarizer', 'l', 'N솔라라이저', '공격 +0.6', p => p.dmg += 0.6), icon: 'sun-stone' },
+  { ...I('n-lunarizer', 'l', 'N루나라이저', '연사 x1.1', p => p.fireDelay *= 0.9), icon: 'moon-stone' },
+  { ...I('ultranecrozium-z', 'l', '울트라네크로Z', '공격 +0.5, 급소 +5%', p => { p.dmg += 0.5; p.crit += 0.05; }), icon: 'z-ring' },
+  { ...I('ice-reins', 'l', '유대의고삐 백마', '최대 체력 +1칸, 공격 +0.3', p => { p.maxHp += 2; p.hp += 2; p.dmg += 0.3; }), icon: 'reins-of-unity' },
+  { ...I('shadow-reins', 'l', '유대의고삐 흑마', '이동 속도 +0.15, 연사 x1.05', p => { p.speed += 30; p.fireDelay *= 0.95; }), icon: 'reins-of-unity' },
+  I('scroll-of-darkness', 'l', '악의 족자', '급소 +10%', p => p.crit += 0.1),
+  I('scroll-of-waters', 'l', '물의 족자', '연사 x1.1', p => p.fireDelay *= 0.9),
+  I('wellspring-mask', 'l', '우물의가면', '연사 x1.08, 공격 +0.3', p => { p.fireDelay *= 0.92; p.dmg += 0.3; }),
+  I('hearthflame-mask', 'l', '화덕의가면', '공격 +0.7', p => p.dmg += 0.7),
+  I('cornerstone-mask', 'l', '주춧돌의가면', '최대 체력 +1칸, 공격 +0.2', p => { p.maxHp += 2; p.hp += 2; p.dmg += 0.2; }),
+  I('tera-orb', 'l', '테라스탈오브', '공격 +0.5, 최대 체력 +1칸', p => { p.dmg += 0.5; p.maxHp += 2; p.hp += 2; }),
 );
 const formsOf = itemId => Object.values(LEGEND_FORMS).filter(f => f.item === itemId);
 const formFor = (itemId, monId) => Object.keys(LEGEND_FORMS).find(k => LEGEND_FORMS[k].item === itemId && LEGEND_FORMS[k].mon === monId) ?? null;
 const curForm = () => LEGEND_FORMS[player?.legendForm];
 const formStat = k => curForm()?.[k] ?? 1;
 // 아르세우스는 플레이트로 타입이 바뀐다: 받는 피해 상성·테라피스에 쓰는 내 타입
-const myTypes = () => player?.formType ? [player.formType] : player?.mon.types ?? [];
+const myTypes = () => player?.formType ? player.formType.split(',') : player?.mon.types ?? [];
 // 도구 설명에 전용 효과를 덧붙인다 (같은 도구를 여러 포켓몬이 쓰면 한 줄로)
 for (const it of ITEMS) {
   const fs = formsOf(it.id);
@@ -144,7 +169,7 @@ function checkLegendForm(itemId) {
   if (!f || p.legendForm === key) return;
   withDelta(() => {
     p.legendForm = key; if (f.mega) p.mega = true; if (f.hp) { p.maxHp += f.hp; p.hp += f.hp; }
-    p.formType = f.type ?? null; p.type = f.type ?? f.shotType ?? p.mon.types[0];
+    p.formType = f.types?.join(',') ?? f.type ?? null; p.type = f.type ?? f.shotType ?? p.mon.types[0];
   });
   gimmickFx('mega'); gimmickFx('legendForm'); sfx('evolve'); shake = 0.6;
   banner = { text: f.say, t: 4, glow: '#ffd060' };
