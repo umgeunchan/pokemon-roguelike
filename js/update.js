@@ -123,8 +123,7 @@ function update(dt) {
   updateNpcs(dt);
 
   // 시간의포효: 주기적으로 적과 적의 공격이 멈춘다
-  if (hasFx('timeStop') && (p.stopCd -= dt) <= 0 && map.enemies.some(e => Math.hypot(e.x - p.x, e.y - p.y) < 500)) { p.stopCd = combo('timewarp') ? 5 : 7; timeStop = 1.8; banner = { text: '시간이 멈췄다!', t: 1.5 }; }
-  updateBurst(dt);
+  if (hasFx('timeStop') && (p.stopCd -= dt) <= 0 && map.enemies.some(e => Math.hypot(e.x - p.x, e.y - p.y) < 500)) { p.stopCd = combo('timewarp') ? 5 : 7; timeStop = 2.5; banner = { text: '시간이 멈췄다!', t: 1.5 }; fx.push({ kind: 'lnova', x: p.x, y: p.y, r: 420, c1: '#4a70ff', c2: '#d8e4ff', t: 0.9, max: 0.9 }); shake = 0.3; }
   const frozenTime = timeStop > 0;
 
   if ((flowT -= dt) <= 0) { flowT = 0.25; buildFlow(); }

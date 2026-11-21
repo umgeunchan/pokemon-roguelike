@@ -1,90 +1,8 @@
-// 전설 오의: 전설의 기술을 배우면 "전설의 힘" 게이지가 생긴다
-// 맞히고 쓰러뜨리면 차고, 가득 차면 가까운 적이 있을 때 그 기술 고유의 큰 필살기가 자동으로 나간다
-// 전설의 포켓몬으로 플레이하면 더 빨리 차고 더 세다. 그 기술의 조합까지 갖추면 한층 강해진다
-
-// shape: nova(나를 중심으로 퍼지는 파동) · rift(적을 가르는 공간의 균열) · strikes(적마다 내리꽂힘) · beam(거대한 광선)
-// fx 효과 이름 → 필살기 모양. c1·c2 = 색, mul = 피해 배수, R = 범위, then = 추가 효과
-const LEGEND_BURST = {
-  psy: { shape: 'nova', c1: '#ff60ff', c2: '#ffe0ff', mul: 3.2, R: 330, then: o => o.stun = Math.max(o.stun ?? 0, 1.2) },
-  beam: { shape: 'beam', mul: 4.2, R: 900 },
-  holyBurn: { shape: 'strikes', c1: '#ffb020', c2: '#fff0a0', mul: 3.2, n: 7, then: o => o.burn = Math.max(o.burn ?? 0, 4) },
-  fan5: { shape: 'nova', c1: '#2f6dff', c2: '#bfe0ff', mul: 3.2, R: 360, push: 90 },
-  erupt: { shape: 'strikes', c1: '#c06a28', c2: '#ffd08a', mul: 3, n: 10, ring: true },
-  dashStrike: { shape: 'beam', mul: 3.8, R: 760 },
-  timeStop: { shape: 'nova', c1: '#4a70ff', c2: '#d8e4ff', mul: 3, R: 380, self: () => { timeStop = Math.max(timeStop, 3); } },
-  rend: { shape: 'rift', c1: '#ff6ad5', c2: '#ffe2f6', mul: 4.2, n: 4 },
-  vanish: { shape: 'nova', c1: '#5a2a9a', c2: '#d8b0ff', mul: 3.4, R: 320, self: p => { p.inv = Math.max(p.inv, 1.5); } },
-  smite: { shape: 'strikes', c1: '#ffe040', c2: '#ffffff', mul: 3.4, n: 7, bolt: true, then: o => o.stun = Math.max(o.stun ?? 0, 1.5) },
-  freeze: { shape: 'nova', c1: '#9fe8ff', c2: '#ffffff', mul: 3, R: 360, then: o => { if (!isBig(o)) o.frozen = Math.max(o.frozen ?? 0, 2.5); else o.stun = Math.max(o.stun ?? 0, 0.8); } },
-  blade: { shape: 'rift', c1: '#ffc040', c2: '#fff6d0', mul: 4, n: 2 },
-  bulwark: { shape: 'nova', c1: '#a8b8d8', c2: '#ffffff', mul: 3, R: 300, push: 120, self: p => { p.inv = Math.max(p.inv, 2); } },
-  geo: { shape: 'nova', c1: '#ff80c0', c2: '#fff0a0', mul: 2.8, R: 340, self: p => { heal(2); p.surge = Math.max(p.surge ?? 0, 5); } },
-  drain: { shape: 'nova', c1: '#d02040', c2: '#ffb0c0', mul: 3, R: 330, self: () => heal(3) },
-  flare: { shape: 'strikes', c1: '#70e040', c2: '#f8ffb0', mul: 3.2, n: 8 },
-  madness: { shape: 'nova', c1: '#a02870', c2: '#ffb0e0', mul: 2.6, R: 360, then: o => { if (!isBig(o) && o.hp > 0) o.hp /= 2; } },
-  shard: { shape: 'strikes', c1: '#e8f8ff', c2: '#ff9fe0', mul: 3.2, n: 9, gem: true },
-};
-// 전설 기술마다 어울리는 조합: 갖추면 필살기 x1.5
-const LEGEND_BURST_COMBO = { psy: 'psybreak', holyBurn: 'inferno', fan5: 'tsunami', erupt: 'tectonic', timeStop: 'timewarp', rend: 'dimension', vanish: 'phantom', smite: 'thundergod',
-  freeze: 'absolute', blade: 'eclipse', bulwark: 'juggernaut', geo: 'gaia', drain: 'deathwing', flare: 'bloom', madness: 'calamity', shard: 'diamond', beam: 'lunar', dashStrike: 'stormdash' };
-
-// 지금 쓸 전설 기술: 가장 최근에 배운 것
-const burstMove = () => { const p = player; if (!p) return null; const ls = [...p.moves].map(moveDef).filter(m => m?.legend && LEGEND_BURST[m.fx]); return ls.at(-1) ?? null; };
-const burstOn = () => !!burstMove();
-// 게이지 충전 배수: 전설의 포켓몬이면 1.6배
-const burstRate = () => (isLegendMon() ? 1.6 : 1) * (combo(LEGEND_BURST_COMBO[burstMove()?.fx]) ? 1.25 : 1);
-function burstGain(v) { const p = player; if (!burstOn()) return; p.lg = Math.min(1, (p.lg ?? 0) + v * burstRate()); }
-
-// 매 프레임 (update.js): 천천히 차고, 가득 차면 가까운 적에게 쏜다
-function updateBurst(dt) {
-  const p = player;
-  if (!burstOn()) return;
-  burstGain(dt * 0.012);
-  if ((p.lg ?? 0) < 1 || map.battle?.wait > 0) return;
-  const target = map.enemies.filter(o => o.hp > 0 && !untargetable(o) && !outsideLegendHome(o) && Math.hypot(o.x - p.x, o.y - p.y) < 420)
-    .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
-  if (target) fireBurst(target);
-}
-
-function fireBurst(t) {
-  const p = player, m = burstMove(), b = LEGEND_BURST[m.fx], strong = combo(LEGEND_BURST_COMBO[m.fx]);
-  const mul = (b.mul + (b.shape === 'nova' ? 1.2 : 0)) * (isLegendMon() ? 1.3 : 1) * (strong ? 1.5 : 1), c1 = b.c1 ?? TYPE_COLOR[m.type], c2 = b.c2 ?? '#ffffff';
-  p.lg = 0;
-  const hit = (o, k = 1) => { if (o.hp <= 0) return; damage(o, p.dmg * mul * k, m.type, false, true, 0.25); b.then?.(o); if (b.push && !isBig(o)) { const d = Math.hypot(o.x - p.x, o.y - p.y) || 1; moveBody(o, (o.x - p.x) / d * b.push, (o.y - p.y) / d * b.push); } };
-  if (b.shape === 'nova') {
-    const R = b.R * 1.3 * (strong ? 1.25 : 1);  // 파동형: 범위 x1.3
-    fx.push({ kind: 'lnova', x: p.x, y: p.y, r: R, c1, c2, t: 0.9, max: 0.9 });
-    for (const o of enemiesNear(p.x, p.y, R)) hit(o);
-  }
-  if (b.shape === 'rift') {
-    // 균열 n줄: 줄마다 가까운 적을 하나씩 골라 그 적을 지나가게 긋고, 줄 근처의 적을 모두 벤다
-    const n = b.n + (strong ? 2 : 0), near = map.enemies.filter(o => o.hp > 0 && !untargetable(o) && Math.hypot(o.x - p.x, o.y - p.y) < 480).sort((a, b2) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b2.x - p.x, b2.y - p.y));
-    for (let i = 0; i < n; i++) {
-      const c = near[i % Math.max(1, near.length)] ?? t, a = Math.random() * Math.PI, L = 520, x1 = c.x - Math.cos(a) * L / 2, y1 = c.y - Math.sin(a) * L / 2, x2 = c.x + Math.cos(a) * L / 2, y2 = c.y + Math.sin(a) * L / 2;
-      fx.push({ kind: 'lrift', x: c.x, y: c.y, x1, y1, x2, y2, c1, c2, t: 0.75 + i * 0.06, max: 0.75 + i * 0.06, seed: Math.random() * 1000 });
-      for (const o of map.enemies) if (o.hp > 0 && segDist(o.x, o.y, x1, y1, x2, y2) < 46 + o.r) hit(o, 0.55);
-    }
-  }
-  if (b.shape === 'strikes') {
-    const ts = map.enemies.filter(o => o.hp > 0 && Math.hypot(o.x - p.x, o.y - p.y) < 480).sort((a, b2) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b2.x - p.x, b2.y - p.y));
-    const n = b.n + (strong ? 3 : 0);
-    for (let i = 0; i < n; i++) {
-      const o = ts[i % Math.max(1, ts.length)], ang = i / n * Math.PI * 2;
-      const [x, y] = b.ring || !o ? [p.x + Math.cos(ang) * (90 + (i % 2) * 70), p.y + Math.sin(ang) * (90 + (i % 2) * 70)] : [o.x + (Math.random() - 0.5) * 40, o.y + (Math.random() - 0.5) * 40];
-      fx.push({ kind: 'lstrike', x, y, c1, c2, bolt: b.bolt, gem: b.gem, t: 0.55 + i * 0.07, max: 0.55 + i * 0.07, d: i * 0.07 });
-      setTimeout(() => { if (state !== 'play' && state !== 'warp') return; for (const q of enemiesNear(x, y, 70)) hit(q, 0.7); }, i * 70);
-    }
-  }
-  if (b.shape === 'beam') {
-    const a = Math.atan2(t.y - p.y, t.x - p.x), L = b.R, W = 70 * (strong ? 1.4 : 1), x2 = p.x + Math.cos(a) * L, y2 = p.y + Math.sin(a) * L;
-    fx.push({ kind: 'lbeam', x: p.x, y: p.y, x2, y2, w: W, c1, c2, t: 0.8, max: 0.8 });
-    for (const o of map.enemies) if (o.hp > 0 && segDist(o.x, o.y, p.x, p.y, x2, y2) < W / 2 + o.r) hit(o);
-  }
-  b.self?.(p);
-  fx.push({ kind: 'lflash', x: p.x, y: p.y, c1, t: 0.35, max: 0.35 });
-  shake = 0.5; sfx('legend');
-  banner = { text: `${m.name}!${strong ? ' (조합 강화)' : ''}`, t: 1.6, glow: c1 };
-}
+// 전설 기술의 연출: 원작 기술이 나가는 모습을 본떠서, 평소 공격이 맞을 때 터진다 (combat.js의 legendHit)
+// 그림 종류: lrift(공간의 균열·칼날 궤적) · lstrike(빛기둥·낙뢰·솟는 바위) · lnova(퍼지는 파동) · lbeam(굵은 광선)
+// 같은 효과가 너무 자주 겹치지 않게 효과마다 짧은 간격을 둔다
+const lcd = (k, t) => { const p = player, c = p.lcd ??= {}; if ((c[k] ?? 0) > p.time) return false; c[k] = p.time + t; return true; };
+const rift = (x, y, a, L, c1, c2, t = 0.4) => fx.push({ kind: 'lrift', x, y, x1: x - Math.cos(a) * L / 2, y1: y - Math.sin(a) * L / 2, x2: x + Math.cos(a) * L / 2, y2: y + Math.sin(a) * L / 2, c1, c2, t, max: t, seed: Math.random() * 1000 });
 const segDist = (px, py, x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, l = dx * dx + dy * dy || 1, u = clamp(((px - x1) * dx + (py - y1) * dy) / l, 0, 1); return Math.hypot(px - x1 - u * dx, py - y1 - u * dy); };
 
 // ---------- 그리기 ----------
@@ -128,7 +46,13 @@ function drawLegendFx(f, k) {
     const kk = clamp((k * f.max - f.d) / (f.max - f.d), 0, 1);
     if (kk <= 0) return;
     ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - kk;
-    if (f.bolt) {
+    if (f.spike) {
+      // 단애의칼·사우전드애로: 땅에서 바위 칼날이 솟는다
+      const hgt = 90 * Math.sin(Math.min(1, kk * 2.2) * Math.PI / 2) * (1 - Math.max(0, kk - 0.6) / 0.4);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      for (const [dx, sc] of [[-16, 0.7], [0, 1], [15, 0.8]]) { ctx.fillStyle = f.c1; ctx.beginPath(); ctx.moveTo(f.x + dx - 11 * sc, f.y); ctx.lineTo(f.x + dx, f.y - hgt * sc); ctx.lineTo(f.x + dx + 11 * sc, f.y); ctx.fill(); ctx.fillStyle = f.c2; ctx.beginPath(); ctx.moveTo(f.x + dx, f.y - hgt * sc); ctx.lineTo(f.x + dx + 4 * sc, f.y - hgt * sc * 0.4); ctx.lineTo(f.x + dx, f.y); ctx.fill(); }
+      ctx.globalCompositeOperation = 'lighter';
+    } else if (f.bolt) {
       ctx.strokeStyle = f.c1; ctx.lineWidth = 6; ctx.beginPath(); let x = f.x, y = f.y - 420; ctx.moveTo(x, y);
       for (let i = 0; i < 8; i++) { x = f.x + (Math.random() - 0.5) * 40; y += 52; ctx.lineTo(x, y); } ctx.stroke();
       ctx.strokeStyle = f.c2; ctx.lineWidth = 2; ctx.stroke();
@@ -155,13 +79,98 @@ function drawLegendFx(f, k) {
   }
 }
 
-// 왼쪽 창 아래: 전설의 힘 게이지
-function drawBurstGauge(y) {
-  const p = player, m = burstMove();
-  if (!m) return;
-  const v = p.lg ?? 0, full = v >= 1, c = LEGEND_BURST[m.fx].c1 ?? TYPE_COLOR[m.type];
-  text(full ? `${m.name} 준비!` : '전설의 힘', 6, y, 11, full ? '#fff' : '#fd6', 'left');
-  ctx.fillStyle = '#222'; ctx.fillRect(6, y + 4, 146, 7);
-  ctx.fillStyle = full ? (Math.sin(now * 10) > 0 ? '#fff' : c) : c; ctx.fillRect(6, y + 4, 146 * v, 7);
-  if (combo(LEGEND_BURST_COMBO[m.fx])) text('조합', 152, y, 10, '#ff8', 'right');
+
+// ---------- 전설 기술이 맞았을 때 (평소 공격) ----------
+// 원작 연출을 본떴다. 공간절단: 적 자리의 공간이 X자로 찢어짐 / 크로스썬더: 하늘에서 낙뢰 / 단애의칼: 땅에서 바위 칼날이 줄지어 솟음
+// 시드플레어: 몸에서 빛이 터져 퍼짐 / 사이코브레이크: 적 둘레에 염동파가 모여 터짐 / 성스러운불꽃: 불기둥 / 메테오드라이브·거대검: 금빛 참격
+// 자연의분노·카타스트로피: 분홍·붉은 구체가 짓누름 / 다이아스톰: 다이아가 흩날림 / 시간의포효: 일그러지는 파동
+function legendHit(e, big) {
+  const p = player, s = fxScale();
+  // 크로스썬더·볼트로스 등: 하늘에서 내리꽂히는 낙뢰, 옆 적에게 번개가 이어짐
+  if (hasFx('smite') && Math.random() < (combo('thundergod') ? 0.65 : 0.45)) {
+    damage(e, p.dmg * 3, 'electric', false, true); e.stun = Math.max(e.stun ?? 0, 0.4);
+    fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1: '#ffe040', c2: '#ffffff', bolt: true, t: 0.4, max: 0.4, d: 0 }); shake = Math.max(shake, 0.12);
+    for (const o of enemiesNear(e.x, e.y, 190, e).slice(0, combo('thundergod') ? 4 : 3)) { damage(o, p.dmg * 1.2, 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.2 }); }
+  }
+  // 공간절단: 맞힌 자리의 공간이 X자로 찢어지고, 균열에 닿은 적을 모두 벤다 (차원 절단 조합이면 4줄, 범위·피해 x2)
+  if (hasFx('rend') && lcd('rend', 0.18)) {
+    const dim = combo('dimension'), L = 220 * s * (dim ? 1.6 : 1), a0 = Math.random() * Math.PI, n = dim ? 4 : 2;
+    for (let i = 0; i < n; i++) {
+      const a = a0 + i * Math.PI / n, x1 = e.x - Math.cos(a) * L / 2, y1 = e.y - Math.sin(a) * L / 2, x2 = e.x + Math.cos(a) * L / 2, y2 = e.y + Math.sin(a) * L / 2;
+      rift(e.x, e.y, a, L, '#ff6ad5', '#ffe2f6', 0.45);
+      for (const o of map.enemies) if (o !== e && o.hp > 0 && segDist(o.x, o.y, x1, y1, x2, y2) < 34 + o.r) damage(o, p.dmg * 1.1 * (dim ? 2 : 1), 'dragon', false, true);
+    }
+    damage(e, p.dmg * 0.6 * (dim ? 2 : 1), 'dragon', false, true);
+  }
+  // 단애의칼·사우전드애로: 적 쪽으로 바위 칼날이 줄지어 솟는다
+  if (hasFx('erupt') && p.eruptCd <= 0) {
+    const tc = combo('tectonic');
+    p.eruptCd = tc ? 0.2 : 0.35;
+    const d0 = Math.hypot(e.x - p.x, e.y - p.y) || 1, ux = (e.x - p.x) / d0, uy = (e.y - p.y) / d0;
+    for (let i = 0; i < (tc ? 7 : 5); i++) {
+      const x = e.x + ux * 55 * i, y = e.y + uy * 55 * i;
+      pstrikes.push({ x, y, t: 0.08 + i * 0.1, r: 50 * s * (tc ? 1.35 : 1), mul: 1.5, type: 'ground' });
+      fx.push({ kind: 'lstrike', x, y, c1: '#9a5a2a', c2: '#e8c090', spike: true, t: 0.6 + i * 0.1, max: 0.6 + i * 0.1, d: 0.08 + i * 0.1 });
+    }
+  }
+  // 시드플레어: 맞힌 자리에서 빛이 터져 둥글게 퍼진다
+  if (hasFx('flare') && lcd('flare', 0.15)) {
+    const R = 75 * s * (combo('bloom') ? 1.6 : 1);
+    fx.push({ kind: 'lnova', x: e.x, y: e.y, r: R, c1: '#70e040', c2: '#f8ffb0', t: 0.45, max: 0.45 });
+    for (const o of enemiesNear(e.x, e.y, R, e)) damage(o, p.dmg * 1.1 * (combo('bloom') ? 1.5 : 1), 'grass', false, true);
+  }
+  // 사이코브레이크·미스트볼·러스터퍼지: 적 둘레에 염동파가 모여들어 터진다
+  if (hasFx('psy') && lcd('psy', 0.2)) {
+    const R = 60 * s * (combo('psybreak') ? 1.5 : 1);
+    fx.push({ kind: 'lnova', x: e.x, y: e.y, r: R, c1: '#ff60ff', c2: '#ffe0ff', t: 0.4, max: 0.4 });
+    for (const o of [e, ...enemiesNear(e.x, e.y, R, e)]) damage(o, p.dmg * (combo('psybreak') ? 0.9 : 0.5), 'psychic', false, true);
+  }
+  // 성스러운불꽃·푸른불꽃 계열: 가끔 불기둥이 솟아 태운다
+  if (hasFx('holyBurn') && lcd('holy', 0.5) && Math.random() < 0.5) {
+    fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1: '#ff9020', c2: '#fff0a0', t: 0.55, max: 0.55, d: 0 });
+    for (const o of [e, ...enemiesNear(e.x, e.y, 60, e)]) { damage(o, p.dmg * 1.2, 'fire', false, true); o.burn = Math.max(o.burn ?? 0, 4); o.holy = true; }
+  }
+  // 메테오드라이브·거대검돌격·암흑강타: 금빛(악은 검붉은) 참격이 적을 가른다
+  if (hasFx('blade') && lcd('blade', 0.22)) {
+    const dark = has('wicked-blow'), a = Math.atan2(e.y - p.y, e.x - p.x) + Math.PI / 2;
+    rift(e.x, e.y, a, 150 * s, dark ? '#a02050' : '#ffc040', dark ? '#ffb0c8' : '#fff6d0', 0.3);
+    for (const o of enemiesNear(e.x, e.y, 70 * s, e)) damage(o, p.dmg * 0.8, dark ? 'dark' : 'steel', false, true);
+  }
+  // 다이아스톰: 맞힌 자리에서 다이아가 사방으로 흩날린다
+  if (hasFx('shard') && Math.random() < (combo('diamond') ? 0.6 : 0.4)) {
+    for (let i = 0, n = combo('diamond') ? 10 : 7; i < n; i++) playerShot(e.x, e.y, i / n * Math.PI * 2 + Math.random() * 0.5, { type: 'rock', mul: 0.7, r: 7, life: 0.4, hit: new Set([e]), color: '#e8f8ff', accent: '#ff9fe0' });
+    fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1: '#c8f0ff', c2: '#ff9fe0', gem: true, t: 0.45, max: 0.45, d: 0 });
+  }
+  // 시간의포효: 공격할 때마다 일그러지는 파동이 퍼진다
+  if (hasFx('timeStop') && lcd('roar', 0.9)) {
+    fx.push({ kind: 'lnova', x: e.x, y: e.y, r: 110 * s, c1: '#4a70ff', c2: '#d8e4ff', t: 0.5, max: 0.5 });
+    for (const o of [e, ...enemiesNear(e.x, e.y, 110 * s, e)]) damage(o, p.dmg * 0.9, 'dragon', false, true);
+  }
+  // 전설 기술 조합의 적중 효과
+  if (combo('absolute') && e.frozen > 0 && Math.random() < 0.35) {
+    e.frozen = 0; fx.push({ kind: 'lnova', x: e.x, y: e.y, r: 80 * s, c1: '#9fe8ff', c2: '#ffffff', t: 0.45, max: 0.45 }); say('산산조각!', e.x, e.y - 60, '#aef');
+    for (const o of [e, ...enemiesNear(e.x, e.y, 80 * s, e)]) { damage(o, p.dmg * 1.5, 'ice', false, true); if (o !== e && o.hp > 0) o.frozen = Math.max(o.frozen ?? 0, 0.8); }
+  }
+  if (combo('eclipse')) {
+    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 40 * s, t: 0.2, max: 0.2, color: '#ffb040' });
+    for (const o of enemiesNear(e.x, e.y, 40 * s, e)) damage(o, p.dmg * 0.5, 'steel', false, true);
+  }
+  if (combo('gaia') && p.surge > 0 && e.hp > 0) pstrikes.push({ x: e.x, y: e.y, t: 0.2, r: 45 * s, mul: 0.9, type: 'ground' });
+  // 자연의분노·카타스트로피: 분홍(악은 검붉은) 구체가 짓눌러 체력을 절반으로
+  if (hasFx('madness') && !big && e.hp > 0 && Math.random() < (combo('calamity') ? 0.4 : 0.28)) {
+    const dark = has('ruination'); e.hp /= 2; say(dark ? '카타스트로피!' : '자연의 분노!', e.x, e.y - 60, '#f9c');
+    fx.push({ kind: 'lnova', x: e.x, y: e.y, r: e.r + 50, c1: dark ? '#802040' : '#ff70c0', c2: '#ffd0f0', t: 0.45, max: 0.45 });
+  }
+}
+// 광선형 전설 기술: 광선이 닿는 적마다 그 기술다운 것이 따로 터진다
+// 포톤가이저: 발밑에서 빛기둥 / 테라클러스터: 별빛 기둥 / 푸른불꽃: 푸른 불기둥 / 무한다이빔·에어로블라스트·섀도레이: 광선 색의 폭발
+function legendBeamHit(e) {
+  const p = player, lb = [...p.moves].map(moveDef).filter(m => m?.legend && m.fx === 'beam').at(-1);
+  if (!lb || !lcd('beamfx', 0.35)) return false;
+  const pillar = { 'photon-geyser': ['#ffe880', '#ffffff'], 'tera-starstorm': ['#c0a0ff', '#fff8ff'], 'blue-flare': ['#40a0ff', '#e0f4ff'] }[lb.id];
+  if (pillar) fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1: pillar[0], c2: pillar[1], t: 0.5, max: 0.5, d: 0 });
+  else fx.push({ kind: 'lnova', x: e.x, y: e.y, r: 70, c1: TYPE_COLOR[lb.type], c2: '#ffffff', t: 0.4, max: 0.4 });
+  for (const o of [e, ...enemiesNear(e.x, e.y, 60, e)]) damage(o, p.dmg * 0.9, lb.type, false, true);
+  if (lb.id === 'blue-flare') e.burn = Math.max(e.burn ?? 0, 3);
+  return false;
 }

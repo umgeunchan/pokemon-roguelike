@@ -188,7 +188,7 @@ const COMBOS = [
   { id: 'thundergod', name: '뇌격신', need: ['fusion-bolt', 'thunder'], desc: '낙뢰 확률 60%, 연쇄 번개가 4마리까지', color: '#ffff90' },
   { id: 'tsunami', name: '근원의 해일', need: ['origin-pulse', 'surf'], desc: '파동이 7갈래로, 더 크고 세게', color: '#2060ff' },
   { id: 'tectonic', name: '지각 붕괴', need: ['fx:erupt', 'earthquake'], desc: '땅의 칼날이 7개, 더 넓고 더 자주 솟는다', color: '#d07030' },
-  { id: 'dimension', name: '차원 절단', need: ['spacial-rend', 'x-scissor'], desc: '공간 베기 범위 x2, 피해 x2, 전설 오의 x1.5', color: '#ff90e0' },
+  { id: 'dimension', name: '차원 절단', need: ['spacial-rend', 'x-scissor'], desc: '공간의 균열이 4줄, 범위·피해 x2', color: '#ff90e0' },
   { id: 'timewarp', name: '시간 역행', need: ['roar-of-time', 'dragon-pulse'], desc: '시간이 5초마다 멈추고, 멈춘 동안 피해 x2', color: '#6080ff' },
   { id: 'lunar', name: '월식', need: ['moongeist-beam', 'moonblast'], desc: '광선 위력 x1.4, 50% 확률로 적의 공격이 뜸해짐', color: '#a080ff' },
   { id: 'eclipse', name: '일식', need: ['fx:blade', 'flash-cannon'], desc: '맞힐 때마다 강철 폭발', color: '#ffb040' },
@@ -221,7 +221,7 @@ const typeMove = m => m.types.map(t => TMS.find(x => x.type === t)).find(Boolean
 // 전설의 기술: 전설의 포켓몬으로 시작하면 처음부터 갖고 있고, 아주 드물게 기술머신으로도 나온다. 일반 기술보다 확실히 강하다
 // 전설 기술 보너스: 전설 기술 하나마다 모든 공격 위력 x1.25 (LEGEND_POW). 전설 포켓몬은 기본 능력치가 높아서 보너스는 작게 둔다
 // 전설 기술 설명: 기술 자체 위력 숫자에 보너스를 곱해 하나로 합친다. 구르기 공격은 배수로 바꿔 쓰고, 나머지 공격에 붙는 보너스는 뒤에 한 번만
-const LEGEND_POW = 1.3;
+const LEGEND_POW = 1.35;
 // 기술 설명은 짧게: 공격 방식 · 핵심 효과만 (전설 기술 보너스는 '전설'이라고만 덧붙인다)
 const legendDesc = d => `${d} · 전설`;
 const L = (id, type, fx, desc, onLearn) => ({ id, tm: `tm-${type}`, name: id, type, fx, desc: legendDesc(desc), legend: true, onLearn });
@@ -292,7 +292,7 @@ const HOOPA_POOL = Object.keys(LEGEND_MOVE).map(Number);
 // 기술·특성·기믹의 배수는 아래 함수들로 늘 계산에 붙어서, 그 뒤에 얻은 도구에도 곱해진다
 const moveDmgMul = () => (has('flash-cannon') ? 1.2 : 1) * (has('focus-blast') ? 1.35 : 1) * (has('dragon-claw') ? 1.2 : 1)
   * (has('close-combat') ? 1.2 : 1) * (has('play-rough') ? 1.2 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * kindPow() * (hasFx('geo') ? 1.3 : 1) * gimmickMul() * abMul() * legendPow;
-const moveCrit = () => (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0) + (hasFx('shard') ? 0.3 : 0) + abStat('crit', 0);
+const moveCrit = () => (hasFx('rend') ? 0.15 : 0) + (hasFx('blade') ? 0.05 : 0) + (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0) + (hasFx('shard') ? 0.3 : 0) + abStat('crit', 0);
 // 이동 속도 배수 (기술·특성): 지오컨트롤 x1.15, 액셀브레이크·라이트닝드라이브 x1.15, 특성
 const moveSpeed = () => (hasFx('geo') ? 1.15 : 1) * (has('collision-course') || has('electro-drift') ? 1.15 : 1) * abStat('speed') * formStat('spd');
 // 공격 사이 간격 배수 (작을수록 빠름): 구슬 하나마다 x1.2, 기합구슬은 더 느리다

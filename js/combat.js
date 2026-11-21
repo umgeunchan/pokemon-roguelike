@@ -65,7 +65,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   // shortcut: 면역(0배)도 0.25배로 처리해서 못 잡는 적이 없게 함
   // 늘 붙는 기술 보너스는 moveDmgMul(능력치 창의 공격에 보이는 값), 여기서는 조건이 붙는 것만 더 곱한다
   let d = base * moveDmgMul() * effMul(raw) * (raw > 1 && p.expert ? 1.3 : 1) * (p.metronome ? 1 + Math.min(p.streak, 20) * 0.03 : 1) * (e.frozen > 0 ? 1.5 : 1)
-    * (hasFx('blade') && big ? 1.4 : 1) * (hasFx('madness') && big ? (combo('calamity') ? 1.5 : 1.25) : 1) * (has('moonblast') && big ? 1.3 : 1) * (has('earth-power') && big ? 1.25 : 1)
+    * (hasFx('blade') && big ? 1.6 : 1) * (hasFx('madness') && big ? (combo('calamity') ? 1.6 : 1.4) : 1) * (timeStop > 0 && hasFx('timeStop') ? 1.5 : 1) * (has('moonblast') && big ? 1.3 : 1) * (has('earth-power') && big ? 1.25 : 1)
     * (combo('scorch') && dot ? 1.4 : 1) * (combo('quake') && big ? 1.35 : 1) * (combo('dragon') ? 1.25 : 1) * (combo('mind') && e.stun > 0 ? 1.5 : 1)
     * stab(type) * zTypeMul(type) * abDamageMul(type, near) * (has('close-combat') ? closeMul(e) : 1) * (has('play-rough') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1)
     * (combo('inferno') && e.burn > 0 ? 1.5 : 1) * (combo('timewarp') && timeStop > 0 ? 2 : 1);
@@ -81,7 +81,6 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
     const msg = crit ? '급소에 맞았다!' : raw > 1 ? '효과가 굉장했다!' : raw === 0 ? '효과가 없는 것 같다...' : raw < 1 ? '효과가 별로인 듯하다' : null;
     if (msg) say(msg, e.x, e.y - 70, raw > 1 ? '#ff4' : '#ccc');
   }
-  burstGain(tick ? 0.004 : secondary ? 0 : 0.035);  // 전설의 힘
   if (secondary) return;
   p.streak++;
   // proc: 광선처럼 촘촘히 들어가는 피해는 확률 효과를 낮춰서 건다. ride: 원뿔 기술의 적중 효과는 공격 방식이 원뿔이 아닐 때만 따로 얹는다 (원뿔이면 원뿔 자체가 그 효과)
@@ -96,7 +95,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   if (has('ice-beam') && Math.random() < 0.15 * proc) { e.frozen = 1; say('얼어붙었다!', e.x, e.y - 50, '#aef'); }
   if (has('dark-pulse') && Math.random() < 0.2 * proc) { e.stun = 0.6; say('풀죽었다!', e.x, e.y - 50, '#ccc'); }
   if (has('air-slash') && Math.random() < 0.25 * proc) { e.stun = 0.5; say('풀죽었다!', e.x, e.y - 50, '#ccc'); }
-  if (hasFx('freeze') && Math.random() < 0.35 * proc) { e.frozen = 1.5; say('얼어붙었다!', e.x, e.y - 50, '#aef'); }
+  if (hasFx('freeze') && Math.random() < 0.45 * proc) { e.frozen = 1.8; say('얼어붙었다!', e.x, e.y - 50, '#aef'); fx.push({ kind: 'lnova', x: e.x, y: e.y, r: 70, c1: '#9fe8ff', c2: '#ffffff', t: 0.45, max: 0.45 }); }
   if (p.kingsRock && Math.random() < 0.1 * proc) { e.stun = 0.8; say('풀죽었다!', e.x, e.y - 50, '#ccc'); }
   if (has('blizzard') && Math.random() < 0.1 * proc) { for (const o of [e, ...enemiesNear(e.x, e.y, 90 * s, e)]) o.frozen = 1.2; say('눈보라에 얼어붙었다!', e.x, e.y - 50, '#aef'); }
   if (combo('zero') && e.slow > 0 && Math.random() < 0.3 * proc) { e.frozen = 1; say('얼어붙었다!', e.x, e.y - 50, '#aef'); }
@@ -139,6 +138,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
     fx.push({ kind: 'boom', x: e.x, y: e.y, r: 75 * s, t: 0.3, max: 0.3, color: TYPE_COLOR.electric }); fx.push({ kind: 'zap', x: e.x, y: e.y - 220, x2: e.x, y2: e.y, t: 0.2 }); shake = 0.12;
     for (const o of [e, ...enemiesNear(e.x, e.y, 75 * s, e)]) damage(o, p.dmg * 1.5, 'electric', false, true);
   }
+  if (tick && legendBeamHit(e)) return;
   if (tick) return;
   // 구슬: 맞은 자리에서 폭발 (에너지볼은 더 넓게)
   if (orbCount()) {
@@ -150,44 +150,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
     fx.push({ kind: 'slash', x: e.x, y: e.y, t: 0.2, max: 0.2 });
     for (const o of [e, ...enemiesNear(e.x, e.y, 50 * s, e)]) damage(o, p.dmg * 0.35, 'dragon', true, true);
   }
-  if (hasFx('shard') && Math.random() < (combo('diamond') ? 0.6 : 0.3)) for (let i = 0, n = combo('diamond') ? 10 : 6; i < n; i++) playerShot(e.x, e.y, i / n * Math.PI * 2 + Math.random() * 0.5, { type: 'rock', mul: 0.5, r: 6, life: 0.35, hit: new Set([e]), color: '#e8f8ff', accent: '#ff9fe0' });
-  // 전설의 기술 효과
-  if (hasFx('smite') && Math.random() < (combo('thundergod') ? 0.6 : 0.35)) {
-    damage(e, p.dmg * 2.5, 'electric', false, true);
-    fx.push({ kind: 'zap', x: e.x, y: e.y - 220, x2: e.x, y2: e.y, t: 0.2 });
-    for (const o of enemiesNear(e.x, e.y, 170, e).slice(0, combo('thundergod') ? 4 : 2)) { damage(o, p.dmg, 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.2 }); }
-  }
-  if (hasFx('rend')) {
-    const R = 130 * s * (combo('dimension') ? 2 : 1), a = Math.random() * Math.PI, L = R * 1.6;
-    fx.push({ kind: 'lrift', x: e.x, y: e.y, x1: e.x - Math.cos(a) * L / 2, y1: e.y - Math.sin(a) * L / 2, x2: e.x + Math.cos(a) * L / 2, y2: e.y + Math.sin(a) * L / 2, c1: '#ff6ad5', c2: '#ffe2f6', t: 0.35, max: 0.35, seed: Math.random() * 1000 });
-    for (const o of enemiesNear(e.x, e.y, R, e)) damage(o, p.dmg * 0.9 * (combo('dimension') ? 2 : 1), 'dragon', false, true);
-  }
-  if (hasFx('erupt') && p.eruptCd <= 0) {
-    const tc = combo('tectonic');
-    p.eruptCd = tc ? 0.2 : 0.35;
-    const d0 = Math.hypot(e.x - p.x, e.y - p.y) || 1, ux = (e.x - p.x) / d0, uy = (e.y - p.y) / d0;
-    for (let i = 0; i < (tc ? 7 : 4); i++) pstrikes.push({ x: e.x + ux * 55 * i, y: e.y + uy * 55 * i, t: 0.08 + i * 0.1, r: 45 * s * (tc ? 1.35 : 1), mul: 1.2, type: 'ground' });
-  }
-  if (hasFx('flare')) {
-    const R = 55 * s * (combo('bloom') ? 1.6 : 1);
-    fx.push({ kind: 'boom', x: e.x, y: e.y, r: R, t: 0.25, max: 0.25, color: TYPE_COLOR.grass });
-    for (const o of enemiesNear(e.x, e.y, R, e)) damage(o, p.dmg * 0.8 * (combo('bloom') ? 1.5 : 1), 'grass', false, true);
-  }
-  // 전설 기술 조합의 적중 효과
-  if (combo('psybreak')) {
-    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 50 * s, t: 0.22, max: 0.22, color: '#ff60ff' });
-    for (const o of enemiesNear(e.x, e.y, 50 * s, e)) damage(o, p.dmg * 0.6, 'psychic', false, true);
-  }
-  if (combo('absolute') && e.frozen > 0 && Math.random() < 0.35) {
-    e.frozen = 0; fx.push({ kind: 'boom', x: e.x, y: e.y, r: 80 * s, t: 0.3, max: 0.3, color: '#e8ffff' }); say('산산조각!', e.x, e.y - 60, '#aef');
-    for (const o of [e, ...enemiesNear(e.x, e.y, 80 * s, e)]) { damage(o, p.dmg * 1.5, 'ice', false, true); if (o !== e && o.hp > 0) o.frozen = Math.max(o.frozen ?? 0, 0.8); }
-  }
-  if (combo('eclipse')) {
-    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 40 * s, t: 0.2, max: 0.2, color: '#ffb040' });
-    for (const o of enemiesNear(e.x, e.y, 40 * s, e)) damage(o, p.dmg * 0.5, 'steel', false, true);
-  }
-  if (combo('gaia') && p.surge > 0 && e.hp > 0) pstrikes.push({ x: e.x, y: e.y, t: 0.2, r: 45 * s, mul: 0.9, type: 'ground' });
-  if (hasFx('madness') && !big && e.hp > 0 && Math.random() < (combo('calamity') ? 0.35 : 0.2)) { e.hp /= 2; say('자연의 분노!', e.x, e.y - 60, '#f9c'); fx.push({ kind: 'boom', x: e.x, y: e.y, r: e.r + 30, t: 0.35, max: 0.35, color: '#c04090' }); fx.push({ kind: 'ring', x: e.x, y: e.y, t: 0.35, max: 0.35 }); }
+  legendHit(e, big);
 }
 
 // 광선: 가장 최근에 배운 광선 기술의 타입으로 나가고, 위력·굵기·차징은 가진 광선 기술 중 센 쪽을 따른다
@@ -198,10 +161,12 @@ function beamCfg() {
   if (has('dragon-pulse')) mul = Math.max(mul, 1.3);
   if (has('hydro-pump')) { mul = Math.max(mul, 1.25); wm *= 1.2; }
   if (has('thunder')) mul = Math.max(mul, 1.2);
-  if (has('aeroblast')) { type = 'flying'; mul = Math.max(mul, 1.5); cm *= 0.5; crit = 0.3; }
-  if (has('moongeist-beam')) { type = 'ghost'; mul = Math.max(mul, 2); }
-  if (has('blue-flare')) { type = 'fire'; mul = Math.max(mul, 2.2); }
-  if (has('eternabeam')) { type = 'dragon'; mul = Math.max(mul, 2.6); wm *= 1.8; cm *= 1.5; }
+  if (has('aeroblast')) { type = 'flying'; mul = Math.max(mul, 1.9); cm *= 0.5; crit = 0.3; }
+  if (has('moongeist-beam')) { type = 'ghost'; mul = Math.max(mul, 2.4); }
+  if (has('blue-flare')) { type = 'fire'; mul = Math.max(mul, 2.6); }
+  if (has('eternabeam')) { type = 'dragon'; mul = Math.max(mul, 3); wm *= 1.8; cm *= 1.5; }
+  if (has('photon-geyser')) { type = 'psychic'; mul = Math.max(mul, 2.6); wm *= 1.3; }
+  if (has('tera-starstorm')) { type = 'normal'; mul = Math.max(mul, 2.6); wm *= 1.2; }
   if (combo('lunar')) mul *= 1.4;
   if (combo('dynamax')) { cm *= 0.6; wm *= 1.3; }
   return { type, mul, wm: wm * fxScale(), cm, crit };
@@ -310,7 +275,7 @@ function attack(dt) {
   // 어떤 공격 방식이든 공격할 때마다 붙는 추가 공격
   const waves = base => {
     if (hasFx('fan5')) {
-      const offs = combo('tsunami') ? [-1.05, -0.7, -0.35, 0.35, 0.7, 1.05] : [-0.7, -0.35, 0.35, 0.7], m = combo('tsunami') ? 1.2 : 0.8;
+      const offs = combo('tsunami') ? [-1.05, -0.7, -0.35, 0.35, 0.7, 1.05] : [-0.7, -0.35, 0.35, 0.7], m = combo('tsunami') ? 1.5 : 1.1;
       if (kind === 'cone') fireCone(base, { mul: m, half: Math.max(...offs) + 0.3 });  // 원뿔은 갈래 대신 아주 넓은 원뿔 하나
       else for (const off of offs) fireAt(kind, base + off, { mul: m, tear: { r: combo('tsunami') ? 16 : 11, pierce: true, type: 'water', mul: m } });
     }
@@ -763,7 +728,6 @@ function checkLegends() {
 }
 
 function onKill(e) {
-  burstGain(isBig(e) ? 0.3 : 0.08);
   const p = player;
   abKill();
   fx.push({ kind: 'poof', x: e.x, y: e.y, t: 0.3, max: 0.3 });
