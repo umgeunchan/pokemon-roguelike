@@ -138,6 +138,8 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
     fx.push({ kind: 'boom', x: e.x, y: e.y, r: 75 * s, t: 0.3, max: 0.3, color: TYPE_COLOR.electric }); fx.push({ kind: 'zap', x: e.x, y: e.y - 220, x2: e.x, y2: e.y, t: 0.2 }); shake = 0.12;
     for (const o of [e, ...enemiesNear(e.x, e.y, 75 * s, e)]) damage(o, p.dmg * 1.5, 'electric', false, true);
   }
+  // 광선·레이저처럼 촘촘히 들어가는 공격에도 전설 기술 효과가 붙는다 (같은 적에게는 0.3초마다)
+  if (tick && (e.lhT ?? 0) <= p.time) { e.lhT = p.time + 0.3; legendHit(e, big); }
   if (tick && legendBeamHit(e)) return;
   if (tick) return;
   // 구슬: 맞은 자리에서 폭발 (에너지볼은 더 넓게)
@@ -244,6 +246,7 @@ function fireCone(a, o = {}) {
 const beamWidth = () => ((has('shadow-ball') ? 32 : 20) + (LASERS.some(has) ? 10 : 0)) * beamCfg().wm * shotScale();
 // 지금 공격 방식(탄·레이저·광선·원뿔·알) 그대로 a 방향으로 한 번 더 쏜다. 유전자쐐기(뒤로 한 발)·매지컬샤인(사방)·근원의파동(5갈래)이 모든 공격 방식에 적용되게
 // o.mul: 위력 배수, o.tear: 보통 탄일 때 덮어쓸 탄 속성, o.wide: 원뿔일 때 여러 갈래 대신 넓은 원뿔 하나(반각)
+const doubleBeam = () => { const ids = [...player.moves], lb = ids.filter(id => moveDef(id)?.legend && moveDef(id).fx === 'beam').length; return lb >= 1 && lb + ids.filter(id => BEAMS.includes(id)).length >= 2; };
 function fireAt(kind, a, o = {}) {
   const p = player, mul = o.mul ?? 1;
   if (kind === 'tear') shootTear(a, o.tear ?? {});
@@ -296,7 +299,9 @@ function attack(dt) {
     if (p.charge >= chargeTime()) {
       // 광선은 누른 방향으로 나가서 휘어 들어간다(beamPath). 처음부터 적을 조준하면 곧은 선이 된다
       const base = touchAim(p.aim), w = beamWidth();
-      for (const off of spread()) beams.push({ a: base + off, t: 0.4, tick: 0, w, bounce: combo('psyflame') });
+      // 광선 전설 기술 + 다른 광선 기술: 광선이 두 줄로 나간다
+      const twin = doubleBeam() ? [-0.09, 0.09] : [0];
+      for (const off of spread()) for (const tw of twin) beams.push({ a: base + off + tw, t: 0.4, tick: 0, w, bounce: combo('psyflame') });
       if (p.backShot) beams.push({ a: base + Math.PI, t: 0.4, tick: 0, w, bounce: combo('psyflame') });
       sfx('beam'); p.fired = true;
       waves(base);
