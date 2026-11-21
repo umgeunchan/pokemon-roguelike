@@ -143,6 +143,14 @@ const CHAMP_SAY = ['배지 8개, 그리고 사천왕까지. 여기까지 올라�
   '아직이야! 이 자리를 지켜 온 시간만큼, 내 포켓몬들도 물러서지 않아!', '좋아, 조금씩 보이는군. 너와 그 포켓몬이 어떤 길을 걸어왔는지.', '도망치지 않는구나. 챔피언의 자리는 너 같은 트레이너를 기다리고 있었어.'];
 const CHAMP_ACE = '이게 마지막 한 마리다. 네가 챔피언이 될 자격이 있는지, 이 녀석으로 확인하겠어!';
 
+// 마스터볼 급 보상: 아직 없는 전설의 기술머신, 없으면 기믹 아이템, 그것도 없으면 아주 희귀한 도구
+function masterReward() {
+  const own = id => taken.has(id) || player.moves.has(id) || player.items.some(i => i.id === id);
+  const lt = LTMS.filter(t => !own(t.id));
+  if (lt.length && Math.random() < 0.6) { const t = pick(lt); taken.add(t.id); return { kind: 'tm', tm: t }; }
+  return rollGimmick(Math.random) ?? (lt.length ? (t => (taken.add(t.id), { kind: 'tm', tm: t }))(pick(lt)) : rollContent(Math.random, { c: 0, r: 0, l: 1 }));
+}
+
 // 방 안으로 걸어 들어서면 아래 문이 닫히고 승부가 시작된다. 이기면 아래·위 문이 열린다
 function startRoom(r) {
   const p = player, b = map.building, gi = region.gyms.indexOf(map.leader), gt = map.tier ?? gi, champ = r.who === region.league.at(-1), at = { x: r.cx, y: (r.y0 + 1.6) * TS };
@@ -176,7 +184,21 @@ function startRoom(r) {
     // 사천왕은 대사 없음: false가 아니라 null을 넣는다 (bt.say?.()는 null·undefined만 건너뛰고, false는 호출하다 멈춘다)
     say: champ ? (i, ace) => ace ? CHAMP_ACE : CHAMP_SAY[Math.min(i, CHAMP_SAY.length - 1)] : null, onWin: bt => {
     open(); gainMoney(3000, at.x, at.y + 2 * TS);
-    if (!champ) { heal(Math.ceil(p.maxHp / 2)); banner = { text: `${r.who.leader}에게 이겼다! 위쪽 방의 문이 열렸다`, t: 3 }; return; }
+    if (!champ) {
+      heal(Math.ceil(p.maxHp / 2)); banner = { text: `${r.who.leader}에게 이겼다! 위쪽 방의 문이 열렸다`, t: 3 };
+      // 사천왕 보상: 마스터볼 급(전설의 기술머신·기믹 아이템) 하나
+      map.pickups.push({ ...masterReward(), x: r.cx, y: (r.y0 + 4.5) * TS, ball: true });
+      map.pickups.push({ kind: 'candy', x: r.cx + 60, y: (r.y0 + 4.5) * TS });
+      // 마지막 사천왕을 이기면 챔피언전 전에 준비할 수 있게 간호순과 프렌들리숍 점원이 나온다
+      if (region.league.indexOf(r.who) === region.league.length - 2) {
+        const y = (r.y0 + 2.6) * TS;
+        map.npcs.push({ id: -1, kind: 'nurse', sprite: 'nurse', name: '간호순', x: r.cx - 4 * TS, y },
+          { id: -1, kind: 'shop', sprite: 'clerk', name: '점원', x: r.cx + 4 * TS, y, special: rollContent(Math.random, { tm: 0.35, c: 0, r: 0.3, l: 0.7, g: 0.5 }) });
+        [r.cx - 4 * TS, r.cx + 4 * TS].forEach(x => fx.push({ kind: 'poof', x, y, t: 0.4, max: 0.4 }));
+        dialog = { name: '간호순', text: '챔피언과 싸우기 전에 쉬어 가세요! 회복과 마지막 쇼핑을 도와드릴게요.', t: 5 };
+      }
+      return;
+    }
     recordClear(); clearSave(); p.champion = true;
     p.champHp = bt.hpSum;  // 챔피언 포켓몬 전원의 체력 합: 후파의 고리 너머 전설의 체력 기준
     dialog = { name: r.who.leader, text: '...졌다. 너와 네 포켓몬이라면 이 자리를 맡겨도 되겠어. 오늘부터 네가 새로운 챔피언이다!', t: 6, keep: true };

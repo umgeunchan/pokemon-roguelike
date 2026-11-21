@@ -371,7 +371,7 @@ function text(s, x, y, size, color = '#fff', align = 'center') {
 }
 
 function drawTiles(cam) {
-  const tx0 = Math.floor(cam.x / TS), ty0 = Math.floor(cam.y / TS), tx1 = Math.ceil((cam.x + W) / TS), ty1 = Math.ceil((cam.y + H) / TS);
+  const tx0 = Math.floor(cam.x / TS), ty0 = Math.floor(cam.y / TS), tx1 = Math.ceil((cam.x + cam.w) / TS), ty1 = Math.ceil((cam.y + cam.h) / TS);
   const frame = Math.floor(now * 2) % 2;
   for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
     if (tx < 0 || ty < 0 || tx >= map.tw || ty >= map.th) continue;
@@ -429,11 +429,10 @@ function drawPanel() {
   ctx.fillStyle = '#0c0c12'; ctx.fillRect(0, HUD, SIDE, H);
   text(`${region.name}지방`, 6, HUD + 16, 13, '#ff8', 'left');
   text(placeName(), 6, HUD + 32, 11, '#ddd', 'left');
-  text(`${p.mega ? '메가' : ''}${p.mon.name} ${p.level >= MAX_LEVEL ? 'Lv.MAX' : `Lv.${p.level}`}`, 6, HUD + 50, 12, p.level >= MAX_LEVEL ? '#fd6' : '#fff', 'left');
+  text(`${formName(p)} ${p.level >= MAX_LEVEL ? 'Lv.MAX' : `Lv.${p.level}`}`, 6, HUD + 50, 12, p.level >= MAX_LEVEL ? '#fd6' : '#fff', 'left');
   ctx.fillStyle = '#222'; ctx.fillRect(6, HUD + 55, 146, 5);
   ctx.fillStyle = '#4ac0ff'; ctx.fillRect(6, HUD + 55, 146 * (p.level >= MAX_LEVEL ? 1 : Math.min(1, p.exp / expNeed(p.level))), 5);
   text(`₽ ${p.money.toLocaleString()}`, 6, HUD + 76, 12, '#fd6', 'left');
-  const ab = curAb(); if (ab) text(`${ab.ko}${ab.mul > 1 ? ` x${+ab.mul.toFixed(2)}` : ''}`, 152, HUD + 76, 11, isLegendMon() ? '#ffd060' : ab.color ?? '#9cf', 'right');  // 특성 (화력 배수도)
   STATS.forEach(([label, icon, f, dg], i) => {
     const y = HUD + 84 + i * 30;
     ctx.drawImage(IMG[icon], 2, y, 30, 30);
@@ -447,7 +446,6 @@ function drawPanel() {
   });
   let y = HUD + 84 + STATS.length * 30 + 16;
   text(`기술 ${p.moves.size}/${MAX_MOVES}`, 6, y, 12, '#ff8', 'left');
-  if (p.dps) { const f = powerScale(Math.min(8, p.beaten.size)); text(`상대 적응 x${f.toFixed(1)}`, 152, y, 10, f > 1.05 ? '#f96' : f < 0.95 ? '#9cf' : '#888', 'right'); }  // 적응 난이도
   if (EASY) text('쉬움', 152, HUD + 50, 10, '#8f8', 'right');
   const moves = [...p.moves];
   for (let i = 0; i < MAX_MOVES; i++) {
@@ -542,8 +540,8 @@ function drawHoopaRing(o, scale = 1) {
 
 // 후파의 고리로 빨려 들어가는 연출: 고리가 화면을 덮을 만큼 커지고, 소용돌이가 돌다가 하얗게 번쩍인다
 function drawWarp() {
-  const w = warp, p = player, cam = { x: clamp(p.x - W / 2, 0, map.tw * TS - W), y: clamp(p.y - H / 2, 0, map.th * TS - H) };
-  const sx = SIDE + w.x - cam.x, sy = HUD + w.y - 30 - cam.y, t = w.t, g = clamp((t - 0.7) / 1.1, 0, 1), R = 44 + g * g * 900;
+  const w = warp, p = player, cam = camS ?? { x: 0, y: 0, z: 1 };  // drawPlay가 방금 쓴 카메라
+  const sx = SIDE + (w.x - cam.x) * cam.z, sy = HUD + (w.y - 30 - cam.y) * cam.z, t = w.t, g = clamp((t - 0.7) / 1.1, 0, 1), R = 44 + g * g * 900;
   ctx.save(); ctx.beginPath(); ctx.rect(SIDE, HUD, W, H); ctx.clip();
   ctx.fillStyle = `rgba(24,6,52,${Math.min(1, g * 1.4)})`; ctx.beginPath(); ctx.arc(sx, sy, R, 0, Math.PI * 2); ctx.fill();
   ctx.lineWidth = 4 + g * 10;
@@ -724,17 +722,46 @@ function drawNight(px, py) {
   ctx.drawImage(nightCv, SIDE, HUD);
 }
 
+// 카메라: 평소에는 플레이어를 가운데에 둔다.
+// 보스(관장·사천왕·라이벌·전설)와 싸울 때는 상대도 화면에 들어오게 둘 사이를 비추고, 둘이 멀면 조금 멀리서 본다(줌 아웃).
+// 맵 끝에서도 상대가 위쪽 검은 띠에 붙지 않게 한 칸 여유를 두고, 부드럽게 따라간다
+let camS = null;
+function camFor(p) {
+  const boss = map.enemies.find(e => isBig(e) && e.hp > 0), mw = map.tw * TS, mh = map.th * TS;
+  let cx = p.x, cy = p.y, z = 1, pad = 0;
+  if (boss) {
+    const by = boss.y - 50, dx = Math.abs(boss.x - p.x) + 260, dy = Math.abs(by - p.y) + 260;  // 둘 다 여유 있게 들어갈 크기
+    z = clamp(Math.min(W / dx, H / dy), 0.66, 1);
+    cx = (p.x + boss.x) / 2; cy = (p.y + by) / 2;
+    // 그래도 다 안 들어가면 플레이어 쪽을 우선한다
+    const vw = W / z, vh = H / z;
+    cx = clamp(cx, p.x - vw / 2 + 110, p.x + vw / 2 - 110); cy = clamp(cy, p.y - vh / 2 + 120, p.y + vh / 2 - 80);
+    pad = TS;
+  }
+  const t = now, dt = camS ? clamp(t - camS.t, 0, 0.1) : 0, k = 1 - Math.exp(-dt * 7);
+  // 줌은 천천히 바뀐다
+  z = camS && camS.map === map ? camS.z + (z - camS.z) * k : z;
+  const vw = W / z, vh = H / z;
+  const fit = (c, size, view) => size <= view ? (size - view) / 2 : clamp(c - view / 2, -pad, size - view + pad);
+  let x = fit(cx, mw, vw), y = fit(cy, mh, vh);
+  if (camS && camS.map === map && Math.hypot(x - camS.x, y - camS.y) < 500) { x = camS.x + (x - camS.x) * k; y = camS.y + (y - camS.y) * k; }
+  camS = { x, y, z, t, map };
+  return { x, y, z, w: vw, h: vh };
+}
+
 function drawPlay() {
-  const p = player, cam = { x: clamp(p.x - W / 2, 0, map.tw * TS - W), y: clamp(p.y - H / 2, 0, map.th * TS - H) };
+  const p = player, cam = camFor(p);
   ctx.save(); ctx.translate(SIDE, HUD);
   ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  ctx.fillStyle = '#08080c'; ctx.fillRect(0, 0, W, H);  // 맵 바깥(여유 칸)
+  ctx.scale(cam.z, cam.z);
   ctx.translate(-Math.round(cam.x) + (shake > 0 ? Math.random() * 6 - 3 : 0), -Math.round(cam.y) + (shake > 0 ? Math.random() * 6 - 3 : 0));
   const [tx0, ty0, tx1, ty1] = drawTiles(cam);
   if (map.kind === 'indoor') drawRoomDecor();
   if (map.portal) drawPortal(map.portal);
   if (map.roadPortal) drawPortal(map.roadPortal);
   if (map.hoopa) drawHoopaRing(map.hoopa, map.hoopa.used ? 1 + (warp?.t ?? 0) : 1);
-  const inView = (x, y, m = 120) => x > cam.x - m && x < cam.x + W + m && y > cam.y - m && y < cam.y + H + m * 2;
+  const inView = (x, y, m = 120) => x > cam.x - m && x < cam.x + cam.w + m && y > cam.y - m && y < cam.y + cam.h + m * 2;
   const bob = Math.round(Math.sin(now * 5) * 3);
   for (const u of puddles) { ctx.fillStyle = 'rgba(160,64,160,.45)'; ctx.beginPath(); ctx.ellipse(u.x, u.y, u.r, u.r * 0.55, 0, 0, Math.PI * 2); ctx.fill(); }
   for (const k of map.pickups) {
@@ -836,14 +863,14 @@ function drawPlay() {
   for (const t of texts) text(t.text, t.x, t.y, t.size ?? 14, t.color);
   ctx.restore();
 
-  drawNight(p.x - cam.x, p.y - cam.y);
+  drawNight((p.x - cam.x) * cam.z, (p.y - cam.y) * cam.z);
   if (timeStop > 0) { ctx.fillStyle = 'rgba(120,140,220,.22)'; ctx.fillRect(SIDE, HUD, W, H); }
   if (p.warpIn > 0) { ctx.fillStyle = `rgba(250,240,255,${Math.min(1, p.warpIn)})`; ctx.fillRect(SIDE, HUD, W, H); }
   // 다우징머신: 가까운 몬스터볼 방향 화살표
   if (p.dowsing && map === world) {
     const ball = map.pickups.filter(k => k.ball).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
     if (ball && Math.hypot(ball.x - p.x, ball.y - p.y) > 150) {
-      const a = Math.atan2(ball.y - p.y, ball.x - p.x), sx = SIDE + p.x - cam.x + Math.cos(a) * 70, sy = HUD + p.y - cam.y - 30 + Math.sin(a) * 70;
+      const a = Math.atan2(ball.y - p.y, ball.x - p.x), sx = SIDE + (p.x - cam.x) * cam.z + Math.cos(a) * 70, sy = HUD + (p.y - cam.y - 30) * cam.z + Math.sin(a) * 70;
       ctx.save(); ctx.translate(sx, sy); ctx.rotate(a); ctx.fillStyle = '#6cf'; ctx.fillRect(-8, -3, 16, 6); ctx.fillRect(4, -7, 6, 14); ctx.restore();
     }
   }

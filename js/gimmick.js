@@ -29,7 +29,7 @@ ITEMS.push(
 
 // 늘 붙는 기믹 배수 (능력치 창의 공격에 보인다)
 const zActive = () => !!player?.zMove && player.moves.has(player.zMove);
-const gimmickMul = () => { const p = player; return p ? (p.mega ? 1.5 : 1) * (p.dmax ? 1.25 : 1) * (p.teraSame ? 1.5 : 1) * (zActive() ? 1.25 : 1) : 1; };
+const gimmickMul = () => { const p = player; return p ? (p.mega ? 1.5 : 1) * (LEGEND_FORMS[p.legendForm]?.mul ?? 1) * (p.dmax ? 1.25 : 1) * (p.teraSame ? 1.5 : 1) * (zActive() ? 1.25 : 1) : 1; };
 // Z기술 타입 피해는 x1.5 (늘 붙는 x1.25에 1.2를 더 곱함)
 const zTypeMul = type => zActive() && moveDef(player.zMove).type === type ? 1.2 : 1;
 const zScale = () => zActive() ? 1.3 : 1;
@@ -74,6 +74,44 @@ async function loadMegaArt() {
   // 이로치는 메가 그림이 없을 때 이로치 그림을 그대로 쓴다 (메가 그림은 보통 색만 있다)
   const base = p.shiny && m.shinyArt || m;
   if (player === p) p.megaArt = { img: p.shiny ? base.img : img ?? m.img, box: !p.shiny && img ? spriteBox(img) : m.box, field: p.shiny ? base.field : field ?? m.field };
+}
+
+// ---------- 전설의 폼 체인지 ----------
+// 전설의 포켓몬이 자기 전용 도구를 손에 넣으면 도구 효과에 더해 모습이 바뀌고 화력이 늘 오른다 (기믹 배수: 늘 적용)
+// mega: 원시회귀·레쿠쟈처럼 메가진화(x1.5)도 함께 일어나 한 번 더 강해진다
+const LEGEND_FORMS = {
+  'adamant-orb': { mon: 483, base: '디아루가', form: 'dialga-origin', name: '디아루가 오리진', mul: 1.3, say: '디아루가는 금강옥의 힘으로 오리진폼이 되었다!' },
+  'lustrous-orb': { mon: 484, base: '펄기아', form: 'palkia-origin', name: '펄기아 오리진', mul: 1.3, say: '펄기아는 백옥의 힘으로 오리진폼이 되었다!' },
+  'griseous-orb': { mon: 487, base: '기라티나', form: 'giratina-origin', name: '기라티나 오리진', mul: 1.3, say: '기라티나는 백금옥의 힘으로 오리진폼이 되었다!' },
+  'blue-orb': { mon: 382, base: '가이오가', form: 'kyogre-primal', name: '원시가이오가', mul: 1.2, mega: true, say: '가이오가의 원시회귀! 태고의 모습을 되찾았다!' },
+  'red-orb': { mon: 383, base: '그란돈', form: 'groudon-primal', name: '원시그란돈', mul: 1.2, mega: true, say: '그란돈의 원시회귀! 태고의 모습을 되찾았다!' },
+  'jade-orb': { mon: 384, base: '레쿠쟈', form: 'rayquaza-mega', name: '메가레쿠쟈', mul: 1.2, mega: true, say: '레쿠쟈는 비취구슬의 힘으로 메가진화했다!' },
+  'rusted-sword': { mon: 888, base: '자시안', form: 'zacian-crowned', name: '자시안 검왕', mul: 1.3, say: '자시안은 녹슨 검을 물고 검왕의 모습이 되었다!' },
+  'rusted-shield': { mon: 889, base: '자마젠타', form: 'zamazenta-crowned', name: '자마젠타 방패왕', mul: 1.2, hp: 4, say: '자마젠타는 녹슨 방패를 두르고 방패왕의 모습이 되었다!' },
+  'gracidea': { mon: 492, base: '쉐이미', form: 'shaymin-sky', name: '쉐이미 스카이', mul: 1.25, say: '쉐이미는 그라시데아꽃으로 스카이폼이 되었다!' },
+  'prison-bottle': { mon: 720, base: '후파', form: 'hoopa-unbound', name: '굴레를 벗어난 후파', mul: 1.3, say: '굴레의항아리가 열렸다! 후파가 본모습을 드러냈다!' },
+  'dna-splicers': { mon: 646, base: '큐레무', form: 'kyurem-black', name: '블랙큐레무', mul: 1.35, say: '큐레무는 유전자쐐기로 블랙큐레무가 되었다!' },
+};
+// 도구 설명에 전용 효과를 덧붙인다
+for (const [id, f] of Object.entries(LEGEND_FORMS)) { const it = ITEMS.find(i => i.id === id); if (it) it.desc += ` · ${f.base} 전용: ${f.name}(으)로 변신, 화력 x${f.mega ? +(f.mul * 1.5).toFixed(2) : f.mul}`; }
+// 도구를 주운 뒤 부른다 (update.js)
+function checkLegendForm(itemId) {
+  const p = player, f = LEGEND_FORMS[itemId];
+  if (!f || p.mon.id !== f.mon || p.legendForm) return;
+  withDelta(() => { p.legendForm = itemId; if (f.mega) p.mega = true; if (f.hp) { p.maxHp += f.hp; p.hp += f.hp; } });
+  gimmickFx('mega'); gimmickFx('legendForm'); sfx('evolve'); shake = 0.6;
+  banner = { text: f.say, t: 4, glow: '#ffd060' };
+  loadFormArt();
+}
+const formName = p => LEGEND_FORMS[p.legendForm]?.name ?? `${p.mega ? '메가' : ''}${p.mon.name}`;
+// 바뀐 모습 그림: 배틀 그림은 PokeAPI, 필드 그림은 PMD 폼 0001 (없으면 원래 그림)
+async function loadFormArt() {
+  const p = player, f = LEGEND_FORMS[p.legendForm], m = p.mon;
+  if (!f) return;
+  const [j, field] = await Promise.all([getJson(`${API}/pokemon/${f.form}`).catch(() => null), loadField(m.id, '/0001')]);
+  const src = p.shiny ? j?.sprites?.front_shiny ?? j?.sprites?.front_default : j?.sprites?.front_default;
+  const img = src ? await loadImg(src).catch(() => null) : null;
+  if (player === p) p.megaArt = { img: img ?? m.img, box: img ? spriteBox(img) : m.box, field: field ?? m.field };
 }
 
 // ---------- Z기술 ----------
@@ -136,6 +174,13 @@ function drawGimmick(a, top, w) {
 }
 // 발동 순간 이펙트
 function drawGimmickFx(f, k) {
+  if (f.kind === 'legendForm') {
+    // 금빛 기둥과 퍼지는 고리
+    ctx.globalAlpha = (1 - k) * 0.8; ctx.fillStyle = '#ffd060'; ctx.fillRect(f.x - 26 * (1 - k) - 4, f.y - 700, 52 * (1 - k) + 8, 700);
+    ctx.strokeStyle = '#fff3b0'; ctx.lineWidth = 4;
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(f.x, f.y, 30 + k * 200 + i * 24, (30 + k * 200 + i * 24) * 0.45, 0, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
   if (f.kind === 'mega') {
     for (let i = 0; i < 4; i++) { ctx.strokeStyle = `hsla(${(now * 360 + i * 90) % 360},100%,70%,${1 - k})`; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(f.x, f.y - 30, 18 + k * 150 + i * 14, 0, Math.PI * 2); ctx.stroke(); }
     ctx.globalAlpha = (1 - k) * 0.7; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(f.x, f.y - 30, 40 * (1 - k), 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;

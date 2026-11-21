@@ -286,7 +286,7 @@ function capStats(p) {
 function takePickup(k) {
   const p = player;
   map.pickups.splice(map.pickups.indexOf(k), 1);
-  if (k.kind === 'item') { withDelta(p => { k.item.apply(p); capStats(p); }); p.items.push(k.item); banner = { text: `${k.item.name}을(를) 손에 넣었다!`, t: 2.5 }; renderBar(); }
+  if (k.kind === 'item') { withDelta(p => { k.item.apply(p); capStats(p); }); p.items.push(k.item); banner = { text: `${k.item.name}을(를) 손에 넣었다!`, t: 2.5 }; renderBar(); checkLegendForm(k.item.id); }
   if (k.kind === 'tm') { learnMove(k.tm.id); banner = { text: `${k.tm.name}을(를) 배웠다!`, t: 2.5, glow: rareGlow(k.tm) }; }
   if (k.kind === 'berry') { heal(2); sfx('heal'); }
   if (k.kind === 'candy') {
