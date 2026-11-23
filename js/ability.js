@@ -31,7 +31,7 @@ const AB = {
   'swift-swim': { ko: '쓱쓱', desc: '이동 속도 x1.15', speed: 1.15 }, chlorophyll: { ko: '엽록소', desc: '이동 속도 x1.15', speed: 1.15 },
   'sand-rush': { ko: '모래헤치기', desc: '이동 속도 x1.15', speed: 1.15 }, 'slush-rush': { ko: '눈치우기', desc: '이동 속도 x1.15', speed: 1.15 },
   'quick-feet': { ko: '속보', desc: '이동 속도 x1.15', speed: 1.15 }, 'speed-boost': { ko: '가속', desc: '이동 속도 x1.2', speed: 1.2, style: 'wind', color: '#c0f0ff' },
-  'run-away': { ko: '도주', desc: '구르기 대기 시간 x0.7', dash: 0.7 },
+  'run-away': { ko: '도주', desc: '이동 속도 x1.15', speed: 1.15 },
   // 방어
   levitate: { ko: '부유', desc: '땅 타입 공격과 충격파를 받지 않는다', immune: 'ground' },
   sturdy: { ko: '옹골참', desc: '30초마다 한 번, 쓰러질 공격을 체력 반 칸으로 버틴다', sturdy: true },
@@ -97,7 +97,7 @@ function curAb() {
   // 전설: 화력 증가 특성이 아니면 화력 증가와 오라를 더한다
   // 준전설은 기운이 조금 약하다 (x1.15)
   const lm = isSubLegend(p.mon.id) ? SUB_LEGEND_AB_MUL : LEGEND_AB_MUL;
-  if (legend && !(ab.mul > 1)) ab = { ...ab, mul: lm, desc: `${ab.desc} · ${isSubLegend(p.mon.id) ? '준전설' : '전설'}의 기운: 공격 x${lm}`, color: ab.color ?? col };
+  if (legend && !(ab.mul > 1)) ab = { ...ab, mul: lm, color: ab.color ?? col };
   else if (legend && isSubLegend(p.mon.id) && ab.mul > 1) ab = { ...ab, mul: 1 + (ab.mul - 1) * 0.6 };  // 원래 화력 특성(프레셔 등)도 준전설은 덜 붙는다
   abCache = { id: p.mon.id, ab };
   return ab;

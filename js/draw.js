@@ -454,7 +454,7 @@ function drawPanel() {
   }
   p.items.filter(i => i.r === 'k').forEach((it, i) => ctx.drawImage(IMG[it.id], 4 + i * 26, y + 6, 26, 26));
   if (TOUCH) text('화면 터치 대화·왼쪽 위 지도·메뉴', 4, CH - 6, 9, '#777', 'left');
-  else { text('Space 구르기·E 대화·M 지도', 4, CH - 18, 9, '#777', 'left'); text('Esc 메뉴·F 전체 화면·R 꾹 그만두기', 4, CH - 6, 9, '#777', 'left'); }
+  else { text('E 대화·M 지도', 4, CH - 18, 9, '#777', 'left'); text('Esc 메뉴·F 전체 화면·R 꾹 그만두기', 4, CH - 6, 9, '#777', 'left'); }
 }
 
 function drawBadges(x, y) {

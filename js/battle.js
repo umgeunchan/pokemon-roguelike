@@ -32,7 +32,6 @@ let tutDone = !!store.get(TUT_KEY);
 const TUT = [
   { key: '이동', pc: 'WASD로 걸어 보세요', touch: '왼쪽 스틱으로 걸어 보세요', done: p => p.walk > 240 },
   { key: '공격', pc: '방향키(↑↓←→)를 누르면 그 방향으로 기술을 쏩니다', touch: '오른쪽 스틱을 민 방향으로 기술을 쏩니다', done: p => p.fired },
-  { key: '구르기', pc: 'Space로 구르기: 구르는 동안은 공격을 맞지 않습니다', touch: '구르기 버튼: 구르는 동안은 공격을 맞지 않습니다', done: p => p.dashed },
   { key: '대화', pc: '사람 앞에서 E로 말 걸기 (간호순: 회복과 기록, 점원: 상점)', touch: '사람 앞에서 화면을 눌러 말 걸기 (간호순: 회복과 기록, 점원: 상점)', done: p => p.talked },
   { key: '지도·메뉴', pc: 'M = 지도, Esc = 메뉴 (도감·가방·설정)', touch: '왼쪽 위 지도·메뉴 버튼 (메뉴: 도감·가방·설정)', done: p => p.opened },
   { key: '목표', pc: '풀숲에는 야생 포켓몬! 체육관 배지 8개를 모아 포켓몬리그의 챔피언이 되세요', touch: '풀숲에는 야생 포켓몬! 체육관 배지 8개를 모아 포켓몬리그의 챔피언이 되세요', done: p => p.time - (p.tutGoalAt ??= p.time) > 6 },
@@ -71,7 +70,7 @@ function rivalTeam(badges) {
 
 function rivalDue() {
   const p = player, r = p.rival, b = p.beaten.size, at = curNode;
-  if (!r.done.has('start')) { const i = tutStep(); return i === null || i < 0 || i >= 3 ? 'start' : null; }
+  if (!r.done.has('start')) { const i = tutStep(); return i === null || i < 0 || i >= 2 ? 'start' : null; }
   // 배지 이벤트는 가장 최근 것 하나만. 앞의 것을 놓쳤으면 건너뛴다
   const badge = ['b7', 'b5', 'b3'].find(ev => b >= +ev.slice(1) && !r.done.has(ev));
   if (badge) { ['b3', 'b5', 'b7'].forEach(ev => +ev.slice(1) <= +badge.slice(1) && r.done.add(ev)); r.done.delete(badge); return afterNextTown(badge); }
@@ -112,16 +111,18 @@ function makeRivalArena(who, type) {
 }
 
 function startRival(n) {
-  const p = player, b = p.beaten.size, [hi, bye] = RIVAL_TALK[n.rival];
+  // 악의 조직과 한 번이라도 거래했으면 라이벌은 적대적: 대사가 바뀌고, 포켓몬이 더 많고 더 단단하다
+  const p = player, b = p.beaten.size, hostile = rivalHostile(), [hi, bye] = (hostile ? RIVAL_TALK_HOSTILE : RIVAL_TALK)[n.rival].map(orgSay);
   if (map !== world || legendFight) return;
   n.fighting = true; n.flip = p.x > n.x;
   world.returnTo = [p.x, p.y];
-  map = makeRivalArena({ leader: n.name, sprite: n.sprite, title: '라이벌' }, MON[p.rival.starter]?.types[0] ?? 'normal');
+  map = makeRivalArena({ leader: n.name, sprite: n.sprite, title: hostile ? '적대하는 라이벌' : '라이벌' }, MON[p.rival.starter]?.types[0] ?? 'normal');
+  if (hostile) fx.push({ kind: 'lflash', x: p.x, y: p.y, c1: '#600010', t: 0.4, max: 0.4 });
   resetCombat(); p.warpIn = 0.6;
   const r = map.room, at = { x: r.cx, y: (r.y0 + 1.6) * TS };
   p.x = r.cx; p.y = (map.th - 2.5) * TS;
-  startBattle({ who: n.name, title: '라이벌', queue: rivalTeam(b), ...at, rank: 'boss', tier: clamp(b - 1, 0, 7), hpMul: b ? 1.15 : 0.55, rival: true, wait: 2.5,
-    say: (i, ace) => ace && i > 0 ? '아직 끝나지 않았어! 내 파트너, 가자!' : i === 0 ? hi : null, onWin: () => {
+  startBattle({ who: n.name, title: hostile ? '적대하는 라이벌' : '라이벌', queue: rivalTeam(hostile ? b + 2 : b), ...at, rank: 'boss', tier: clamp(b - 1, 0, 7), hpMul: (b ? 1.15 : 0.55) * (hostile ? 1.25 : 1), rival: true, wait: 2.5,
+    say: (i, ace) => ace && i > 0 ? (hostile ? '이 녀석만큼은... 절대 지지 않아!' : '아직 끝나지 않았어! 내 파트너, 가자!') : i === 0 ? hi : null, onWin: () => {
     n.fighting = false; n.defeated = true; n.leaveT = 5; p.rival.done.add(n.rival); r.cleared = true;
     ach('rival1'); if (RIVAL_EVENTS.every(ev => p.rival.done.has(ev))) ach('rival6');
     gainMoney(b ? 1200 + b * 500 : 300, at.x, at.y);
@@ -131,6 +132,8 @@ function startRival(n) {
     world.pickups.push({ kind: 'candy', x: n.x + 40, y: n.y + 40 });
     world.pickups.push({ ...bossReward(), x: n.x, y: n.y + 90, ball: true });  // 슈퍼볼~마스터볼 급
     if (Math.random() < 0.35) { const g = rollGimmick(Math.random); if (g) world.pickups.push({ ...g, x: n.x - 40, y: n.y + 40, ball: true }); }
+    // 악의 조직의 거래를 8번 모두 거절했다면 마지막 승부 뒤에 라이벌이 조건 없는 최고급 거래를 해 준다
+    if (n.rival === 'road' && !hostile && (p.evilRefused ?? 0) >= 8 && !p.rivalGiftDone) p.rivalGiftDue = true;
     map.returnT = 3.5;
   } });
 }
@@ -196,6 +199,7 @@ function startRoom(r) {
   const leaderTeam = r.who.team.slice(-clamp(2 + Math.floor(gt / 2), 2, r.who.team.length));
   if (b.kind === 'gym') return startBattle({ who: r.who.leader, title: r.who.title, queue: leaderTeam, ...at, rank: 'boss', tier: gt, onWin: () => {
     open(); if ((p.hits ?? 0) === hits0) ach('perfect'); p.beaten.add(gi); p.maxHp += badgeHp(); p.hp += badgeHp(); map.portal = gymPortal(r);
+    if (ORGS[region.name]) p.evilDue = p.beaten.size;  // 체육관 밖으로 나가면 악의 조직이 거래를 걸어온다 (evil.js)
     gainMoney(1500 + gt * 600, at.x, at.y + 2 * TS);
     banner = { text: `${r.who.leader}에게 이겼다! 배지를 손에 넣었다 (${p.beaten.size}/${region.gyms.length})`, t: 3 }; sfx('badge');
     map.roadPortal = roadPortal(r);

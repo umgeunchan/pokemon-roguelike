@@ -234,13 +234,13 @@ function drawAchList() {
   text(`도전과제 ${ACHIEVED.size} / ${ACH.length}`, CW / 2, 40, 24, '#fd6');
   text(`${TOUCH ? '화면을 누르면 돌아가기' : 'T 또는 Esc = 돌아가기'} · 보상이 있는 과제를 달성하면 그 포켓몬으로 시작할 수 있습니다`, CW / 2, 64, 11, '#888');
   taps.push({ x: 0, y: 0, w: CW, h: CH, fn: () => state = 'region' });
-  const cols = 2, cw = (CW - 48) / cols, rh = 36;
+  const cols = 3, cw = (CW - 64) / cols, rh = 34;
   ACH.forEach((a, i) => {
     const on = ACHIEVED.has(a.id), x = 16 + (i % cols) * (cw + 16), y = 80 + Math.floor(i / cols) * rh;
     ctx.fillStyle = on ? '#262634' : '#1c1c24'; ctx.fillRect(x, y, cw, rh - 4);
     drawTrophy(x + 18, y + 18, on);
-    on ? glowText(a.name, x + 36, y + 14, 12, '#fff', '#fd6', 'left') : text(a.name, x + 36, y + 14, 12, '#777', 'left');
-    text(a.desc, x + 36, y + 27, 10, on ? '#bbb' : '#555', 'left');
+    on ? glowText(a.name, x + 36, y + 13, 11, '#fff', '#fd6', 'left') : text(a.name, x + 36, y + 13, 11, '#777', 'left');
+    text(a.desc, x + 36, y + 26, 9, on ? '#bbb' : '#555', 'left');
     if (a.reward && MON[a.reward]) text(`보상 ${MON[a.reward].name}`, x + cw - 8, y + 14, 10, on ? '#8cf' : '#456', 'right');
   });
 }
@@ -317,9 +317,9 @@ function drawSelect() {
   if (LEGEND_MOVE[m.id]) text(isSubLegend(m.id) ? '준전설' : MYTHICAL.has(m.id) ? '환상' : '전설', px, 146, 11, isSubLegend(m.id) ? '#9cf' : '#c8f');
   text(m.types.map(t => TYPE_KO[t]).join('/'), px, 306, 12, TYPE_COLOR[m.types[0]]);
   text(`체력 ${st.hp / 2}칸 · 공격 ${st.dmg.toFixed(1)} · 속도 ${(st.speed / 200).toFixed(2)}`, px, 324, 11, '#ccc');
-  const ab = monAb(m); if (ab) text(`특성 ${ab.ko}${LEGEND_MOVE[m.id] && !AB[m.abilities[0]]?.mul ? ` (+${isSubLegend(m.id) ? '준전설' : '전설'}의 기운)` : ''}`, px, 341, 11, '#9cf');
+  const ab = monAb(m); if (ab) text(`특성 ${ab.ko}`, px, 341, 11, '#9cf');
   if (mv) { nameText(mv, `시작 기술 ${mv.name}`, px, 362, 13, mv.legend ? '#fd6' : TYPE_COLOR[mv.type], 'center'); wrap(mv.desc, px, 380, 200, 10, '#aaa', text, 'center'); }
-  text('WASD 이동 · 방향키 공격 · Space 구르기 · E 대화 · 배지 8개 → 포켓몬리그 → 챔피언', CW / 2, CH - 14, 12, '#888');
+  text('WASD 이동 · 방향키 공격 · E 대화 · 배지 8개 → 포켓몬리그 → 챔피언', CW / 2, CH - 14, 12, '#888');
 }
 
 function draw() {
@@ -342,6 +342,7 @@ function draw() {
   if (state === 'learn') drawLearn();
   if (state === 'zpick') drawZPick();
   if (state === 'shop') drawShop();
+  if (state === 'deal') drawDeal();
   if (state === 'dead' || state === 'win') drawResult();
   drawToasts();
 }

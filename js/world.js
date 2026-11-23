@@ -384,6 +384,7 @@ function spawnEnemy(m, x, y, rank, tier = 0) {
   // 준전설 상대: 체력 x0.75, 각성 단계도 늦게
   const sub = rank === 'legend' && isSubLegend(m.id);
   if (rank !== 'wild') { e.hp *= powerScale(tier) * startHpMul() * (sub ? 0.75 : 1); e.maxHp = e.hp; }
+  if (player?.curseHp > 1) { e.hp *= player.curseHp; e.maxHp = e.hp; }  // 악의 조직과의 거래 대가
   e.lvl = rank === 'boss' ? (tier >= 6 ? 2 : tier >= 3 ? 1 : 0) : rank === 'legend' ? (tier >= (sub ? 6 : 4) ? 2 : 1) : 0;
   e.sub = sub;
   // 기술은 타입 고유·급 고유·공통 기술 중 4개만 무작위로 (patterns.js). 라이벌은 battle.js에서 라이벌 기술로 다시 고른다

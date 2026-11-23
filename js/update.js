@@ -55,42 +55,11 @@ function update(dt) {
   let vx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0), vy = (keys.KeyS ? 1 : 0) - (keys.KeyW ? 1 : 0);
   const len = Math.hypot(vx, vy) || 1, ox = p.x, oy = p.y;
   vx /= len; vy /= len;
-  // 스페이스: 짧게 뛰어 피하기. 뛰는 동안은 무적이라 돌진, 낙하, 충격파를 넘길 수 있다
-  if ((keys.Space || p.dashQ) && p.dashCd <= 0) {
-    p.dashQ = false;
-    sfx('dash'); p.dashed = true;
-    // 구르기 대기 1초. 돌진 기술(화룡점정·라이트닝드라이브 등)은 0.25초에, 가까운 적에게 자동으로 돌진한다
-    p.dash = hasFx('dashStrike') ? 0.26 : 0.2; p.dashCd = hasFx('dashStrike') ? 1 : abStat('dash'); p.dashDir = vx || vy ? [vx, vy] : [p.flip ? 1 : -1, 0]; p.dashHit = new Set(); p.dashAt = p.time;
-    const tg = hasFx('dashStrike') && nearestEnemy(p.x, p.y, null, 320);
-    if (tg) { const d = Math.hypot(tg.x - p.x, tg.y - p.y) || 1; p.dashDir = [(tg.x - p.x) / d, (tg.y - p.y) / d]; }
-    if (hasFx('vanish')) p.vanish = 0.6;
+  // 구르기는 없앴다 (2026-11-23). 섀도다이브(vanish): 적이 가까이 오면 4초마다 저절로 사라졌다가 나타나며 폭발
+  if (hasFx('vanish') && p.vanish <= 0 && (p.vanishCd ?? 0) <= p.time && nearestEnemy(p.x, p.y, null, 170)) {
+    p.vanish = 0.6; p.vanishCd = p.time + (combo('phantom') ? 3 : 4);
+    fx.push({ kind: 'lnova', x: p.x, y: p.y, r: 70, c1: '#402080', c2: '#c0a0ff', t: 0.4, max: 0.4 }); lburst(p.x, p.y, '#6040c0', '#e0d0ff', 18, 160, 0.5);
   }
-  if (p.dash > 0) {
-    p.dash -= dt; vx = p.dashDir[0] * 3; vy = p.dashDir[1] * 3;
-    // 돌진 기술(화룡점정·브레이브버드 계열·라이트닝드라이브): 지나가는 길 주변(몸 둘레 55px)을 휩쓸고, 끝나면 충격파
-    const dtype = hasFx('dashStrike') && moveDef([...p.moves].find(id => moveDef(id).fx === 'dashStrike')).type, dcol = dtype && TYPE_COLOR[dtype];
-    if (dtype) {
-      fx.push({ kind: 'trail', x: p.x, y: p.y, r: 30, t: 0.3, max: 0.3, color: dcol });
-      if (dtype === 'electric' && Math.random() < 0.6) { const a = Math.random() * Math.PI * 2; fx.push({ kind: 'zap', x: p.x, y: p.y, x2: p.x + Math.cos(a) * 60, y2: p.y + Math.sin(a) * 60, t: 0.12 }); }
-    }
-    if (dtype) for (const e of map.enemies) if (!p.dashHit.has(e) && e.hp > 0 && !untargetable(e) && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r + 55) {
-      p.dashHit.add(e); damage(e, p.dmg * 4 * dashSpd(), dtype);
-      fx.push({ kind: 'boom', x: e.x, y: e.y, r: 34, t: 0.2, max: 0.2, color: dcol });
-      if (combo('stormdash') && e.hp > 0) {
-        e.stun = Math.max(e.stun ?? 0, 1); say('마비되었다!', e.x, e.y - 50, '#ff8');
-        for (const o of enemiesNear(e.x, e.y, 150, e).slice(0, 3)) { damage(o, p.dmg * 1.2 * dashSpd(), 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.15 }); }
-      }
-    }
-  }
-  if (hasFx('dashStrike') && p.dashHit && p.dash <= 0 && !p.dashDone) {
-    p.dashDone = true;
-    const dtype = moveDef([...p.moves].find(id => moveDef(id).fx === 'dashStrike')).type, R = 95;
-    fx.push({ kind: 'boom', x: p.x, y: p.y, r: R, t: 0.25, max: 0.25, color: TYPE_COLOR[dtype] }); fx.push({ kind: 'ring', x: p.x, y: p.y, t: 0.3, max: 0.3 }); shake = Math.max(shake, 0.12);
-    for (const e of enemiesNear(p.x, p.y, R)) { p.dashHit.add(e); damage(e, p.dmg * 1.5 * dashSpd(), dtype, false, true); }
-    // 돌진은 적 사이로 파고드는 기술이라 맞히면 잠깐 무적 (회복은 돌진으로 쓰러뜨렸을 때: combat.js onKill)
-    if (p.dashHit.size) p.inv = Math.max(p.inv, 0.4);
-  }
-  if (p.dash > 0) p.dashDone = false;
   if (hasFx('bulwark') && !p.shieldUp && (p.shieldT = (p.shieldT ?? 0) - dt) <= 0) p.shieldUp = true;
   if (p.vanish > 0 && (p.vanish -= dt) <= 0) {
     const R = combo('phantom') ? 160 : 100;
@@ -134,6 +103,7 @@ function update(dt) {
     manageSpawns(dt);
     checkLegends();
     rivalCheck();
+    evilCheck(dt);
   }
 
   attack(dt);

@@ -5,7 +5,7 @@ function say(text, x, y, color = '#fff') {
   texts.push({ text, x, y, t: 1.2, color }); textCd = 0.3;
 }
 
-const heal = n => player.hp = Math.min(player.maxHp, player.hp + n);
+const heal = n => { const p = player; if (p.healHalf && n > 0) { p.healCarry = (p.healCarry ?? 0) + n / 2; n = Math.floor(p.healCarry); p.healCarry -= n; } return p.hp = Math.min(p.maxHp, p.hp + n); };
 
 // 능력치가 바뀌면 왼쪽 창에 ▲▼로 잠깐 보여 준다. 안쪽에서 또 부르면(기술을 잊고 새로 배울 때 등) 바깥에서 한 번에 합쳐 보여 준다
 let deltaDepth = 0;
@@ -344,7 +344,7 @@ function attack(dt) {
       for (const off of spread()) for (const tw of twin) beams.push({ a: base + off + tw, t: 0.4, tick: 0, w, bounce: combo('psyflame') });
       if (p.backShot) beams.push({ a: base + Math.PI, t: 0.4, tick: 0, w, bounce: combo('psyflame') });
       sfx('beam'); p.fired = true;
-      waves(base);
+      waves(base); legendCharge(base);
     }
     p.charge = 0;
     return;
@@ -363,7 +363,7 @@ function attack(dt) {
     } else if (kind === 'laser') fireLaser(a);
     else shootTear(a);
   }
-  waves(base);
+  waves(base); legendCharge(base);
   // 유전자쐐기: 어떤 공격 방식이든 뒤로도 한 번 더 (바늘미사일·잎날가르기 갈래도 함께)
   if (p.backShot) for (const off of kind === 'cone' || kind === 'slash' ? [0] : spread()) fireAt(kind, base + Math.PI + off);
   p.cd = p.fireDelay * (kind === 'bomb' ? 1.8 : kind === 'cone' || kind === 'slash' ? 1.15 : 1) * moveRate() / (combo('gale') ? 1.25 : 1);
@@ -802,7 +802,7 @@ function onKill(e) {
   if (p.shellBell && Math.random() < 0.15) heal(1);
   if (hasFx('flare') && Math.random() < (combo('bloom') ? 0.4 : 0.2)) heal(1);
   // 돌진 기술: 돌진(0.6초 안)으로 쓰러뜨리면 체력 1칸
-  if (hasFx('dashStrike') && p.dashHit?.has(e) && p.time - (p.dashAt ?? -9) < 0.6) { heal(2); say('체력을 회복했다!', p.x, p.y - 60, '#8f8'); }
+  if (hasFx('dashStrike') && p.time - (e.chargeAt ?? -9) < 0.6) { heal(2); say('체력을 회복했다!', p.x, p.y - 60, '#8f8'); }
   if (hasFx('holyBurn') && e.burn > 0) {
     const R = combo('inferno') ? 160 : 80;
     fx.push({ kind: 'boom', x: e.x, y: e.y, r: R, t: 0.3, max: 0.3, color: TYPE_COLOR.fire });

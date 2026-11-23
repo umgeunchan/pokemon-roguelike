@@ -16,10 +16,67 @@ const LCOL = {
   'bleakwind-storm': ['#a0d8ff', '#ffffff'], 'wildbolt-storm': ['#ffe040', '#ffffff'], 'sandsear-storm': ['#d09050', '#ffe0a0'],
 };
 const lcol = (m, def) => LCOL[m?.id] ?? def;
+// 빛가루: 사방으로 튀어 오르다 떨어지며 사라지는 작은 빛 (그릴 때 위치를 계산해서 따로 움직일 필요가 없다)
+function lburst(x, y, c1, c2, n, spd, life = 0.6, up = 0) {
+  if (fx.length > 1100) return;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, v = spd * (0.35 + Math.random() * 0.65), t = life * (0.6 + Math.random() * 0.4);
+    fx.push({ kind: 'lpart', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.7 - up, g: 260, c: i % 3 ? c1 : c2, s: 2 + Math.random() * 4, t, max: t });
+  }
+}
+// 돌진 기술(화룡점정·액셀브레이크·라이트닝드라이브·불새): 구르기 대신, 공격할 때 1.4초마다 그 방향(가까운 적)으로 혜성처럼 꿰뚫는 돌진 일격
+const CHARGE_COL = { 'dragon-ascent': ['#30e070', '#e8fff0'], 'collision-course': ['#ff5030', '#ffe0a0'], 'electro-drift': ['#40a0ff', '#ffff90'], 'sky-attack': ['#ff8020', '#fff0a0'] };
+function legendCharge(a) {
+  const p = player, m = lmove('dashStrike');
+  if (!m || (p.chargeCd ?? 0) > p.time) return;
+  p.chargeCd = p.time + (combo('stormdash') ? 1.1 : 1.4);
+  const tg = nearestEnemy(p.x, p.y, null, 440);
+  if (tg) a = Math.atan2(tg.y - p.y, tg.x - p.x);
+  const s = fxScale(), L = 420 * s, [c1, c2] = CHARGE_COL[m.id] ?? [TYPE_COLOR[m.type], '#ffffff'];
+  let x = p.x, y = p.y;
+  for (let d = 0; d < L; d += 12) { const nx = x + Math.cos(a) * 12, ny = y + Math.sin(a) * 12; if (shotBlocked(Math.floor(nx / TS), Math.floor(ny / TS))) break; x = nx; y = ny; }
+  const spd = dashSpd(), hit = [];
+  for (const e of [...map.enemies]) if (e.hp > 0 && !untargetable(e) && segDist(e.x, e.y, p.x, p.y, x, y) < 50 * s + e.r) { hit.push(e); e.chargeAt = p.time; damage(e, p.dmg * 3 * spd, m.type); }
+  // 끝에서 충격파
+  const R = 95 * s;
+  for (const e of enemiesNear(x, y, R)) { e.chargeAt = p.time; damage(e, p.dmg * 1.5 * spd, m.type, false, true); }
+  if (combo('stormdash')) for (const e of hit) if (e.hp > 0) {
+    e.stun = Math.max(e.stun ?? 0, 1); say('마비되었다!', e.x, e.y - 50, '#ff8');
+    for (const o of enemiesNear(e.x, e.y, 150, e).slice(0, 3)) { damage(o, p.dmg * 1.2 * spd, 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.15 }); }
+  }
+  fx.push({ kind: 'lcharge', x: p.x, y: p.y, x2: x, y2: y, c1, c2, w: 40 * s, t: 0.5, max: 0.5 });
+  fx.push({ kind: 'lnova', x, y, r: R, c1, c2, t: 0.45, max: 0.45, d: 0.15 });
+  if (hit.length) p.inv = Math.max(p.inv, 0.3);
+  shake = Math.max(shake, 0.15); sfx('beam');
+}
 const segDist = (px, py, x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, l = dx * dx + dy * dy || 1, u = clamp(((px - x1) * dx + (py - y1) * dy) / l, 0, 1); return Math.hypot(px - x1 - u * dx, py - y1 - u * dy); };
 
 // ---------- 그리기 ----------
 function drawLegendFx(f, k) {
+  if (f.kind === 'lpart') {
+    const age = f.max - f.t, x = f.x + f.vx * age, y = f.y - 20 + f.vy * age + 0.5 * f.g * age * age, sz = f.s * (1 - k * 0.5);
+    const g0 = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 1 - k; ctx.fillStyle = f.c; ctx.fillRect(x - sz / 2, y - sz / 2, sz, sz);
+    if (f.s > 3.5) { ctx.globalAlpha = (1 - k) * 0.3; ctx.beginPath(); ctx.arc(x, y, sz * 1.8, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = g0;
+    return;
+  }
+  if (f.kind === 'lcharge') {
+    // 혜성 같은 돌진: 머리가 끝까지 날아가고, 지나간 자리에 빛의 꼬리가 남았다가 사라진다
+    const u = Math.min(1, k * 3), hx = f.x + (f.x2 - f.x) * u, hy = f.y + (f.y2 - f.y) * u, fade = k < 0.34 ? 1 : 1 - (k - 0.34) / 0.66;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.shadowColor = f.c1; ctx.shadowBlur = 24;
+    for (const [w, c, al] of [[f.w, f.c1, 0.35], [f.w * 0.45, f.c1, 0.85], [f.w * 0.15, f.c2, 1]]) { ctx.globalAlpha = al * fade; ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(f.x, f.y - 20); ctx.lineTo(hx, hy - 20); ctx.stroke(); }
+    if (u < 1) { const g = ctx.createRadialGradient(hx, hy - 20, 0, hx, hy - 20, f.w * 1.2); g.addColorStop(0, '#ffffff'); g.addColorStop(0.4, f.c1); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy - 20, f.w * 1.2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+    if (u < 1 && Math.random() < 0.9) lburst(hx, hy, f.c1, f.c2, 3, 160, 0.4);
+    return;
+  }
+  if (!f.burst && ((f.kind === 'lnova' && k * f.max >= (f.d ?? 0)) || f.kind === 'lrift' || (f.kind === 'lstrike' && k * f.max >= f.d))) {
+    f.burst = true;
+    if (f.kind === 'lnova') lburst(f.x, f.y, f.c1, f.c2, 22, f.r * 2.4, 0.55, 40);
+    else if (f.kind === 'lstrike') lburst(f.x, f.y, f.c1, f.c2, 16, 220, 0.6, 180);
+    else for (let i = 0; i < 14; i++) { const u = Math.random(); lburst(f.x1 + (f.x2 - f.x1) * u, f.y1 + (f.y2 - f.y1) * u, f.c1, f.c2, 1, 140, 0.5, 60); }
+  }
   if (f.kind === 'lswing') {
     // 칼: 굵은 초승달이 한쪽에서 반대쪽으로 쓸고 지나간다 / 주먹: 앞쪽에 주먹 충격이 터진다
     const kk = clamp((k * f.max - f.d) / (f.max - f.d), 0, 1);
@@ -33,8 +90,14 @@ function drawLegendFx(f, k) {
         ctx.beginPath(); ctx.arc(f.x, cy, f.R * 0.82, a0, a1); ctx.stroke();
       }
       ctx.globalAlpha = 0.5 * (1 - kk); ctx.fillStyle = f.c1; ctx.beginPath(); ctx.moveTo(f.x, cy); ctx.arc(f.x, cy, f.R, a0, a1); ctx.closePath(); ctx.fill();
+      // 잔상 호 두 겹과 칼끝 불티
+      ctx.shadowColor = f.c1; ctx.shadowBlur = 16;
+      for (const [rr, al] of [[0.62, 0.45], [1.0, 0.3]]) { ctx.globalAlpha = al * (1 - kk); ctx.strokeStyle = f.c2; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(f.x, cy, f.R * rr, a0, a1); ctx.stroke(); }
+      if (kk < 0.5 && !f.sp) { f.sp = true; for (let i = 0; i < 10; i++) { const g = a0 + (a1 - a0) * Math.random(); lburst(f.x + Math.cos(g) * f.R * 0.82, f.y + Math.sin(g) * f.R * 0.82, f.c1, f.c2, 1, 120, 0.45); } }
     } else {
       const r = f.R * (0.55 + kk * 0.45), x = f.x + Math.cos(f.a) * r, y = cy + Math.sin(f.a) * r;
+      if (!f.sp) { f.sp = true; lburst(x, y + 20, f.c1, f.c2, 12, 200, 0.45); }
+      ctx.shadowColor = f.c1; ctx.shadowBlur = 18;
       ctx.globalAlpha = 1 - kk; ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(x, y, 26 * (1 - kk * 0.3), 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = f.c2; ctx.beginPath(); ctx.arc(x, y, 12 * (1 - kk * 0.5), 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = f.c2; ctx.lineWidth = 3;
@@ -47,8 +110,16 @@ function drawLegendFx(f, k) {
   if (f.kind === 'lflash') { ctx.globalAlpha = (1 - k) * 0.45; ctx.fillStyle = f.c1; ctx.fillRect(f.x - 1400, f.y - 1000, 2800, 2000); ctx.globalAlpha = 1; }
   if (f.kind === 'lnova') {
     // 겹겹이 퍼지는 고리 + 빛줄기 + 가운데 섬광
+    if (f.d && k * f.max < f.d) return;
     const e = 1 - (1 - k) ** 3;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    // 바탕 빛무리 + 회전하는 네 갈래 섬광
+    const bg = ctx.createRadialGradient(f.x, f.y - 20, 0, f.x, f.y - 20, f.r * 1.2);
+    bg.addColorStop(0, f.c1); bg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = (1 - k) * 0.28; ctx.fillStyle = bg; ctx.beginPath(); ctx.ellipse(f.x, f.y - 20, f.r * 1.2 * (0.4 + e * 0.6), f.r * 0.8 * (0.4 + e * 0.6), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = (1 - k) * 0.9; ctx.fillStyle = f.c2;
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(f.x, f.y - 20, f.r * 1.3 * (1 - k * 0.5), 3 + 4 * (1 - k), i * Math.PI / 4 + k * 1.2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.shadowColor = f.c1; ctx.shadowBlur = 18;
     for (let i = 0; i < 4; i++) {
       const r = f.r * clamp(e - i * 0.08, 0, 1);
       ctx.globalAlpha = (1 - k) * (0.9 - i * 0.18); ctx.strokeStyle = i % 2 ? f.c2 : f.c1; ctx.lineWidth = 14 - i * 3;
@@ -64,7 +135,7 @@ function drawLegendFx(f, k) {
   if (f.kind === 'lrift') {
     // 공간의 균열: 들쭉날쭉한 빛의 선이 벌어졌다 닫힌다
     const open = Math.sin(Math.min(1, k * 1.4) * Math.PI), pts = 14;
-    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.shadowColor = f.c1; ctx.shadowBlur = 22;
     for (const [w, c, a] of [[22 * open + 4, f.c1, 0.55], [8 * open + 2, f.c2, 0.95]]) {
       ctx.globalAlpha = a * (1 - k * 0.6); ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineJoin = 'bevel'; ctx.beginPath();
       for (let i = 0; i <= pts; i++) {
@@ -82,7 +153,11 @@ function drawLegendFx(f, k) {
   if (f.kind === 'lstrike') {
     const kk = clamp((k * f.max - f.d) / (f.max - f.d), 0, 1);
     if (kk <= 0) return;
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - kk;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const gg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 110); gg.addColorStop(0, f.c2); gg.addColorStop(0.3, f.c1); gg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = (1 - kk) * 0.35; ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(f.x, f.y, 110, 50, 0, 0, Math.PI * 2); ctx.fill();
+    if (kk < 0.2) { ctx.globalAlpha = (0.2 - kk) * 2.5; ctx.fillStyle = f.c2; ctx.beginPath(); ctx.arc(f.x, f.y - 30, 50 * (1 - kk * 2), 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1 - kk; ctx.shadowColor = f.c1; ctx.shadowBlur = 20;
     if (f.spike) {
       // 단애의칼·사우전드애로: 땅에서 바위 칼날이 솟는다
       const hgt = 90 * Math.sin(Math.min(1, kk * 2.2) * Math.PI / 2) * (1 - Math.max(0, kk - 0.6) / 0.4);
@@ -93,6 +168,9 @@ function drawLegendFx(f, k) {
       ctx.strokeStyle = f.c1; ctx.lineWidth = 6; ctx.beginPath(); let x = f.x, y = f.y - 420; ctx.moveTo(x, y);
       for (let i = 0; i < 8; i++) { x = f.x + (Math.random() - 0.5) * 40; y += 52; ctx.lineTo(x, y); } ctx.stroke();
       ctx.strokeStyle = f.c2; ctx.lineWidth = 2; ctx.stroke();
+      // 곁가지 번개
+      ctx.strokeStyle = f.c1; ctx.lineWidth = 2;
+      for (let b = 0; b < 3; b++) { let bx = f.x + (Math.random() - 0.5) * 30, by = f.y - 300 + b * 90; ctx.beginPath(); ctx.moveTo(bx, by); for (let i = 0; i < 3; i++) { bx += (Math.random() - 0.5) * 70; by += 30; ctx.lineTo(bx, by); } ctx.stroke(); }
     } else {
       // 빛기둥
       const g = ctx.createLinearGradient(f.x, f.y - 360, f.x, f.y);
@@ -106,7 +184,9 @@ function drawLegendFx(f, k) {
   }
   if (f.kind === 'lbeam') {
     const a = Math.atan2(f.y2 - f.y, f.x2 - f.x), L = Math.hypot(f.x2 - f.x, f.y2 - f.y), w = f.w * Math.sin(Math.min(1, k * 1.3) * Math.PI);
-    ctx.save(); ctx.translate(f.x, f.y - 20); ctx.rotate(a); ctx.globalCompositeOperation = 'lighter';
+    if (Math.random() < 0.7) { const u = Math.random(); lburst(f.x + Math.cos(a) * L * u, f.y + Math.sin(a) * L * u, f.c1, f.c2, 2, 120, 0.4, 40); }
+    ctx.save(); ctx.translate(f.x, f.y - 20); ctx.rotate(a); ctx.globalCompositeOperation = 'lighter'; ctx.shadowColor = f.c1; ctx.shadowBlur = 26;
+    ctx.globalAlpha = 0.25; ctx.fillStyle = f.c1; ctx.fillRect(0, -w * 1.4, L, w * 2.8);
     ctx.globalAlpha = 0.5; ctx.fillStyle = f.c1; ctx.fillRect(0, -w * 0.8, L, w * 1.6);
     ctx.globalAlpha = 0.9; ctx.fillRect(0, -w / 2, L, w);
     ctx.fillStyle = f.c2; ctx.fillRect(0, -w / 5, L, w / 2.5);

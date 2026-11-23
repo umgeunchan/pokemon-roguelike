@@ -25,6 +25,16 @@ const ACH = [
   { id: 'pika', name: '최고의 파트너', desc: '피카츄(또는 라이츄)로 챔피언이 되었다', reward: 172 },
   { id: 'champ3', name: '세 지방의 챔피언', desc: '서로 다른 지방 3곳에서 챔피언이 되었다' },
   { id: 'champ9', name: '포켓몬 마스터', desc: '모든 지방에서 챔피언이 되었다', reward: 570 },
+  { id: 'evil1', name: '악마의 속삭임', desc: '악의 조직과 처음으로 거래했다' },
+  { id: 'evil8', name: '완전한 타락', desc: '한 판에서 악의 조직과 8번 모두 거래했다' },
+  { id: 'justice', name: '꺾이지 않는 정의', desc: '한 판에서 악의 조직의 거래를 8번 모두 거절했다' },
+  { id: 'evilboss', name: '조직 괴멸', desc: '악의 조직의 보스를 쓰러뜨렸다' },
+  { id: 'rivalgift', name: '라이벌의 믿음', desc: '라이벌에게서 조건 없는 최고의 거래를 받았다' },
+  { id: 'formchange', name: '진정한 모습', desc: '전용 도구로 전설의 포켓몬의 모습을 바꿨다' },
+  { id: 'ultra', name: '빛을 되찾은 자', desc: '울트라네크로즈마가 되었다' },
+  { id: 'trainer40', name: '도로의 지배자', desc: '한 판에서 필드 트레이너 40명을 이겼다' },
+  { id: 'subchamp', name: '준전설의 긍지', desc: '준전설의 포켓몬으로 챔피언이 되었다' },
+  { id: 'mythchamp', name: '환상의 챔피언', desc: '환상의 포켓몬으로 챔피언이 되었다' },
   { id: 'die', name: '다시 일어서기', desc: '처음으로 쓰러졌다. 다음엔 더 멀리!' },
 ];
 const achRewards = () => ACH.filter(a => a.reward && ACHIEVED.has(a.id)).map(a => a.reward);
@@ -49,6 +59,9 @@ function checkAch() {
   if (p.money >= 50000) ach('rich');
   if (p.items.length >= 15) ach('items15');
   if ((p.trainerWins ?? 0) >= 15) ach('trainer15');
+  if ((p.trainerWins ?? 0) >= 40) ach('trainer40');
+  if (p.legendForm) ach('formchange');
+  if (p.legendForm === 'necrozma-ultra') ach('ultra');
   if (loadUnlocked().length >= 5) ach('legend5');
   if (CLEARED.size >= 3) ach('champ3');
   if (CLEARED.size >= REGIONS.length) ach('champ9');
@@ -61,5 +74,7 @@ function recordClear() {
   ach('champion');
   if (p.time < 40 * 60) ach('fast');
   if (p.mon.id === 25 || p.mon.id === 26) ach('pika');
+  if (isSubLegend(p.startId)) ach('subchamp');
+  if (MYTHICAL.has(p.startId)) ach('mythchamp');
   checkAch();
 }

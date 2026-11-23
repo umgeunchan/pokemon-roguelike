@@ -198,7 +198,7 @@ const COMBOS = [
   { id: 'deathwing', name: '데스윙', need: ['oblivion-wing', 'air-slash'], desc: '체력 흡수 2배', color: '#c02030' },
   { id: 'bloom', name: '생명의 개화', need: ['seed-flare', 'energy-ball'], desc: '씨앗 폭발 범위 x1.6, 피해 x1.5, 쓰러뜨리면 40% 회복', color: '#90ff60' },
   { id: 'diamond', name: '다이아 광채', need: ['diamond-storm', 'stone-edge'], desc: '다이아 파편 확률 60%, 10갈래', color: '#f0f8ff' },
-  { id: 'stormdash', name: '전광석화', need: ['fx:dashStrike', 'thunder-wave'], desc: '구르기에 맞은 적이 마비되고 주변으로 전기가 튄다', color: '#ffe040' },
+  { id: 'stormdash', name: '전광석화', need: ['fx:dashStrike', 'thunder-wave'], desc: '돌진 일격에 맞은 적이 마비되고 주변으로 전기가 튄다', color: '#ffe040' },
   { id: 'phantom', name: '망령의 습격', need: ['shadow-force', 'shadow-ball'], desc: '나타날 때 폭발 범위 x1.6, 피해 x1.5', color: '#6030a0' },
   { id: 'juggernaut', name: '철벽 돌진', need: ['behemoth-bash', 'close-combat'], desc: '부딪힌 적에게 주는 피해 x2', color: '#a0b0d0' },
 ];
@@ -237,12 +237,12 @@ const LTMS = [
   L('origin-pulse', 'water', 'fan5', '강화 · 파동 5갈래 추가'),
   L('precipice-blades', 'ground', 'erupt', '강화 · 땅의 칼날'),
   L('thousand-arrows', 'ground', 'erupt', '강화 · 땅의 칼날'),
-  L('dragon-ascent', 'flying', 'dashStrike', '돌진 · 구르기가 공격, 자동 조준'),
-  L('collision-course', 'fighting', 'dashStrike', '돌진 · 구르기가 공격, 자동 조준, 속도 증가'),
-  L('electro-drift', 'electric', 'dashStrike', '돌진 · 구르기가 공격, 자동 조준, 속도 증가'),
+  L('dragon-ascent', 'flying', 'dashStrike', '공격할 때 1.4초마다 녹색 혜성이 되어 꿰뚫는 돌진 일격, 자동 조준'),
+  L('collision-course', 'fighting', 'dashStrike', '공격할 때 1.4초마다 불꽃 돌진 일격, 자동 조준, 속도 증가'),
+  L('electro-drift', 'electric', 'dashStrike', '공격할 때 1.4초마다 번개 돌진 일격, 자동 조준, 속도 증가'),
   L('roar-of-time', 'dragon', 'timeStop', '강화 · 주기적으로 시간 정지'),
   L('spacial-rend', 'dragon', 'rend', '강화 · 공간째 범위 베기'),
-  L('shadow-force', 'ghost', 'vanish', '구르기 · 사라졌다 나타나며 폭발'),
+  L('shadow-force', 'ghost', 'vanish', '적이 가까이 오면 4초마다 사라졌다가 나타나며 폭발'),
   L('fusion-bolt', 'electric', 'smite', '강화 · 낙뢰, 연쇄 번개'),
   L('sheer-cold', 'ice', 'freeze', '강화 · 얼림'),
   L('sunsteel-strike', 'steel', 'blade', '강화 · 관통, 보스에게 강함'),
@@ -263,7 +263,7 @@ const LTMS = [
   L('tera-starstorm', 'normal', 'beam', '광선 · 별빛, 아주 강함'),
   // 2026-11-23: 전설·환상마다 실제 전용기(없으면 실제로 배우는 상징 기술)
   L('zap-cannon', 'electric', 'smite', '전기 구슬이 터지며 마비, 낙뢰'),
-  L('sky-attack', 'flying', 'dashStrike', '돌진 · 불새가 되어 들이받음, 자동 조준'),
+  L('sky-attack', 'flying', 'dashStrike', '공격할 때 1.4초마다 불새가 되어 꿰뚫는 돌진 일격, 자동 조준'),
   L('expanding-force', 'psychic', 'psy', '탄 · 강한 유도, 관통, 넓은 염동 폭발'),
   L('discharge', 'electric', 'smite', '주위로 방전, 연쇄 번개, 마비'),
   L('scald', 'water', 'beam', '광선 · 뜨거운 물, 화상'),
@@ -337,7 +337,7 @@ const HOOPA_POOL = Object.keys(LEGEND_MOVE).map(Number);
 // 배수 규칙: 도구의 배수(빨강구슬 x1.3 등)는 얻는 순간 그때의 능력치에 한 번 곱한다.
 // 기술·특성·기믹의 배수는 아래 함수들로 늘 계산에 붙어서, 그 뒤에 얻은 도구에도 곱해진다
 const moveDmgMul = () => (has('flash-cannon') ? 1.2 : 1) * (has('focus-blast') ? 1.35 : 1) * (has('dragon-claw') ? 1.2 : 1)
-  * (has('close-combat') ? 1.2 : 1) * (has('play-rough') ? 1.2 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * kindPow() * (hasFx('geo') ? 1.3 : 1) * gimmickMul() * abMul() * legendPow;
+  * (has('close-combat') ? 1.2 : 1) * (has('play-rough') ? 1.2 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * kindPow() * (hasFx('geo') ? 1.3 : 1) * gimmickMul() * abMul() * legendPow * (player?.evilPow ?? 1);
 const moveCrit = () => (hasFx('rend') ? 0.15 : 0) + (hasFx('blade') ? 0.05 : 0) + (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0) + (hasFx('shard') ? 0.3 : 0) + (has('frost-breath') ? 0.3 : 0) + (has('take-heart') ? 0.1 : 0) + abStat('crit', 0);
 // 이동 속도 배수 (기술·특성): 지오컨트롤 x1.15, 액셀브레이크·라이트닝드라이브 x1.15, 특성
 const moveSpeed = () => (hasFx('geo') ? 1.15 : 1) * (has('collision-course') || has('electro-drift') ? 1.15 : 1) * abStat('speed') * formStat('spd');
