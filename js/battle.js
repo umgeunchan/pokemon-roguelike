@@ -269,7 +269,7 @@ function updateBattle(dt) {
     e.battle = true; keepInRoom(e);
     map.enemies.push(e); bt.wait = 1.2;
     const line = bt.say?.(bt.sent = (bt.sent ?? -1) + 1, !bt.queue.length);
-    if (line) dialog = { name: bt.who, text: line, t: 4.5, keep: true };
+    if (line) dialog = { name: bt.who, text: line, t: 3, keep: true };
     banner = { text: `${bt.who}은(는) ${m.name}을(를) 내보냈다!`, t: 2 };
   } else if (!bt.queue.length) { map.battle = null; samplePower(); bt.onWin(bt); }
 }

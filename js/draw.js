@@ -885,7 +885,19 @@ function drawPlay() {
   if (banner && !dangerNow()) lines(banner.text, W - 40, 18).forEach((l, i) => banner.glow ? glowText(l, SIDE + W / 2, HUD + H / 2 - 70 + i * 24, 18, '#ff8', banner.glow) : text(l, SIDE + W / 2, HUD + H / 2 - 70 + i * 24, 18, '#ff8'));
   // NPC 대사: 원작처럼 화면 아래 대화창
   // 대사가 길면 줄을 나누고 창이 위로 늘어난다 (한 줄일 때는 예전과 같은 크기)
-  if (dialog) {
+  if (dialog && map.battle) {
+    // 싸우는 중에는 공격을 가리지 않게: 작고 반투명한 한 줄 자막, 뒤로 탄·포켓몬이 지나가면 더 옅어진다
+    const w = Math.min(W - 40, 520), ls = lines(`${dialog.name}: ${dialog.text}`, w - 24, 12), h = 12 + ls.length * 17;
+    const x = SIDE + (W - w) / 2, y = HUD + H - 8 - h - (boss ? 48 : 0);
+    const wx0 = cam.x + (x - SIDE) / cam.z, wx1 = cam.x + (x + w - SIDE) / cam.z, wy0 = cam.y + (y - HUD) / cam.z - 20, wy1 = cam.y + (y + h - HUD) / cam.z + 20;
+    const under = o => o.x > wx0 - 20 && o.x < wx1 + 20 && o.y > wy0 && o.y < wy1;
+    const busy = under(p) || map.enemies.some(under) || tears.some(t => t.from === 'e' && under(t));
+    const fade = Math.min(1, (dialog.t ?? 1) / 0.4);
+    ctx.save(); ctx.globalAlpha = (busy ? 0.25 : 0.8) * fade;
+    ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(x, y, w, h);
+    ls.forEach((l, i) => text(l, x + w / 2, y + 18 + i * 17, 12, i ? '#fff' : '#fdd'));
+    ctx.restore();
+  } else if (dialog) {
     const x = SIDE + 16, w = W - 32, ls = lines(dialog.text, w - 40, 15), h = 54 + ls.length * 22, y = HUD + H - 12 - h - (boss ? 48 : 0);
     ctx.fillStyle = OUT; ctx.fillRect(x, y, w, h);
     ctx.fillStyle = '#f8f8f8'; ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
