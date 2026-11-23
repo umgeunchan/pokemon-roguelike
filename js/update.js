@@ -30,6 +30,7 @@ function update(dt) {
   if (p.regen && (p.regenT -= dt) <= 0) { p.regenT = 12; heal(1); }
   abTick(dt);
   // 지오컨트롤: 12초마다 4초 동안 대지의 힘이 넘친다
+  if (has('lunar-blessing') && (p.lunarT = (p.lunarT ?? 12) - dt) <= 0) { p.lunarT = 12; if (p.hp < p.maxHp) { heal(1); say('초승달의기도!', p.x, p.y - 70, '#fcf'); } }
   if (hasFx('geo') && (p.geoT = (p.geoT ?? 6) - dt) <= 0) { p.geoT = combo('gaia') ? 8 : 12; p.surge = combo('gaia') ? 5 : 4; banner = { text: '대지의 힘이 넘쳐흐른다!', t: 1.5, glow: '#f9c' }; }
   if (p.surge > 0) p.surge -= dt;
   if (map.enemies.some(e => (e.battle || (e.rank === 'legend' && e.aggro)) && e.hp > 0)) p.fT = (p.fT ?? 0) + dt;

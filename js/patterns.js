@@ -47,6 +47,17 @@ const LEGEND_SIG = {
   'photon-geyser': ['psyField', 0, 'trackBeam', 0.5], 'glacial-lance': ['iceLattice', 0, 'hailGrid', 0.4], 'astral-barrage': ['wispCircle', 0, 'teleBarrage', 0.6],
   'wicked-blow': ['nightSlash', 0, 'dynamicPunch', 0.6], 'surging-strikes': ['aquaRing', 0, 'whirlpool', 0.3], 'ivy-cudgel': ['leechSeed', 0, 'petalDance', 0.4],
   'tera-starstorm': ['stealthRock', 0, 'trackBeam', 0.5],
+  'zap-cannon': ['zapCannon', 0, 'boltLines', 0.5], 'sky-attack': ['ascentL', 0, 'firespin', 0.4], 'expanding-force': ['psyField', 0, 'teleBarrage', 0.6],
+  discharge: ['boltLines', 0, 'zapCannon', 0.6], scald: ['aquaRing', 0, 'trackBeam', 0.5], 'leaf-storm': ['petalDance', 0, 'leechSeed', 0.5],
+  'ancient-power': ['ancientPower', 0, 'stealthRock', 0.5], 'frost-breath': ['iceLattice', 0, 'hailGrid', 0.4], 'heavy-slam': ['dynamicPunch', 0, 'meteorMash', 0.8],
+  'doom-desire': ['stealthRock', 0, 'meteorMash', 0.8], 'psycho-boost': ['psyField', 0, 'trackBeam', 0.4], 'mystical-power': ['psyField', 0, 'teleBarrage', 0.6],
+  'lunar-blessing': ['moonlight', 0, 'psyField', 0.5], 'take-heart': ['aquaRing', 0, 'teleBarrage', 0.5], 'dark-void': ['domain', 0, 'nightShade', 0.4],
+  judgment: ['hailGrid', 0, 'trackBeam', 0.6], 'v-create': ['eruption', 0, 'ascentL', 0.5], 'bleakwind-storm': ['hurricane', 0, 'aeroL', 0.5],
+  'wildbolt-storm': ['hurricane', 0, 'boltLines', 0.4], 'sandsear-storm': ['hurricane', 0, 'fissure', 0.4], glaciate: ['iceLattice', 0, 'hailGrid', 0.5],
+  'freeze-shock': ['iceLattice', 0, 'zapCannon', 0.5], 'secret-sword': ['nightSlash', 0, 'meteorMash', 0.5], 'relic-song': ['flowerBloom', 0, 'feint', 0.5],
+  'techno-blast': ['gearGrind', 0, 'trackBeam', 0.5], 'hyperspace-hole': ['feint', 0, 'teleBarrage', 0.5], 'hyperspace-fury': ['nightSlash', 0, 'feint', 0.4],
+  'steam-eruption': ['eruption', 0, 'aquaRing', 0.4], 'fleur-cannon': ['flowerBloom', 0, 'trackBeam', 0.4], 'spectral-thief': ['wispCircle', 0, 'dynamicPunch', 0.5],
+  'plasma-fists': ['dynamicPunch', 0, 'boltLines', 0.4], 'jungle-healing': ['leechSeed', 0, 'petalDance', 0.4], 'light-that-burns-the-sky': ['psyField', 0, 'trackBeam', 0.3],
 };
 const legendSig = m => { const id = LEGEND_MOVE[m.id], d = id && moveDef(id); return d && LEGEND_SIG[id] ? S(d.name, 'legendCombo', { parts: LEGEND_SIG[id], type: d.type, legendSig: true }) : null; };
 

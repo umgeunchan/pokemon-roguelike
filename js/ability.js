@@ -84,7 +84,7 @@ const AB = {
   'hadron-engine': { ko: '하드론엔진', desc: '일렉트릭필드: 공격 x1.33, 전기 공격 x1.2', mul: 1.33, type: { electric: 1.2 }, style: 'spark', color: '#a060ff' },
   'serene-grace': { ko: '하늘의은총', desc: '공격 x1.2, 급소 +10%', mul: 1.2, crit: 0.1, style: 'aura', color: '#fff0a0' },
 };
-const LEGEND_AB_MUL = 1.3;
+const LEGEND_AB_MUL = 1.3, SUB_LEGEND_AB_MUL = 1.15;
 // 이번 포켓몬의 특성 (포켓몬이 바뀔 때만 다시 계산)
 let abCache = { id: null, ab: null };
 function curAb() {
@@ -95,7 +95,10 @@ function curAb() {
   // 효과가 없는 특성: 주변 오라 + 화력 증가
   let ab = base ? { id, ...base } : { id, ko: abKo(id), desc: '특별한 힘이 오라로 퍼진다: 공격 x1.2', mul: 1.2, style: 'aura', color: col };
   // 전설: 화력 증가 특성이 아니면 화력 증가와 오라를 더한다
-  if (legend && !(ab.mul > 1)) ab = { ...ab, mul: LEGEND_AB_MUL, desc: `${ab.desc} · 전설의 기운: 공격 x${LEGEND_AB_MUL}`, color: ab.color ?? col };
+  // 준전설은 기운이 조금 약하다 (x1.15)
+  const lm = isSubLegend(p.mon.id) ? SUB_LEGEND_AB_MUL : LEGEND_AB_MUL;
+  if (legend && !(ab.mul > 1)) ab = { ...ab, mul: lm, desc: `${ab.desc} · ${isSubLegend(p.mon.id) ? '준전설' : '전설'}의 기운: 공격 x${lm}`, color: ab.color ?? col };
+  else if (legend && isSubLegend(p.mon.id) && ab.mul > 1) ab = { ...ab, mul: 1 + (ab.mul - 1) * 0.6 };  // 원래 화력 특성(프레셔 등)도 준전설은 덜 붙는다
   abCache = { id: p.mon.id, ab };
   return ab;
 }

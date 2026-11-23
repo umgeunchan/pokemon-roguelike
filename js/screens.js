@@ -313,10 +313,11 @@ function drawSelect() {
   if (shiny) loadShiny(m);
   drawActor({ mon: m, x: px, y: 260, flip: false, shiny }, 1.5, 1, true);
   if (shinyOk(m.id)) text(shiny ? '★ 이로치 (X 키로 바꾸기)' : '이로치 있음 (X 키)', px, 128, 11, '#fd6');
-  text(m.name, px, 286, 18, LEGEND_MOVE[m.id] ? '#c8f' : '#fff');
+  text(m.name, px, 286, 18, LEGEND_MOVE[m.id] ? (isSubLegend(m.id) ? '#9cf' : '#c8f') : '#fff');
+  if (LEGEND_MOVE[m.id]) text(isSubLegend(m.id) ? '준전설' : MYTHICAL.has(m.id) ? '환상' : '전설', px, 146, 11, isSubLegend(m.id) ? '#9cf' : '#c8f');
   text(m.types.map(t => TYPE_KO[t]).join('/'), px, 306, 12, TYPE_COLOR[m.types[0]]);
   text(`체력 ${st.hp / 2}칸 · 공격 ${st.dmg.toFixed(1)} · 속도 ${(st.speed / 200).toFixed(2)}`, px, 324, 11, '#ccc');
-  const ab = monAb(m); if (ab) text(`특성 ${ab.ko}${LEGEND_MOVE[m.id] && !AB[m.abilities[0]]?.mul ? ' (+전설의 기운)' : ''}`, px, 341, 11, '#9cf');
+  const ab = monAb(m); if (ab) text(`특성 ${ab.ko}${LEGEND_MOVE[m.id] && !AB[m.abilities[0]]?.mul ? ` (+${isSubLegend(m.id) ? '준전설' : '전설'}의 기운)` : ''}`, px, 341, 11, '#9cf');
   if (mv) { nameText(mv, `시작 기술 ${mv.name}`, px, 362, 13, mv.legend ? '#fd6' : TYPE_COLOR[mv.type], 'center'); wrap(mv.desc, px, 380, 200, 10, '#aaa', text, 'center'); }
   text('WASD 이동 · 방향키 공격 · Space 구르기 · E 대화 · 배지 8개 → 포켓몬리그 → 챔피언', CW / 2, CH - 14, 12, '#888');
 }

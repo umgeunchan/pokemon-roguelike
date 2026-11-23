@@ -3,10 +3,47 @@
 // 같은 효과가 너무 자주 겹치지 않게 효과마다 짧은 간격을 둔다
 const lcd = (k, t) => { const p = player, c = p.lcd ??= {}; if ((c[k] ?? 0) > p.time) return false; c[k] = p.time + t; return true; };
 const rift = (x, y, a, L, c1, c2, t = 0.4) => fx.push({ kind: 'lrift', x, y, x1: x - Math.cos(a) * L / 2, y1: y - Math.sin(a) * L / 2, x2: x + Math.cos(a) * L / 2, y2: y + Math.sin(a) * L / 2, c1, c2, t, max: t, seed: Math.random() * 1000 });
+// 이 효과(fx)를 가진 전설 기술 중 가장 최근에 배운 것: 같은 효과라도 기술마다 색·타입·이름이 다르다
+const lmove = k => [...player.moves].map(moveDef).filter(m => m?.legend && m.fx === k).at(-1);
+const LCOL = {
+  'fusion-bolt': ['#ffe040', '#ffffff'], 'zap-cannon': ['#ffe040', '#fffbd0'], discharge: ['#fff36a', '#ffffff'], 'freeze-shock': ['#9fe8ff', '#ffffff'], 'plasma-fists': ['#ffe040', '#d0f8ff'],
+  'spacial-rend': ['#ff6ad5', '#ffe2f6'], 'hyperspace-hole': ['#b060ff', '#f0d8ff'], 'hyperspace-fury': ['#8030c0', '#ffb0ff'],
+  'diamond-storm': ['#c8f0ff', '#ff9fe0'], 'ancient-power': ['#b08040', '#f0d8a0'],
+  'seed-flare': ['#70e040', '#f8ffb0'], 'leaf-storm': ['#40c040', '#d0ffb0'], 'jungle-healing': ['#30a050', '#c0ffa0'], 'ivy-cudgel': ['#50c050', '#e0ffb0'],
+  psystrike: ['#ff60ff', '#ffe0ff'], 'expanding-force': ['#e070ff', '#ffe8ff'], 'psycho-boost': ['#ff7040', '#ffe0c0'], 'mystical-power': ['#a080ff', '#f0e8ff'],
+  'lunar-blessing': ['#ffc0f0', '#fff8ff'], 'take-heart': ['#ff80a0', '#fff0f4'], 'mist-ball': ['#ff90c0', '#fff0f8'], 'luster-purge': ['#6090ff', '#e8f0ff'], 'astral-barrage': ['#6040c0', '#e0d8ff'],
+  'dark-void': ['#301040', '#a070ff'], 'relic-song': ['#ffb0e0', '#ffffff'],
+  'bleakwind-storm': ['#a0d8ff', '#ffffff'], 'wildbolt-storm': ['#ffe040', '#ffffff'], 'sandsear-storm': ['#d09050', '#ffe0a0'],
+};
+const lcol = (m, def) => LCOL[m?.id] ?? def;
 const segDist = (px, py, x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, l = dx * dx + dy * dy || 1, u = clamp(((px - x1) * dx + (py - y1) * dy) / l, 0, 1); return Math.hypot(px - x1 - u * dx, py - y1 - u * dy); };
 
 // ---------- 그리기 ----------
 function drawLegendFx(f, k) {
+  if (f.kind === 'lswing') {
+    // 칼: 굵은 초승달이 한쪽에서 반대쪽으로 쓸고 지나간다 / 주먹: 앞쪽에 주먹 충격이 터진다
+    const kk = clamp((k * f.max - f.d) / (f.max - f.d), 0, 1);
+    if (kk <= 0) return;
+    const cy = f.y - 20;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    if (f.sword) {
+      const a0 = f.a - f.half, a1 = f.a - f.half + f.half * 2 * Math.min(1, kk * 2.2);
+      for (const [w, c, al] of [[26, f.c1, 0.55], [10, f.c2, 0.95]]) {
+        ctx.globalAlpha = al * (1 - Math.max(0, kk - 0.5) * 2); ctx.strokeStyle = c; ctx.lineWidth = w * (1 - kk * 0.4); ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(f.x, cy, f.R * 0.82, a0, a1); ctx.stroke();
+      }
+      ctx.globalAlpha = 0.5 * (1 - kk); ctx.fillStyle = f.c1; ctx.beginPath(); ctx.moveTo(f.x, cy); ctx.arc(f.x, cy, f.R, a0, a1); ctx.closePath(); ctx.fill();
+    } else {
+      const r = f.R * (0.55 + kk * 0.45), x = f.x + Math.cos(f.a) * r, y = cy + Math.sin(f.a) * r;
+      ctx.globalAlpha = 1 - kk; ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(x, y, 26 * (1 - kk * 0.3), 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = f.c2; ctx.beginPath(); ctx.arc(x, y, 12 * (1 - kk * 0.5), 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = f.c2; ctx.lineWidth = 3;
+      for (let i = 0; i < 6; i++) { const g = f.a + (i - 2.5) * 0.45, r1 = 22 + kk * 30, r2 = r1 + 16; ctx.beginPath(); ctx.moveTo(x + Math.cos(g) * r1, y + Math.sin(g) * r1); ctx.lineTo(x + Math.cos(g) * r2, y + Math.sin(g) * r2); ctx.stroke(); }
+      ctx.globalAlpha = 0.6 * (1 - kk); ctx.lineWidth = 8; ctx.strokeStyle = f.c1; ctx.beginPath(); ctx.moveTo(f.x, cy); ctx.lineTo(x, y); ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
   if (f.kind === 'lflash') { ctx.globalAlpha = (1 - k) * 0.45; ctx.fillStyle = f.c1; ctx.fillRect(f.x - 1400, f.y - 1000, 2800, 2000); ctx.globalAlpha = 1; }
   if (f.kind === 'lnova') {
     // 겹겹이 퍼지는 고리 + 빛줄기 + 가운데 섬광
@@ -87,20 +124,26 @@ function drawLegendFx(f, k) {
 function legendHit(e, big) {
   const p = player, s = fxScale();
   // 크로스썬더·볼트로스 등: 하늘에서 내리꽂히는 낙뢰, 옆 적에게 번개가 이어짐
+  // 전자포: 전기 구슬이 터지며 오래 마비 / 방전: 연쇄가 더 멀리·많이 / 프리즈볼트: 얼음 낙뢰라 얼린다 / 플라스마피스트: 주먹이 맞을 때마다
   if (hasFx('smite') && Math.random() < (combo('thundergod') ? 0.65 : 0.45)) {
-    damage(e, p.dmg * 3, 'electric', false, true); e.stun = Math.max(e.stun ?? 0, 0.4);
-    fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1: '#ffe040', c2: '#ffffff', bolt: true, t: 0.4, max: 0.4, d: 0 }); shake = Math.max(shake, 0.12);
-    for (const o of enemiesNear(e.x, e.y, 190, e).slice(0, combo('thundergod') ? 4 : 3)) { damage(o, p.dmg * 1.2, 'electric', false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.2 }); }
+    const m = lmove('smite'), [c1, c2] = lcol(m, ['#ffe040', '#ffffff']), t = m?.type ?? 'electric', dis = m?.id === 'discharge';
+    damage(e, p.dmg * 3, t, false, true); e.stun = Math.max(e.stun ?? 0, m?.id === 'zap-cannon' ? 1 : 0.4);
+    if (m?.id === 'freeze-shock' && !isBig(e)) e.frozen = Math.max(e.frozen ?? 0, 1.2);
+    if (m?.id === 'zap-cannon') fx.push({ kind: 'lnova', x: e.x, y: e.y, r: 60 * s, c1, c2, t: 0.35, max: 0.35 });
+    fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1, c2, bolt: true, t: 0.4, max: 0.4, d: 0 }); shake = Math.max(shake, 0.12);
+    for (const o of enemiesNear(e.x, e.y, dis ? 260 : 190, e).slice(0, (combo('thundergod') ? 4 : 3) + (dis ? 2 : 0))) { damage(o, p.dmg * 1.2, t, false, true); fx.push({ kind: 'zap', x: e.x, y: e.y, x2: o.x, y2: o.y, t: 0.2 }); }
   }
   // 공간절단: 맞힌 자리의 공간이 X자로 찢어지고, 균열에 닿은 적을 모두 벤다 (차원 절단 조합이면 4줄, 범위·피해 x2)
   if (hasFx('rend') && lcd('rend', 0.18)) {
-    const dim = combo('dimension'), L = 220 * s * (dim ? 1.6 : 1), a0 = Math.random() * Math.PI, n = dim ? 4 : 2;
+    const m = lmove('rend'), [c1, c2] = lcol(m, ['#ff6ad5', '#ffe2f6']), rt = m?.type ?? 'dragon';
+    const dim = combo('dimension'), L = 220 * s * (dim ? 1.6 : 1), a0 = Math.random() * Math.PI, n = dim ? 4 : m?.id === 'hyperspace-fury' ? 3 : 2;
+    if (m?.id === 'hyperspace-hole' || m?.id === 'hyperspace-fury') fx.push({ kind: 'lnova', x: e.x, y: e.y, r: 50 * s, c1, c2, t: 0.35, max: 0.35 });  // 후파의 고리
     for (let i = 0; i < n; i++) {
       const a = a0 + i * Math.PI / n, x1 = e.x - Math.cos(a) * L / 2, y1 = e.y - Math.sin(a) * L / 2, x2 = e.x + Math.cos(a) * L / 2, y2 = e.y + Math.sin(a) * L / 2;
-      rift(e.x, e.y, a, L, '#ff6ad5', '#ffe2f6', 0.45);
-      for (const o of map.enemies) if (o !== e && o.hp > 0 && segDist(o.x, o.y, x1, y1, x2, y2) < 34 + o.r) damage(o, p.dmg * 1.1 * (dim ? 2 : 1), 'dragon', false, true);
+      rift(e.x, e.y, a, L, c1, c2, 0.45);
+      for (const o of map.enemies) if (o !== e && o.hp > 0 && segDist(o.x, o.y, x1, y1, x2, y2) < 34 + o.r) damage(o, p.dmg * 1.1 * (dim ? 2 : 1), rt, false, true);
     }
-    damage(e, p.dmg * 0.6 * (dim ? 2 : 1), 'dragon', false, true);
+    damage(e, p.dmg * 0.6 * (dim ? 2 : 1), rt, false, true);
   }
   // 단애의칼·사우전드애로: 적 쪽으로 바위 칼날이 줄지어 솟는다
   if (hasFx('erupt') && p.eruptCd <= 0) {
@@ -115,15 +158,16 @@ function legendHit(e, big) {
   }
   // 시드플레어: 맞힌 자리에서 빛이 터져 둥글게 퍼진다
   if (hasFx('flare') && lcd('flare', 0.15)) {
-    const R = 75 * s * (combo('bloom') ? 1.6 : 1);
-    fx.push({ kind: 'lnova', x: e.x, y: e.y, r: R, c1: '#70e040', c2: '#f8ffb0', t: 0.45, max: 0.45 });
+    const m = lmove('flare'), [c1, c2] = lcol(m, ['#70e040', '#f8ffb0']), R = 75 * s * (combo('bloom') ? 1.6 : 1) * (m?.id === 'leaf-storm' ? 1.3 : 1);
+    fx.push({ kind: 'lnova', x: e.x, y: e.y, r: R, c1, c2, t: 0.45, max: 0.45 });
     for (const o of enemiesNear(e.x, e.y, R, e)) damage(o, p.dmg * 1.1 * (combo('bloom') ? 1.5 : 1), 'grass', false, true);
   }
   // 사이코브레이크·미스트볼·러스터퍼지: 적 둘레에 염동파가 모여들어 터진다
   if (hasFx('psy') && lcd('psy', 0.2)) {
-    const R = 60 * s * (combo('psybreak') ? 1.5 : 1);
-    fx.push({ kind: 'lnova', x: e.x, y: e.y, r: R, c1: '#ff60ff', c2: '#ffe0ff', t: 0.4, max: 0.4 });
-    for (const o of [e, ...enemiesNear(e.x, e.y, R, e)]) damage(o, p.dmg * (combo('psybreak') ? 0.9 : 0.5), 'psychic', false, true);
+    const m = lmove('psy'), [c1, c2] = lcol(m, ['#ff60ff', '#ffe0ff']), big2 = m?.id === 'expanding-force' ? 1.5 : 1, boost = m?.id === 'psycho-boost' ? 1.6 : 1;
+    const R = 60 * s * (combo('psybreak') ? 1.5 : 1) * big2;
+    fx.push({ kind: 'lnova', x: e.x, y: e.y, r: R, c1, c2, t: 0.4, max: 0.4 });
+    for (const o of [e, ...enemiesNear(e.x, e.y, R, e)]) damage(o, p.dmg * (combo('psybreak') ? 0.9 : 0.5) * boost, m?.type ?? 'psychic', false, true);
   }
   // 성스러운불꽃·푸른불꽃 계열: 가끔 불기둥이 솟아 태운다
   if (hasFx('holyBurn') && lcd('holy', 0.5) && Math.random() < 0.5) {
@@ -138,8 +182,46 @@ function legendHit(e, big) {
   }
   // 다이아스톰: 맞힌 자리에서 다이아가 사방으로 흩날린다
   if (hasFx('shard') && Math.random() < (combo('diamond') ? 0.6 : 0.4)) {
-    for (let i = 0, n = combo('diamond') ? 10 : 7; i < n; i++) playerShot(e.x, e.y, i / n * Math.PI * 2 + Math.random() * 0.5, { type: 'rock', mul: 0.7, r: 7, life: 0.4, hit: new Set([e]), color: '#e8f8ff', accent: '#ff9fe0' });
-    fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1: '#c8f0ff', c2: '#ff9fe0', gem: true, t: 0.45, max: 0.45, d: 0 });
+    const [c1, c2] = lcol(lmove('shard'), ['#c8f0ff', '#ff9fe0']);
+    for (let i = 0, n = combo('diamond') ? 10 : 7; i < n; i++) playerShot(e.x, e.y, i / n * Math.PI * 2 + Math.random() * 0.5, { type: 'rock', mul: 0.7, r: 7, life: 0.4, hit: new Set([e]), color: c1, accent: c2 });
+    fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1, c2, gem: true, t: 0.45, max: 0.45, d: 0 });
+  }
+  // 파멸의소원: 맞힌 자리에 잠시 뒤 하늘에서 거대한 빛이 떨어진다
+  if (hasFx('doom') && lcd('doom', 0.7)) {
+    pstrikes.push({ x: e.x, y: e.y, t: 0.9, r: 80 * s, mul: 2.4, type: 'steel' });
+    fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1: '#d8e8ff', c2: '#ffffff', t: 1.3, max: 1.3, d: 0.85 });
+    fx.push({ kind: 'lnova', x: e.x, y: e.y, r: 30, c1: '#a0b8ff', c2: '#ffffff', t: 0.9, max: 0.9 });
+  }
+  // 다크홀·옛노래: 적을 잠재운다 (잠든 적에게 피해 x1.3, 보스는 짧게)
+  if (hasFx('void') && lcd('void', 0.6) && Math.random() < 0.35) {
+    const m = lmove('void'), [c1, c2] = lcol(m, ['#301040', '#a070ff']), R = 90 * s;
+    fx.push({ kind: 'lnova', x: e.x, y: e.y, r: R, c1, c2, t: 0.5, max: 0.5 });
+    for (const o of [e, ...enemiesNear(e.x, e.y, R, e)]) { const t2 = isBig(o) ? 0.5 : 1.6; o.stun = Math.max(o.stun ?? 0, t2); o.sleep = p.time + t2 + 2; }
+    say('잠들었다!', e.x, e.y - 60, c2);
+  }
+  // 심판의뭉치: 하늘에서 빛의 화살이 주위로 쏟아진다. 타입은 플레이트(아르세우스의 지금 타입)
+  if (hasFx('judge') && lcd('judge', 0.4)) {
+    const t = p.formType?.split(',')[0] ?? 'normal', c = TYPE_COLOR[t];
+    for (let i = 0; i < 4; i++) {
+      const x = e.x + (i ? Math.cos(i * 2.1) * 70 : 0), y = e.y + (i ? Math.sin(i * 2.1) * 45 : 0);
+      pstrikes.push({ x, y, t: 0.15 + i * 0.08, r: 40 * s, mul: 0.8, type: t });
+      fx.push({ kind: 'lstrike', x, y, c1: c, c2: '#ffffff', t: 0.4 + i * 0.08, max: 0.4 + i * 0.08, d: 0.1 + i * 0.08 });
+    }
+  }
+  // 찬바람폭풍·번개폭풍·열사의폭풍: 맞힌 자리에 소용돌이 (느려짐·마비·화상)
+  if (hasFx('storm') && lcd('storm', 0.3)) {
+    const m = lmove('storm'), [c1, c2] = lcol(m, ['#a0d8ff', '#ffffff']), R = 80 * s;
+    fx.push({ kind: 'lnova', x: e.x, y: e.y, r: R, c1, c2, t: 0.45, max: 0.45 });
+    for (const o of [e, ...enemiesNear(e.x, e.y, R, e)]) {
+      damage(o, p.dmg * 0.8, m.type, false, true);
+      if (m.type === 'flying') o.slow = Math.max(o.slow ?? 0, 2); else if (m.type === 'electric' && Math.random() < 0.3) o.stun = Math.max(o.stun ?? 0, 0.6); else if (m.type === 'ground') o.burn = Math.max(o.burn ?? 0, 3);
+    }
+  }
+  // V제너레이트: 맞힌 자리에서 작은 불꽃이 터진다
+  if (hasFx('vcreate') && lcd('vcreate', 0.2)) {
+    fx.push({ kind: 'boom', x: e.x, y: e.y, r: 45 * s, t: 0.25, max: 0.25, color: '#ff6020' });
+    for (const o of enemiesNear(e.x, e.y, 45 * s, e)) damage(o, p.dmg * 0.6, 'fire', false, true);
+    e.burn = Math.max(e.burn ?? 0, 2);
   }
   // 시간의포효: 공격할 때마다 일그러지는 파동이 퍼진다
   if (hasFx('timeStop') && lcd('roar', 0.9)) {
@@ -167,10 +249,12 @@ function legendHit(e, big) {
 function legendBeamHit(e) {
   const p = player, lb = [...p.moves].map(moveDef).filter(m => m?.legend && m.fx === 'beam').at(-1);
   if (!lb || !lcd('beamfx', 0.35)) return false;
-  const pillar = { 'photon-geyser': ['#ffe880', '#ffffff'], 'tera-starstorm': ['#c0a0ff', '#fff8ff'], 'blue-flare': ['#40a0ff', '#e0f4ff'] }[lb.id];
+  const pillar = { 'photon-geyser': ['#ffe880', '#ffffff'], 'tera-starstorm': ['#c0a0ff', '#fff8ff'], 'blue-flare': ['#40a0ff', '#e0f4ff'], scald: ['#60c0ff', '#ffffff'],
+    'steam-eruption': ['#e0f0ff', '#ffffff'], 'light-that-burns-the-sky': ['#fff0a0', '#ffffff'] }[lb.id];
   if (pillar) fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1: pillar[0], c2: pillar[1], t: 0.5, max: 0.5, d: 0 });
   else fx.push({ kind: 'lnova', x: e.x, y: e.y, r: 70, c1: TYPE_COLOR[lb.type], c2: '#ffffff', t: 0.4, max: 0.4 });
-  for (const o of [e, ...enemiesNear(e.x, e.y, 60, e)]) damage(o, p.dmg * 0.9, lb.type, false, true);
-  if (lb.id === 'blue-flare') e.burn = Math.max(e.burn ?? 0, 3);
+  const bt = lb.id === 'techno-blast' ? curForm()?.shotType ?? 'normal' : lb.type;
+  for (const o of [e, ...enemiesNear(e.x, e.y, 60, e)]) damage(o, p.dmg * 0.9, bt, false, true);
+  if (lb.id === 'blue-flare' || (lb.id === 'scald' || lb.id === 'steam-eruption') && Math.random() < 0.4) e.burn = Math.max(e.burn ?? 0, 3);
   return false;
 }

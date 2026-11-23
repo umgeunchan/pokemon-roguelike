@@ -219,23 +219,61 @@ const curForm = () => LEGEND_FORMS[player?.legendForm];
 const formStat = k => curForm()?.[k] ?? 1;
 // 아르세우스는 플레이트로 타입이 바뀐다: 받는 피해 상성·테라피스에 쓰는 내 타입
 const myTypes = () => player?.formType ? player.formType.split(',') : player?.mon.types ?? [];
+// 폼이 바뀔 때 배우는 기술 [배우는 기술, 잊는 기술들]. 예: 우라오스는 악의 족자면 암흑강타, 물의 족자면 수류연타 (다른 쪽은 잊는다)
+// 이미 아는 기술이면 그대로. 기술이 가득 차 있으면 하나를 잊을지 고르는 화면이 뜬다
+const FORM_MOVES = {
+  'urshifu-single-strike': ['wicked-blow', ['surging-strikes']], 'urshifu-rapid-strike': ['surging-strikes', ['wicked-blow']],
+  'calyrex-ice': ['glacial-lance', ['astral-barrage']], 'calyrex-shadow': ['astral-barrage', ['glacial-lance']],
+  'hoopa-unbound': ['hyperspace-fury', ['hyperspace-hole']], 'kyurem-black': ['freeze-shock', ['glaciate']],
+  'necrozma-dusk': ['sunsteel-strike'], 'necrozma-dawn': ['moongeist-beam'], 'necrozma-ultra': ['light-that-burns-the-sky'],
+  'zacian-crowned': ['behemoth-blade'], 'zamazenta-crowned': ['behemoth-bash'], 'keldeo-resolute': ['secret-sword'], 'meloetta-pirouette': ['relic-song'],
+  'dialga-origin': ['roar-of-time'], 'palkia-origin': ['spacial-rend'], 'giratina-origin': ['shadow-force'], 'kyogre-primal': ['origin-pulse'], 'groudon-primal': ['precipice-blades'],
+  'rayquaza-mega': ['dragon-ascent'], 'shaymin-sky': ['seed-flare'], 'terapagos-stellar': ['tera-starstorm'], 'eternatus-eternamax': ['eternabeam'], 'zygarde-complete': ['thousand-arrows'],
+};
+for (const [k, f] of Object.entries(LEGEND_FORMS)) {
+  const fm = FORM_MOVES[k] ?? (f.mon === 386 ? ['psycho-boost'] : f.mon === 493 ? ['judgment'] : f.mon === 649 ? ['techno-blast'] : f.mon === 1017 ? ['ivy-cudgel'] : null);
+  if (fm) { f.move = fm[0]; f.drop = fm[1] ?? []; }
+}
+// 네크로즈마: 황혼의 갈기·새벽의 날개(1단계) < 울트라네크로즈마(2단계). 같거나 낮은 단계의 도구를 더 먹으면 모습은 그대로 두고 그 기술만 배운다
+// (예전에는 울트라네크로즈마가 된 뒤 솔라라이저를 먹으면 황혼의 갈기로 되돌아가 화력 x1.5가 풀렸다)
+Object.assign(LEGEND_FORMS['necrozma-dusk'], { rank: 1 }); Object.assign(LEGEND_FORMS['necrozma-dawn'], { rank: 1 }); Object.assign(LEGEND_FORMS['necrozma-ultra'], { rank: 2 });
 // 도구 설명에 전용 효과를 덧붙인다 (같은 도구를 여러 포켓몬이 쓰면 한 줄로)
 for (const it of ITEMS) {
   const fs = formsOf(it.id);
   if (!fs.length) continue;
   const f = fs[0], bases = [...new Set(fs.map(f => f.base))].join('·');
-  it.desc += ` · ${bases} 전용: ${f.note ?? `${f.name}(으)로 변신, 화력 x${f.mega ? +(f.mul * 1.5).toFixed(2) : f.mul}`}`;
+  const mv = f.move && LTMS.find(t => t.id === f.move);
+  it.desc += ` · ${bases} 전용: ${f.note ?? `${f.name}(으)로 변신, 화력 x${f.mega ? +(f.mul * 1.5).toFixed(2) : f.mul}`}${mv && fs.length === 1 ? `, ${mv.name} 습득` : ''}`;
 }
 // 도구를 주운 뒤 부른다 (update.js)
+// 폼의 기술: 잊을 기술을 먼저 잊고, 새 기술을 배운다 (가득 차 있으면 고르는 화면)
+function formMove(f, drop) {
+  const p = player;
+  if (drop) for (const id of f.drop ?? []) {
+    if (!p.moves.has(id) || id === f.move) continue;
+    withDelta(() => { p.moves.delete(id); p.items = p.items.filter(it => it.id !== id); if (p.zMove === id) p.zMove = f.move; refreshFx(); });
+    say(`${moveDef(id).name}을(를) 잊었다`, p.x, p.y - 130, '#ccc');
+  }
+  if (!f.move || p.moves.has(f.move)) return;
+  if (p.moves.size < MAX_MOVES) { learnMove(f.move); say(`${moveDef(f.move).name}을(를) 배웠다!`, p.x, p.y - 110, '#fd6'); }
+  else { learnTm = { kind: 'tm', tm: moveDef(f.move), x: p.x, y: p.y }; state = 'learn'; }
+}
 function checkLegendForm(itemId) {
   const p = player, key = formFor(itemId, p.mon.id), f = LEGEND_FORMS[key];
   if (!f || p.legendForm === key) return;
+  const cur = curForm();
+  if (cur && f.rank && cur.mon === f.mon && (cur.rank ?? 0) >= f.rank) {
+    formMove(f, false);
+    banner = { text: `${cur.name}의 모습은 그대로! ${f.move ? `${moveDef(f.move).name}의 힘만 받아들였다` : ''}`, t: 3.5, glow: '#ffd060' };
+    return;
+  }
   withDelta(() => {
     p.legendForm = key; if (f.mega) p.mega = true; if (f.hp) { p.maxHp += f.hp; p.hp += f.hp; }
     p.formType = f.types?.join(',') ?? f.type ?? null; p.type = f.type ?? f.shotType ?? p.mon.types[0];
   });
   gimmickFx('mega'); gimmickFx('legendForm'); sfx('evolve'); shake = 0.6;
   banner = { text: f.say, t: 4, glow: '#ffd060' };
+  formMove(f, true);
   loadFormArt();
 }
 // 모습이 그대로인 전용 도구(form: null)는 메가진화했으면 메가 이름을 그대로 쓴다

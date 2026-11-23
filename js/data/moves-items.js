@@ -246,7 +246,7 @@ const LTMS = [
   L('fusion-bolt', 'electric', 'smite', '강화 · 낙뢰, 연쇄 번개'),
   L('sheer-cold', 'ice', 'freeze', '강화 · 얼림'),
   L('sunsteel-strike', 'steel', 'blade', '강화 · 관통, 보스에게 강함'),
-  L('behemoth-blade', 'steel', 'blade', '강화 · 관통, 보스에게 강함'),
+  L('behemoth-blade', 'steel', 'blade', '검을 크게 휘둘러 벰, 검기가 날아감, 보스에게 강함'),
   L('behemoth-bash', 'steel', 'bulwark', '강화 · 피해 감소, 방패'),
   L('geomancy', 'fairy', 'geo', '강화 · 능력치 상승, 주기적 강화'),
   L('oblivion-wing', 'flying', 'drain', '강화 · 체력 흡수'),
@@ -257,33 +257,79 @@ const LTMS = [
   L('photon-geyser', 'psychic', 'beam', '광선 · 아주 강한 빛'),
   L('glacial-lance', 'ice', 'freeze', '강화 · 얼림'),
   L('astral-barrage', 'ghost', 'psy', '탄 · 강한 유도, 관통'),
-  L('wicked-blow', 'dark', 'blade', '강화 · 관통, 보스에게 강함'),
-  L('surging-strikes', 'water', 'fan5', '강화 · 파동 5갈래 추가'),
+  L('wicked-blow', 'dark', 'blade', '강한 주먹 한 방, 늘 급소급, 보스에게 강함'),
+  L('surging-strikes', 'water', 'fan5', '물의 주먹 3연타(늘 급소), 물결 갈래 추가'),
   L('ivy-cudgel', 'grass', 'flare', '강화 · 맞으면 폭발'),
   L('tera-starstorm', 'normal', 'beam', '광선 · 별빛, 아주 강함'),
+  // 2026-11-23: 전설·환상마다 실제 전용기(없으면 실제로 배우는 상징 기술)
+  L('zap-cannon', 'electric', 'smite', '전기 구슬이 터지며 마비, 낙뢰'),
+  L('sky-attack', 'flying', 'dashStrike', '돌진 · 불새가 되어 들이받음, 자동 조준'),
+  L('expanding-force', 'psychic', 'psy', '탄 · 강한 유도, 관통, 넓은 염동 폭발'),
+  L('discharge', 'electric', 'smite', '주위로 방전, 연쇄 번개, 마비'),
+  L('scald', 'water', 'beam', '광선 · 뜨거운 물, 화상'),
+  L('leaf-storm', 'grass', 'flare', '잎사귀 폭풍이 터짐'),
+  L('ancient-power', 'rock', 'shard', '바위 파편이 흩날림, 급소'),
+  L('frost-breath', 'ice', 'freeze', '얼림, 급소 +30%'),
+  L('heavy-slam', 'steel', 'bulwark', '피해 감소, 부딪힌 적에게 큰 피해'),
+  L('doom-desire', 'steel', 'doom', '잠시 뒤 하늘에서 거대한 빛이 떨어짐'),
+  L('psycho-boost', 'psychic', 'psy', '탄 · 강한 유도, 관통, 아주 강한 염동 폭발'),
+  L('mystical-power', 'psychic', 'psy', '탄 · 강한 유도, 관통'),
+  L('lunar-blessing', 'psychic', 'psy', '탄 · 강한 유도, 12초마다 체력 회복'),
+  L('take-heart', 'psychic', 'psy', '탄 · 강한 유도, 상태이상 무시, 급소 +10%'),
+  L('dark-void', 'dark', 'void', '적을 잠재움, 잠든 적에게 피해 x1.3'),
+  L('judgment', 'normal', 'judge', '하늘에서 빛의 화살이 쏟아짐, 타입은 플레이트를 따름'),
+  L('v-create', 'fire', 'vcreate', 'V자로 화염이 함께 나감'),
+  L('bleakwind-storm', 'flying', 'storm', '찬바람 소용돌이, 느려짐'),
+  L('wildbolt-storm', 'electric', 'storm', '번개 소용돌이, 마비'),
+  L('sandsear-storm', 'ground', 'storm', '열사 소용돌이, 화상'),
+  L('glaciate', 'ice', 'freeze', '얼림, 주변 적 느려짐'),
+  L('freeze-shock', 'ice', 'smite', '얼음 낙뢰, 얼림'),
+  L('secret-sword', 'fighting', 'blade', '칼을 휘둘러 벰, 검기가 날아감'),
+  L('relic-song', 'normal', 'void', '노래로 적을 잠재움, 잠든 적에게 피해 x1.3'),
+  L('techno-blast', 'normal', 'beam', '광선 · 타입은 카세트를 따름'),
+  L('hyperspace-hole', 'psychic', 'rend', '이차원의 구멍이 열려 공간째 공격'),
+  L('hyperspace-fury', 'dark', 'rend', '이차원의 고리에서 주먹이 쏟아짐'),
+  L('steam-eruption', 'water', 'beam', '광선 · 뜨거운 증기, 화상'),
+  L('fleur-cannon', 'fairy', 'beam', '광선 · 꽃의 대포, 아주 강함'),
+  L('spectral-thief', 'ghost', 'blade', '그림자 주먹, 맞히면 잠깐 공격 상승'),
+  L('plasma-fists', 'electric', 'smite', '번개 주먹, 낙뢰, 연쇄 번개'),
+  L('jungle-healing', 'grass', 'flare', '맞으면 폭발, 쓰러뜨리면 회복'),
+  L('light-that-burns-the-sky', 'psychic', 'beam', '광선 · 멸망의 빛, 아주 거대함'),
 ];
+// 휘둘러 치는 기술: 공격 방식이 '베기'(칼) 또는 '주먹'이 된다. 앞쪽 부채꼴을 직접 치고, 칼은 검기·주먹은 충격파가 조금 날아간다
+const SWING = { 'behemoth-blade': 'sword', 'secret-sword': 'sword', 'wicked-blow': 'fist', 'surging-strikes': 'fist', 'spectral-thief': 'fist', 'plasma-fists': 'fist' };
+// 준전설: 전설·환상보다 조금 약하게 다룬다 (플레이어일 때 전설의 기운 x1.15, 상대일 때 체력 x0.75)
+const SUB_LEGENDS = new Set([144, 145, 146, 243, 244, 245, 377, 378, 379, 380, 381, 480, 481, 482, 488, 641, 642, 645, 785, 786, 787, 788, 892, 1001, 1002, 1003, 1004, 1017]);
+const isSubLegend = id => SUB_LEGENDS.has(id);
+const MYTHICAL = new Set([151, 251, 385, 386, 489, 490, 491, 492, 493, 494, 647, 648, 649, 719, 720, 721, 801, 802, 807, 808, 809, 893, 1025]);
 // 전설 기술 한국어 이름 (PokeAPI에 한국어 이름이 없을 때 대신 쓴다)
 const LEGEND_KO = { psystrike: '사이코브레이크', 'mist-ball': '미스트볼', 'luster-purge': '러스터퍼지', aeroblast: '에어로블라스트', 'blue-flare': '푸른불꽃', 'moongeist-beam': '섀도레이',
   eternabeam: '무한다이빔', 'sacred-fire': '성스러운불꽃', 'origin-pulse': '근원의파동', 'precipice-blades': '단애의칼', 'thousand-arrows': '사우전드애로', 'dragon-ascent': '화룡점정',
   'collision-course': '액셀브레이크', 'electro-drift': '라이트닝드라이브', 'roar-of-time': '시간의포효', 'spacial-rend': '공간절단', 'shadow-force': '섀도다이브', 'fusion-bolt': '크로스썬더',
   'sheer-cold': '절대영도', 'sunsteel-strike': '메테오드라이브', 'behemoth-blade': '거대검돌격', 'behemoth-bash': '거대방패돌격', geomancy: '지오컨트롤', 'oblivion-wing': '데스윙',
   'seed-flare': '시드플레어', 'natures-madness': '자연의분노', ruination: '카타스트로피', 'diamond-storm': '다이아스톰',
-  'photon-geyser': '포톤가이저', 'glacial-lance': '블리자드랜스', 'astral-barrage': '아스트랄비트', 'wicked-blow': '암흑강타', 'surging-strikes': '수류연타', 'ivy-cudgel': '덩굴방망이', 'tera-starstorm': '테라클러스터' };
+  'photon-geyser': '포톤가이저', 'glacial-lance': '블리자드랜스', 'astral-barrage': '아스트랄비트', 'wicked-blow': '암흑강타', 'surging-strikes': '수류연타', 'ivy-cudgel': '덩굴방망이', 'tera-starstorm': '테라클러스터',
+  'zap-cannon': '전자포', 'sky-attack': '불새', 'expanding-force': '와이드포스', discharge: '방전', scald: '열탕', 'leaf-storm': '리프스톰', 'ancient-power': '원시의힘',
+  'frost-breath': '얼음숨결', 'heavy-slam': '헤비봄버', 'doom-desire': '파멸의소원', 'psycho-boost': '사이코부스트', 'mystical-power': '신비의힘', 'lunar-blessing': '초승달의기도',
+  'take-heart': '브레이브차지', 'dark-void': '다크홀', judgment: '심판의뭉치', 'v-create': 'V제너레이트', 'bleakwind-storm': '찬바람폭풍', 'wildbolt-storm': '번개폭풍',
+  'sandsear-storm': '열사의폭풍', glaciate: '얼어붙은세계', 'freeze-shock': '프리즈볼트', 'secret-sword': '신비의칼', 'relic-song': '옛노래', 'techno-blast': '테크노버스터',
+  'hyperspace-hole': '이차원홀', 'hyperspace-fury': '이차원러시', 'steam-eruption': '스팀버스트', 'fleur-cannon': '플뢰르캐논', 'spectral-thief': '섀도스틸',
+  'plasma-fists': '플라스마피스트', 'jungle-healing': '정글힐', 'light-that-burns-the-sky': '하늘을태우는멸망의빛' };
 for (const t of LTMS) t.name = LEGEND_KO[t.id] ?? t.name;
 // 게임 안에서는 공격 방식(광선·원뿔·탄…) 말머리를 보여 주지 않는다. 효과만 남긴다
 for (const t of [...TMS, ...LTMS]) t.desc = t.desc.replace(/^(강화|광선|원뿔|구슬|탄|돌진|레이저|알폭탄|구르기) · /, '');
 // 전설의 포켓몬 → 상징적인 기술
-const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'fusion-bolt', 146: 'sacred-fire', 150: 'psystrike', 151: 'psystrike', 243: 'fusion-bolt', 244: 'sacred-fire', 245: 'origin-pulse',
-  249: 'aeroblast', 250: 'sacred-fire', 251: 'seed-flare', 377: 'thousand-arrows', 378: 'sheer-cold', 379: 'behemoth-bash', 380: 'mist-ball', 381: 'luster-purge',
-  382: 'origin-pulse', 383: 'precipice-blades', 384: 'dragon-ascent', 480: 'psystrike', 481: 'psystrike', 482: 'psystrike', 483: 'roar-of-time', 484: 'spacial-rend',
-  487: 'shadow-force', 488: 'psystrike', 641: 'aeroblast', 642: 'fusion-bolt', 643: 'blue-flare', 644: 'fusion-bolt', 645: 'thousand-arrows', 646: 'sheer-cold',
+const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'zap-cannon', 146: 'sky-attack', 150: 'psystrike', 151: 'expanding-force', 243: 'discharge', 244: 'sacred-fire', 245: 'scald',
+  249: 'aeroblast', 250: 'sacred-fire', 251: 'leaf-storm', 377: 'ancient-power', 378: 'frost-breath', 379: 'heavy-slam', 380: 'mist-ball', 381: 'luster-purge',
+  382: 'origin-pulse', 383: 'precipice-blades', 384: 'dragon-ascent', 480: 'mystical-power', 481: 'mystical-power', 482: 'mystical-power', 483: 'roar-of-time', 484: 'spacial-rend',
+  487: 'shadow-force', 488: 'lunar-blessing', 641: 'bleakwind-storm', 642: 'wildbolt-storm', 643: 'blue-flare', 644: 'fusion-bolt', 645: 'sandsear-storm', 646: 'glaciate',
   716: 'geomancy', 717: 'oblivion-wing', 718: 'thousand-arrows', 719: 'diamond-storm', 785: 'natures-madness', 786: 'natures-madness', 787: 'natures-madness',
   788: 'natures-madness', 791: 'sunsteel-strike', 792: 'moongeist-beam', 888: 'behemoth-blade', 889: 'behemoth-bash', 890: 'eternabeam',
   1001: 'ruination', 1002: 'ruination', 1003: 'ruination', 1004: 'ruination', 1007: 'collision-course', 1008: 'electro-drift',
   800: 'photon-geyser', 898: 'glacial-lance', 892: 'wicked-blow', 1017: 'ivy-cudgel', 1024: 'tera-starstorm',
   // 환상의 포켓몬: 지방 지도에는 없고 후파의 고리 너머에서만 만난다
-  385: 'psystrike', 386: 'psystrike', 490: 'origin-pulse', 491: 'ruination', 492: 'seed-flare', 493: 'geomancy', 494: 'blue-flare', 647: 'origin-pulse',
-  648: 'psystrike', 649: 'sunsteel-strike', 720: 'psystrike', 721: 'blue-flare', 801: 'sunsteel-strike', 802: 'shadow-force', 807: 'electro-drift', 893: 'seed-flare' };
+  385: 'doom-desire', 386: 'psycho-boost', 490: 'take-heart', 491: 'dark-void', 492: 'seed-flare', 493: 'judgment', 494: 'v-create', 647: 'secret-sword',
+  648: 'relic-song', 649: 'techno-blast', 720: 'hyperspace-hole', 721: 'steam-eruption', 801: 'fleur-cannon', 802: 'spectral-thief', 807: 'plasma-fists', 893: 'jungle-healing' };
 // 후파의 고리 너머에서 나올 수 있는 전설·환상의 포켓몬 전체
 const HOOPA_POOL = Object.keys(LEGEND_MOVE).map(Number);
 // 기술이 늘 주는 능력치 보너스(조건 없는 것만). 왼쪽 능력치 창과 실제 계산이 같은 값을 쓴다
@@ -292,7 +338,7 @@ const HOOPA_POOL = Object.keys(LEGEND_MOVE).map(Number);
 // 기술·특성·기믹의 배수는 아래 함수들로 늘 계산에 붙어서, 그 뒤에 얻은 도구에도 곱해진다
 const moveDmgMul = () => (has('flash-cannon') ? 1.2 : 1) * (has('focus-blast') ? 1.35 : 1) * (has('dragon-claw') ? 1.2 : 1)
   * (has('close-combat') ? 1.2 : 1) * (has('play-rough') ? 1.2 : 1) * (hasFx('blade') ? 1.5 : 1) * (hasFx('drain') ? 1.2 : 1) * orbPow() * kindPow() * (hasFx('geo') ? 1.3 : 1) * gimmickMul() * abMul() * legendPow;
-const moveCrit = () => (hasFx('rend') ? 0.15 : 0) + (hasFx('blade') ? 0.05 : 0) + (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0) + (hasFx('shard') ? 0.3 : 0) + abStat('crit', 0);
+const moveCrit = () => (hasFx('rend') ? 0.15 : 0) + (hasFx('blade') ? 0.05 : 0) + (has('crunch') ? 0.05 : 0) + (has('stone-edge') ? 0.2 : 0) + (hasFx('shard') ? 0.3 : 0) + (has('frost-breath') ? 0.3 : 0) + (has('take-heart') ? 0.1 : 0) + abStat('crit', 0);
 // 이동 속도 배수 (기술·특성): 지오컨트롤 x1.15, 액셀브레이크·라이트닝드라이브 x1.15, 특성
 const moveSpeed = () => (hasFx('geo') ? 1.15 : 1) * (has('collision-course') || has('electro-drift') ? 1.15 : 1) * abStat('speed') * formStat('spd');
 // 공격 사이 간격 배수 (작을수록 빠름): 구슬 하나마다 x1.2, 기합구슬은 더 느리다

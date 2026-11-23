@@ -68,7 +68,7 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
     * (hasFx('blade') && big ? 1.6 : 1) * (hasFx('madness') && big ? (combo('calamity') ? 1.6 : 1.4) : 1) * (timeStop > 0 && hasFx('timeStop') ? 1.5 : 1) * (has('moonblast') && big ? 1.3 : 1) * (has('earth-power') && big ? 1.25 : 1)
     * (combo('scorch') && dot ? 1.4 : 1) * (combo('quake') && big ? 1.35 : 1) * (combo('dragon') ? 1.25 : 1) * (combo('mind') && e.stun > 0 ? 1.5 : 1)
     * stab(type) * zTypeMul(type) * abDamageMul(type, near) * (has('close-combat') ? closeMul(e) : 1) * (has('play-rough') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1)
-    * (combo('inferno') && e.burn > 0 ? 1.5 : 1) * (combo('timewarp') && timeStop > 0 ? 2 : 1);
+    * (combo('inferno') && e.burn > 0 ? 1.5 : 1) * (combo('timewarp') && timeStop > 0 ? 2 : 1) * (hasFx('void') && (e.sleep ?? 0) > p.time ? 1.3 : 1) * ((p.thiefT ?? 0) > p.time ? 1.25 : 1);
   const crit = Math.random() < p.crit + extraCrit + moveCrit() + (combo('venom') && e.psn > 0 ? 0.25 : 0);
   if (crit) d *= (has('crunch') ? 2.2 : 1.5) * (abStat('sniper', false) ? 1.5 : 1);
   if (crit && combo('fang') && !tick && Math.random() < 0.15) heal(1);
@@ -168,6 +168,11 @@ function beamCfg() {
   if (has('blue-flare')) { type = 'fire'; mul = Math.max(mul, 2.6); }
   if (has('eternabeam')) { type = 'dragon'; mul = Math.max(mul, 3); wm *= 1.8; cm *= 1.5; }
   if (has('photon-geyser')) { type = 'psychic'; mul = Math.max(mul, 2.6); wm *= 1.3; }
+  if (has('scald')) { type = 'water'; mul = Math.max(mul, 2.2); }
+  if (has('steam-eruption')) { type = 'water'; mul = Math.max(mul, 2.6); wm *= 1.2; }
+  if (has('fleur-cannon')) { type = 'fairy'; mul = Math.max(mul, 2.8); wm *= 1.15; }
+  if (has('techno-blast')) { type = curForm()?.shotType ?? 'normal'; mul = Math.max(mul, 2.5); }  // 카세트를 꽂으면 그 타입
+  if (has('light-that-burns-the-sky')) { type = 'psychic'; mul = Math.max(mul, 3.2); wm *= 1.6; cm *= 1.4; }
   if (has('tera-starstorm')) { type = 'normal'; mul = Math.max(mul, 2.6); wm *= 1.2; }
   if (combo('lunar')) mul *= 1.4;
   if (combo('dynamax')) { cm *= 0.6; wm *= 1.3; }
@@ -178,9 +183,10 @@ function carrier() { return carrierOf([...player.moves]); }
 // 이 기술들을 가졌을 때의 공격 방식 (볼 근처에서 "공격 방식: 보통 탄 → 광선" 미리 보기에도 쓴다)
 function carrierOf(ids) {
   const h = id => ids.includes(id);
+  if (ids.some(id => SWING[id])) return 'slash';  // 칼·주먹 전용기는 휘둘러 친다
   return h('egg-bomb') ? 'bomb' : BEAMS.some(h) || ids.some(id => moveDef(id)?.fx === 'beam') ? 'beam' : LASERS.some(h) ? 'laser' : CONES.some(h) ? 'cone' : 'tear';
 }
-const CARRIER_KO = { bomb: '알폭탄', beam: '광선', laser: '레이저', cone: '원뿔', tear: '보통 탄' };
+const CARRIER_KO = { slash: '베기', bomb: '알폭탄', beam: '광선', laser: '레이저', cone: '원뿔', tear: '보통 탄' };
 const shotScale = () => clamp(1 + (player.dmg * legendPow - 3) * 0.05, 1, 2);
 const spread = () => has('pin-missile') ? [-0.26, 0, 0.26] : has('razor-leaf') ? [-0.12, 0.12] : [0];
 const chargeTime = () => player.fireDelay * 2.2 * beamCfg().cm * (has('bullet-seed') ? 0.6 : 1);
@@ -243,6 +249,34 @@ function fireCone(a, o = {}) {
   if (has('rock-slide') && !o.half) for (let i = 0; i < 3; i++) { const r = len * (0.4 + Math.random() * 0.6), aa = a + (Math.random() * 2 - 1) * half; pstrikes.push({ x: p.x + Math.cos(aa) * r, y: p.y + Math.sin(aa) * r, t: 0.3 + i * 0.12, r: 40 * s, mul: 0.8, type: 'rock' }); }
 }
 
+// 베기·주먹(거대검돌격·신비의칼·암흑강타·수류연타·섀도스틸·플라스마피스트): 앞쪽 부채꼴을 바로 친다
+// 칼은 넓게 휘두르고 검기가 날아가며, 주먹은 좁고 세게 치고 짧은 충격파가 나간다. 수류연타는 3연타, 암흑강타·수류연타는 늘 급소급
+const swingMove = () => [...player.moves].filter(id => SWING[id]).at(-1);
+function swingWave(a, o = {}) {
+  const p = player, id = swingMove(), d = moveDef(id), sword = SWING[id] === 'sword', s = fxScale(), col = TYPE_COLOR[d.type];
+  shootTear(a, { blade: true, r: (sword ? 13 : 9) * s, life: p.range * (sword ? 0.75 : 0.4), pierce: true, type: d.type, mul: (sword ? 0.8 : 0.6) * (o.mul ?? 1), color: col, accent: '#ffffff' });
+}
+function fireSlash(a, o = {}) {
+  const p = player, id = swingMove(), d = moveDef(id), sword = SWING[id] === 'sword', s = fxScale();
+  const R = (sword ? 110 : 80) * s + p.range * p.shotSpeed * 0.1, half = sword ? 1.05 : 0.55, hits = id === 'surging-strikes' ? 3 : 1;
+  const always = id === 'wicked-blow' || id === 'surging-strikes' ? 1 : 0, mul = (sword ? 1.5 : 1.8) / (hits > 1 ? 2.2 : 1) * (o.mul ?? 1);
+  const col = { 'behemoth-blade': ['#80c0ff', '#ffffff'], 'secret-sword': ['#40e0d0', '#f0fff8'], 'wicked-blow': ['#c02050', '#ffd0e0'], 'surging-strikes': ['#2a70ff', '#d0f0ff'],
+    'spectral-thief': ['#7040c0', '#e0c8ff'], 'plasma-fists': ['#ffe040', '#ffffff'] }[id] ?? [TYPE_COLOR[d.type], '#ffffff'];
+  for (let h = 0; h < hits; h++) fx.push({ kind: 'lswing', x: p.x, y: p.y, a: a + (h - (hits - 1) / 2) * 0.25, R, half, sword, c1: col[0], c2: col[1], t: 0.22 + h * 0.07, max: 0.22 + h * 0.07, d: h * 0.07 });
+  for (const e of [...map.enemies]) {
+    if (e.hp <= 0 || untargetable(e)) continue;
+    const dx = e.x - p.x, dy = e.y - p.y, dd = Math.hypot(dx, dy) || 1;
+    if (dd > R + e.r) continue;
+    const off = Math.abs(((Math.atan2(dy, dx) - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+    if (off > half + Math.atan2(e.r, dd) || losBlocked(p.x, p.y, e.x, e.y)) continue;
+    for (let h = 0; h < hits; h++) damage(e, p.dmg * mul, d.type, false, h > 0, always);
+    if (id === 'spectral-thief' && e.hp > 0) p.thiefT = p.time + 3;  // 섀도스틸: 상대의 힘을 빼앗아 잠깐 공격 x1.25
+    if (!isBig(e) && e.hp > 0 && !e.act) moveBody(e, dx / dd * (sword ? 30 : 50), dy / dd * (sword ? 30 : 50));
+  }
+  swingWave(a, o);
+  shake = Math.max(shake, sword ? 0.06 : 0.08);
+}
+
 const beamWidth = () => ((has('shadow-ball') ? 32 : 20) + (LASERS.some(has) ? 10 : 0)) * beamCfg().wm * shotScale();
 // 지금 공격 방식(탄·레이저·광선·원뿔·알) 그대로 a 방향으로 한 번 더 쏜다. 유전자쐐기(뒤로 한 발)·매지컬샤인(사방)·근원의파동(5갈래)이 모든 공격 방식에 적용되게
 // o.mul: 위력 배수, o.tear: 보통 탄일 때 덮어쓸 탄 속성, o.wide: 원뿔일 때 여러 갈래 대신 넓은 원뿔 하나(반각)
@@ -250,6 +284,7 @@ const doubleBeam = () => { const ids = [...player.moves], lb = ids.filter(id => 
 function fireAt(kind, a, o = {}) {
   const p = player, mul = o.mul ?? 1;
   if (kind === 'tear') shootTear(a, o.tear ?? {});
+  else if (kind === 'slash') swingWave(a, { mul });  // 갈래·뒤로 한 번 더는 검기·충격파만
   else if (kind === 'laser') fireLaser(a, { mul });
   else if (kind === 'beam') beams.push({ a, t: 0.4, tick: 0, w: beamWidth() * (mul < 1 ? 0.6 : 1), bounce: combo('psyflame'), mul });
   else if (kind === 'cone') fireCone(a, { mul, half: o.wide });
@@ -277,6 +312,7 @@ function attack(dt) {
   if (sd) p.face = faceRow(sd[0], sd[1]);
   // 어떤 공격 방식이든 공격할 때마다 붙는 추가 공격
   const waves = base => {
+    if (hasFx('vcreate')) for (const off of [-0.32, 0.32]) fireAt(kind === 'cone' ? 'tear' : kind, base + off, { mul: 0.8, tear: { type: 'fire', fire: true, r: 10, mul: 0.8, color: '#ff6020', accent: '#ffe080' } });
     if (hasFx('fan5')) {
       const offs = combo('tsunami') ? [-1.05, -0.7, -0.35, 0.35, 0.7, 1.05] : [-0.7, -0.35, 0.35, 0.7], m = combo('tsunami') ? 1.5 : 1.1;
       if (kind === 'cone') fireCone(base, { mul: m, half: Math.max(...offs) + 0.3 });  // 원뿔은 갈래 대신 아주 넓은 원뿔 하나
@@ -313,6 +349,7 @@ function attack(dt) {
   sfx('shot'); p.fired = true;
   const base = kind === 'bomb' ? aimAngle(sd) : touchAim(sd);
   if (kind === 'cone') fireCone(base);
+  else if (kind === 'slash') fireSlash(base);
   else for (const off of spread()) {
     const a = base + off;
     if (kind === 'bomb') {
@@ -324,8 +361,8 @@ function attack(dt) {
   }
   waves(base);
   // 유전자쐐기: 어떤 공격 방식이든 뒤로도 한 번 더 (바늘미사일·잎날가르기 갈래도 함께)
-  if (p.backShot) for (const off of kind === 'cone' ? [0] : spread()) fireAt(kind, base + Math.PI + off);
-  p.cd = p.fireDelay * (kind === 'bomb' ? 1.8 : kind === 'cone' ? 1.15 : 1) * moveRate() / (combo('gale') ? 1.25 : 1);
+  if (p.backShot) for (const off of kind === 'cone' || kind === 'slash' ? [0] : spread()) fireAt(kind, base + Math.PI + off);
+  p.cd = p.fireDelay * (kind === 'bomb' ? 1.8 : kind === 'cone' || kind === 'slash' ? 1.15 : 1) * moveRate() / (combo('gale') ? 1.25 : 1);
 }
 
 // 플레이어 광선·레이저는 장애물을 지나가고 건물/벽에서 멈춘다. 적의 광선은 장애물에도 막혀서 숨으면 피할 수 있다
@@ -409,7 +446,7 @@ function pathDir(e) {
 }
 
 const aimAt = (a, e) => { const p = player, d = Math.hypot(p.x - e.x, p.y - e.y) || 1; a.dx = (p.x - e.x) / d; a.dy = (p.y - e.y) / d; };
-const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) * (e.hoopa ? 0.85 : 1) * (e.weak > 0 ? 1.4 : 1) * (isBig(e) && legendStart() ? Math.min(1, diffAt(DIFF_CD, e.tier ?? 0)) : diffAt(DIFF_CD, e.tier ?? 0)) * abFoes(e) + Math.random() * 0.5;
+const cooldown = e => ({ wild: 2.5, trainer: 1.6, boss: 0.9, legend: 0.6 }[e.rank]) * (e.hp < e.maxHp / 2 ? 0.7 : 1) * (1 - 0.12 * (e.lvl ?? 0)) * (e.enraged ? 0.8 : 1) * (e.hoopa ? 0.85 : 1) * (e.sub ? 1.12 : 1) * (e.weak > 0 ? 1.4 : 1) * (isBig(e) && legendStart() ? Math.min(1, diffAt(DIFF_CD, e.tier ?? 0)) : diffAt(DIFF_CD, e.tier ?? 0)) * abFoes(e) + Math.random() * 0.5;
 // 관장·라이벌 등 보스급은 초반에도 공격 빈도를 늦추지 않는다 (DIFF_CD의 초반 완화는 잡몹·트레이너만)
 // 필살기(필살 일격·필살 광선) 피해: 체력 2칸, 마지막 단계(사천왕·챔피언·후반 전설)는 3칸
 const heavyDmg = e => (e.tier ?? 0) >= 7 ? 3 : 2;

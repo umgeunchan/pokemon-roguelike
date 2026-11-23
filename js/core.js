@@ -190,7 +190,9 @@ const expNeed = lv => Math.round(20 * 2 ** ((lv - 8) / 7));
 // 배지 0개(첫 체육관) ~ 4개까지 차례로. 숫자를 바꾸면 바로 반영된다
 // 전설로 시작한 판: 상대(관장·트레이너·라이벌·전설) 체력 x1.5, 관장 보상 체력은 반 칸. 일반 스타팅은 배지마다 1칸
 const legendStart = () => !!LEGEND_MOVE[player?.startId];
-const LEGEND_START_HP = 1.5;
+// 준전설로 시작한 판은 상대 체력 x1.3 (전설·환상보다 약하게 다루는 만큼 덜 단단하게)
+const LEGEND_START_HP = 1.5, SUB_START_HP = 1.3;
+const startHpMul = () => !legendStart() ? 1 : isSubLegend(player.startId) ? SUB_START_HP : LEGEND_START_HP;
 const badgeHp = () => legendStart() ? 1 : 2;
 const BOSS_HP_EARLY = [0.6, 0.65, 0.7, 0.78, 0.88];  // v2.6: 2~4단계(가장 많이 막히던 구간)를 조금 낮춤
 // 일반 스타팅은 배지 0~3개 구간 보스 체력을 0.8배 더 (봇 모의 테스트에서 2단계 관장전이 가장 길고 아팠다)
