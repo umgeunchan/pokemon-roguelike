@@ -102,7 +102,7 @@ const strikeAt = (e, a, x, y, r = 38, t = 0.9, o = {}) => thin(e, a) ? 0 : hz(e,
 // 장판: delay 동안 테두리로 예고, 그 뒤 dur 동안 밟으면 피해 (slow면 피해 대신 느려짐)
 const zoneAt = (e, a, x, y, r, delay, dur, o = {}) => thin(e, a) ? 0 : hz(e, a, { kind: 'zone', x, y, r, delay, delay0: delay, dur, ...o });
 // 선: t 동안 예고한 뒤 선 전체가 터진다
-const lineAt = (e, a, x, y, ang, len, w, t) => hz(e, a, { kind: 'line', x, y, a: ang, len, w, t, t0: t });
+const lineAt = (e, a, x, y, ang, len, w, t) => hz(e, a, { kind: 'line', x, y, a: ang, len: Math.hypot(x - e.x, y - e.y) < 40 ? Math.max(24, beamLen(x, y, Math.cos(ang), Math.sin(ang), true, len)) : len, w, t, t0: t });
 const lineThrough = (e, a, cx, cy, ang, len, w, t) => lineAt(e, a, cx - Math.cos(ang) * len / 2, cy - Math.sin(ang) * len / 2, ang, len, w, t);
 const ringShots = (e, a, n, sp, o = {}, off = Math.random()) => { for (let i = 0; i < n; i++) enemyShot(e, (i / n + off) * Math.PI * 2, sp, { type: a.type, ...o }); };
 const fanShots = (e, a, base, n, gap, sp, o = {}) => { for (let i = 0; i < n; i++) enemyShot(e, base + (i - (n - 1) / 2) * gap, sp, { type: a.type, ...o }); };

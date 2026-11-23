@@ -20,6 +20,8 @@ function withDelta(fn) {
 function hurt(type, amount = 1, src = null) {
   const p = player, who = src?.src ?? curEnemy, move = src?.move ?? who?.act?.name;
   if (p.inv > 0 || p.dash > 0 || p.vanish > 0 || state !== 'play') return;
+  // 엄폐: 낙하·장판·선 같은 범위 기술도 쏜 포켓몬과 나 사이에 기둥·바위가 있으면 맞지 않는다 (탄과 광선은 원래 벽에 막힌다)
+  if (src?.kind && src.src && losBlocked(src.src.x, src.src.y, p.x, p.y)) { if (!(p.coverT > p.time)) { p.coverT = p.time + 1; say('엄폐물 뒤에서 피했다!', p.x, p.y - 60, '#aef'); } return; }
   if (Math.random() < p.dodge + (hasFx('shard') ? 0.1 : 0)) { p.inv = 0.5; return say('공격을 피했다!', p.x, p.y - 60, '#aef'); }
   // 거대방패: 8초마다 다시 차오르는 방패가 공격 한 번을 완전히 막는다
   if (hasFx('bulwark') && p.shieldUp) { p.shieldUp = false; p.shieldT = 8; p.inv = 0.6; fx.push({ kind: 'boom', x: p.x, y: p.y, r: 50, t: 0.25, max: 0.25, color: '#c8d4e8' }); sfx('crit'); return say('방패가 막아냈다!', p.x, p.y - 60, '#ccf'); }
@@ -390,9 +392,9 @@ function beamPath(b) {
   return pts;
 }
 
-function beamLen(ox, oy, dx, dy, blockedByObstacles = false) {
-  for (let s = 0; s < 520; s += 12) if (shotBlocked(Math.floor((ox + dx * s) / TS), Math.floor((oy + dy * s) / TS), !blockedByObstacles)) return s;
-  return 520;
+function beamLen(ox, oy, dx, dy, blockedByObstacles = false, max = 520) {
+  for (let s = 0; s < max; s += 12) if (shotBlocked(Math.floor((ox + dx * s) / TS), Math.floor((oy + dy * s) / TS), !blockedByObstacles)) return s;
+  return max;
 }
 
 function explode(b) {
