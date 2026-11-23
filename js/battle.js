@@ -132,6 +132,8 @@ function startRival(n) {
     world.pickups.push({ kind: 'candy', x: n.x + 40, y: n.y + 40 });
     world.pickups.push({ ...bossReward(), x: n.x, y: n.y + 90, ball: true });  // 슈퍼볼~마스터볼 급
     if (Math.random() < 0.35) { const g = rollGimmick(Math.random); if (g) world.pickups.push({ ...g, x: n.x - 40, y: n.y + 40, ball: true }); }
+    // 버드렉스는 첫 라이벌전을 이기면 유대의 고삐 하나를 바로 받는다 (기술 없이 시작하는 대신)
+    if (n.rival === 'start' && p.mon.id === 898) { const rs = ['ice-reins', 'shadow-reins'].filter(id => !taken.has(id) && !p.items.some(i => i.id === id)); if (rs.length) { const id = pick(rs); taken.add(id); world.pickups.push({ kind: 'item', item: itemById(id), x: n.x + 40, y: n.y + 90, ball: true }); banner = { text: `라이벌에게 이겼다! 유대의 고삐가 떨어졌다`, t: 3 }; } }
     // 악의 조직의 거래를 8번 모두 거절했다면 마지막 승부 뒤에 라이벌이 조건 없는 최고급 거래를 해 준다
     if (n.rival === 'road' && !hostile && (p.evilRefused ?? 0) >= 8 && !p.rivalGiftDone) p.rivalGiftDue = true;
     map.returnT = 3.5;
