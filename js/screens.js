@@ -306,7 +306,7 @@ function drawSelect() {
   if (pages > 1) text(`${Math.floor(selCur / SEL_PAGE) + 1} / ${pages} 페이지`, 324, 430, 12, '#888');
   text(`도감 ${DEX.size}마리 · 전설·환상을 쓰러뜨리면 도감 번호 순으로 여기에 추가됩니다`, 324, 452, 11, '#777');
   // 오른쪽 상세
-  const m = MON[ids[selCur]], st = baseOf(m), mv = moveDef(LEGEND_MOVE[m.id] ?? typeMove(m)), px = 760;
+  const m = MON[ids[selCur]], st = baseOf(m), mv = NO_START_MOVE.has(m.id) ? null : moveDef(LEGEND_MOVE[m.id] ?? typeMove(m)), px = 760;
   ctx.fillStyle = '#23232e'; ctx.fillRect(650, 112, 220, 296);
   drawShadow(px, 260, (m.box.x1 - m.box.x0) * 1.5, 0);
   const shiny = selShiny && shinyOk(m.id);
@@ -318,6 +318,7 @@ function drawSelect() {
   text(m.types.map(t => TYPE_KO[t]).join('/'), px, 306, 12, TYPE_COLOR[m.types[0]]);
   text(`체력 ${st.hp / 2}칸 · 공격 ${st.dmg.toFixed(1)} · 속도 ${(st.speed / 200).toFixed(2)}`, px, 324, 11, '#ccc');
   const ab = monAb(m); if (ab) text(`특성 ${ab.ko}`, px, 341, 11, '#9cf');
+  if (NO_START_MOVE.has(m.id)) { text('시작 기술 없음', px, 362, 13, '#f99'); wrap('유대의 고삐를 얻으면 그 모습으로 바뀌며 전용 기술을 배운다. 두 고삐의 힘은 겹친다', px, 380, 200, 10, '#aaa', text, 'center'); }
   if (mv) { nameText(mv, `시작 기술 ${mv.name}`, px, 362, 13, mv.legend ? '#fd6' : TYPE_COLOR[mv.type], 'center'); wrap(mv.desc, px, 380, 200, 10, '#aaa', text, 'center'); }
   text('WASD 이동 · 방향키 공격 · E 대화 · 배지 8개 → 포켓몬리그 → 챔피언', CW / 2, CH - 14, 12, '#888');
 }

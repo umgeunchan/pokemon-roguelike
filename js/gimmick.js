@@ -29,7 +29,7 @@ ITEMS.push(
 
 // 늘 붙는 기믹 배수 (능력치 창의 공격에 보인다)
 const zActive = () => !!player?.zMove && player.moves.has(player.zMove);
-const gimmickMul = () => { const p = player; return p ? (p.mega ? 1.5 : 1) * (LEGEND_FORMS[p.legendForm]?.mul ?? 1) * (p.dmax ? 1.25 : 1) * (p.teraSame ? 1.5 : 1) * (zActive() ? 1.25 : 1) : 1; };
+const gimmickMul = () => { const p = player; return p ? (p.mega ? 1.5 : 1) * formMulAll() * (p.dmax ? 1.25 : 1) * (p.teraSame ? 1.5 : 1) * (zActive() ? 1.25 : 1) : 1; };
 // Z기술 타입 피해는 x1.5 (늘 붙는 x1.25에 1.2를 더 곱함)
 const zTypeMul = type => zActive() && moveDef(player.zMove).type === type ? 1.2 : 1;
 const zScale = () => zActive() ? 1.3 : 1;
@@ -112,8 +112,8 @@ Object.assign(LEGEND_FORMS, {
   'necrozma-dusk': { item: 'n-solarizer', mon: 800, pmd: '/0001', base: '네크로즈마', name: '황혼의 갈기 네크로즈마', mul: 1.3, types: ['psychic', 'steel'], note: '황혼의 갈기, 강철 타입 추가·화력 x1.3', say: '네크로즈마가 솔가레오와 합체했다! 황혼의 갈기!' },
   'necrozma-dawn': { item: 'n-lunarizer', mon: 800, pmd: '/0002', base: '네크로즈마', name: '새벽의 날개 네크로즈마', mul: 1.2, rate: 0.85, types: ['psychic', 'ghost'], note: '새벽의 날개, 고스트 타입 추가·화력 x1.2·연사 증가', say: '네크로즈마가 루나아라와 합체했다! 새벽의 날개!' },
   'necrozma-ultra': { item: 'ultranecrozium-z', mon: 800, pmd: '/0003', base: '네크로즈마', name: '울트라네크로즈마', mul: 1.5, hp: 4, types: ['psychic', 'dragon'], note: '울트라네크로즈마, 화력 x1.5·최대 체력 +2칸', say: '빛이 넘쳐흐른다! 울트라네크로즈마!' },
-  'calyrex-ice': { item: 'ice-reins', mon: 898, pmd: '/0001', base: '버드렉스', name: '백마 버드렉스', mul: 1.35, hp: 4, types: ['psychic', 'ice'], note: '백마 탄 모습, 화력 x1.35·최대 체력 +2칸', say: '버드렉스가 블리자포스에 올라탔다!' },
-  'calyrex-shadow': { item: 'shadow-reins', mon: 898, pmd: '/0002', base: '버드렉스', name: '흑마 버드렉스', mul: 1.2, rate: 0.8, spd: 1.15, types: ['psychic', 'ghost'], note: '흑마 탄 모습, 화력 x1.2·연사·속도 증가', say: '버드렉스가 레이스포스에 올라탔다!' },
+  'calyrex-ice': { item: 'ice-reins', mon: 898, pmd: '/0001', base: '버드렉스', name: '백마 버드렉스', mul: 1.35, hp: 4, types: ['psychic', 'ice'], stack: true, note: '백마 탄 모습, 화력 x1.35·최대 체력 +2칸, 블리자드랜스 습득 (흑마의 고삐와 힘이 겹친다, 둘 다 모으면 화력 x1.25 더)', say: '버드렉스가 블리자포스에 올라탔다!' },
+  'calyrex-shadow': { item: 'shadow-reins', mon: 898, pmd: '/0002', base: '버드렉스', name: '흑마 버드렉스', mul: 1.2, rate: 0.8, spd: 1.15, types: ['psychic', 'ghost'], stack: true, note: '흑마 탄 모습, 화력 x1.2·연사·속도 증가, 아스트랄비트 습득 (백마의 고삐와 힘이 겹친다, 둘 다 모으면 화력 x1.25 더)', say: '버드렉스가 레이스포스에 올라탔다!' },
   'urshifu-single-strike': { item: 'scroll-of-darkness', mon: 892, form: null, base: '우라오스', name: '일격의 우라오스', mul: 1.35, note: '일격의 태세, 화력 x1.35', say: '악의 족자를 읽었다! 우라오스는 일격의 태세를 갈고닦았다!' },
   'urshifu-rapid-strike': { item: 'scroll-of-waters', mon: 892, pmd: '/0001', base: '우라오스', name: '연격의 우라오스', mul: 1.1, rate: 0.75, types: ['fighting', 'water'], shotType: 'water', note: '연격의 태세, 물 타입·연사 크게 증가', say: '물의 족자를 읽었다! 우라오스는 연격의 태세가 되었다!' },
   'ogerpon-wellspring-mask': { item: 'wellspring-mask', mon: 1017, pmd: '/0005', base: '오거폰', name: '우물의 가면 오거폰', mul: 1.25, rate: 0.85, types: ['grass', 'water'], shotType: 'water', note: '우물의 가면, 물 타입·화력 x1.25·연사 증가', say: '오거폰이 우물의 가면을 썼다!' },
@@ -216,14 +216,20 @@ for (const [mons, item, ko, icon, bases, st, form] of LEGEND_SIGS) {
 const formsOf = itemId => Object.values(LEGEND_FORMS).filter(f => f.item === itemId);
 const formFor = (itemId, monId) => Object.keys(LEGEND_FORMS).find(k => LEGEND_FORMS[k].item === itemId && LEGEND_FORMS[k].mon === monId) ?? null;
 const curForm = () => LEGEND_FORMS[player?.legendForm];
-const formStat = k => curForm()?.[k] ?? 1;
+// 겹치는 폼(stack): 버드렉스는 두 고삐의 힘이 모두 남는다. 모습은 마지막에 먹은 고삐를 따르고, 화력·연사·속도 배수는 얻은 폼 전부를 곱한다
+// 두 고삐를 다 모으면 '유대의 완성'으로 화력 x1.25 더 (초반엔 기술도 없이 약하지만 후반엔 누구보다 강하게)
+const activeForms = () => { const p = player; if (!p) return []; const ks = new Set([p.legendForm, ...(p.formStack ? p.formStack.split(',') : [])].filter(Boolean)); return [...ks].map(k => LEGEND_FORMS[k]).filter(Boolean); };
+const BOND_MUL = 1.25;
+const bondDone = () => { const s = player?.formStack?.split(',') ?? []; return s.includes('calyrex-ice') && s.includes('calyrex-shadow'); };
+const formMulAll = () => activeForms().reduce((m, f) => m * (f.mul ?? 1), 1) * (bondDone() ? BOND_MUL : 1);
+const formStat = k => activeForms().reduce((m, f) => m * (f[k] ?? 1), 1);
 // 아르세우스는 플레이트로 타입이 바뀐다: 받는 피해 상성·테라피스에 쓰는 내 타입
 const myTypes = () => player?.formType ? player.formType.split(',') : player?.mon.types ?? [];
 // 폼이 바뀔 때 배우는 기술 [배우는 기술, 잊는 기술들]. 예: 우라오스는 악의 족자면 암흑강타, 물의 족자면 수류연타 (다른 쪽은 잊는다)
 // 이미 아는 기술이면 그대로. 기술이 가득 차 있으면 하나를 잊을지 고르는 화면이 뜬다
 const FORM_MOVES = {
   'urshifu-single-strike': ['wicked-blow', ['surging-strikes']], 'urshifu-rapid-strike': ['surging-strikes', ['wicked-blow']],
-  'calyrex-ice': ['glacial-lance', ['astral-barrage']], 'calyrex-shadow': ['astral-barrage', ['glacial-lance']],
+  'calyrex-ice': ['glacial-lance'], 'calyrex-shadow': ['astral-barrage'],
   'hoopa-unbound': ['hyperspace-fury', ['hyperspace-hole']], 'kyurem-black': ['freeze-shock', ['glaciate']],
   'necrozma-dusk': ['sunsteel-strike'], 'necrozma-dawn': ['moongeist-beam'], 'necrozma-ultra': ['light-that-burns-the-sky'],
   'zacian-crowned': ['behemoth-blade'], 'zamazenta-crowned': ['behemoth-bash'], 'keldeo-resolute': ['secret-sword'], 'meloetta-pirouette': ['relic-song'],
@@ -243,7 +249,7 @@ for (const it of ITEMS) {
   if (!fs.length) continue;
   const f = fs[0], bases = [...new Set(fs.map(f => f.base))].join('·');
   const mv = f.move && LTMS.find(t => t.id === f.move);
-  it.desc += ` · ${bases} 전용: ${f.note ?? `${f.name}(으)로 변신, 화력 x${f.mega ? +(f.mul * 1.5).toFixed(2) : f.mul}`}${mv && fs.length === 1 ? `, ${mv.name} 습득` : ''}`;
+  it.desc += ` · ${bases} 전용: ${f.note ?? `${f.name}(으)로 변신, 화력 x${f.mega ? +(f.mul * 1.5).toFixed(2) : f.mul}`}${mv && fs.length === 1 && !f.stack ? `, ${mv.name} 습득` : ''}`;
 }
 // 도구를 주운 뒤 부른다 (update.js)
 // 폼의 기술: 잊을 기술을 먼저 잊고, 새 기술을 배운다 (가득 차 있으면 고르는 화면)
@@ -267,12 +273,14 @@ function checkLegendForm(itemId) {
     banner = { text: `${cur.name}의 모습은 그대로! ${f.move ? `${moveDef(f.move).name}의 힘만 받아들였다` : ''}`, t: 3.5, glow: '#ffd060' };
     return;
   }
+  const had = (p.formStack ?? '').split(',').includes(key);
   withDelta(() => {
-    p.legendForm = key; if (f.mega) p.mega = true; if (f.hp) { p.maxHp += f.hp; p.hp += f.hp; }
+    p.legendForm = key; if (f.mega) p.mega = true; if (f.hp && !had) { p.maxHp += f.hp; p.hp += f.hp; }
+    if (f.stack && !had) p.formStack = [...(p.formStack ? p.formStack.split(',') : []), key].join(',');
     p.formType = f.types?.join(',') ?? f.type ?? null; p.type = f.type ?? f.shotType ?? p.mon.types[0];
   });
   gimmickFx('mega'); gimmickFx('legendForm'); sfx('evolve'); shake = 0.6;
-  banner = { text: f.say, t: 4, glow: '#ffd060' };
+  banner = { text: f.stack && bondDone() && !had ? `두 고삐의 힘이 하나로! 유대의 완성: 화력 x${BOND_MUL} (지금 모습: ${f.name})` : f.say, t: 4, glow: '#ffd060' };
   formMove(f, true);
   loadFormArt();
 }

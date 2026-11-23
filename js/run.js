@@ -41,7 +41,7 @@ function newRun(m, shiny = false) {
   player = makePlayer(m); player.shiny = shiny; player.startId = m.id;
   // 전설의 포켓몬은 상징적인 기술을 갖고 시작한다
   // 전설이 아니면 타입에 맞는 기술머신 하나를 갖고 시작한다
-  const first = LEGEND_MOVE[m.id] ?? typeMove(m);
+  const first = NO_START_MOVE.has(m.id) ? null : LEGEND_MOVE[m.id] ?? typeMove(m);
   if (first) { taken.add(first); learnMove(first); }
   player.first = first ?? null;
   world = genWorld(Math.floor(Math.random() * 2 ** 31));
