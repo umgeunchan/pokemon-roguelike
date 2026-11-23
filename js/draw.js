@@ -808,6 +808,7 @@ function drawPlay() {
   for (const r of map.rooms ?? []) if (r.who) list.push({ y: (r.y0 + 1.6) * TS, draw: () => drawTrainerSprite(r.who.sprite, r.cx, (r.y0 + 1.6) * TS, false, r.cleared ? 0.7 : 1) });
   for (const n of map.npcs) if (inView(n.x, n.y)) list.push({ y: n.y, draw: () => drawTrainerSprite(n.sprite, n.x, n.y, n.flip, n.defeated ? 0.7 : 1, n.moving ? Math.abs(Math.sin(now * 10)) * 3 : 0) });
   for (const e of enemies) list.push({ y: e.y, draw: () => drawActor(e, e.scale, e.hit > 0 ? 0.4 : 1) });
+  if (map.battle?.npc && !map.battle.npc.defeated) { const n = map.battle.npc; ctx.save(); ctx.setLineDash([14, 10]); ctx.lineDashOffset = -now * 30; ctx.strokeStyle = 'rgba(255,120,120,0.45)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(n.x, n.y, BATTLE_FENCE, BATTLE_FENCE, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
   if (hasFx('bulwark') && p.shieldUp) { ctx.strokeStyle = `rgba(200,212,232,${0.5 + Math.abs(Math.sin(now * 3)) * 0.3})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y - 16, 30, 34, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (p.surge > 0) { ctx.strokeStyle = `rgba(255,150,210,${0.4 + Math.abs(Math.sin(now * 8)) * 0.4})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y, 30, 14, 0, 0, Math.PI * 2); ctx.stroke(); }
   list.push({ y: p.y, draw: () => drawActor(p, (p.warpS ?? 1) * (p.dmax ? 1.4 : 1), p.vanish > 0 ? 0.15 : p.warpS !== undefined ? p.warpS : p.inv > 0 && Math.floor(p.inv * 10) % 2 ? 0.3 : 1) });

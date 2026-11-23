@@ -251,11 +251,7 @@ function leaveBuilding(to = null) {
 function updateBattle(dt) {
   const bt = map.battle, p = player;
   if (!bt) return;
-  // 트레이너에게서 멀리 도망치면 승부가 끝난다
-  if (bt.npc && Math.hypot(p.x - bt.npc.x, p.y - bt.npc.y) > 750) {
-    map.enemies = map.enemies.filter(e => !e.battle); bt.npc.fighting = false; map.battle = null; samplePower();
-    return banner = { text: '승부에서 도망쳤다', t: 2 };
-  }
+  // 트레이너와의 승부에서는 도망칠 수 없다: 트레이너 둘레(BATTLE_FENCE) 밖으로는 못 나간다 (update.js의 fence)
   if (map.enemies.some(e => e.battle)) return;
   if (bt.queue.length && (bt.wait -= dt) <= 0) {
     const m = MON[bt.queue.shift()], ang = Math.atan2(p.y - bt.y, p.x - bt.x), e = spawnEnemy(m, bt.x + Math.cos(ang) * 50, bt.y + Math.sin(ang) * 50, bt.rank, bt.tier);

@@ -25,8 +25,11 @@ function hurt(type, amount = 1, src = null) {
   if (hasFx('bulwark') && p.shieldUp) { p.shieldUp = false; p.shieldT = 8; p.inv = 0.6; fx.push({ kind: 'boom', x: p.x, y: p.y, r: 50, t: 0.25, max: 0.25, color: '#c8d4e8' }); sfx('crit'); return say('방패가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   if (combo('fortress') && Math.random() < 0.2) { p.inv = 0.5; return say('강철 요새가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   const m = eff(type, myTypes());
-  let d = m === 0 ? 0 : amount + (m > 1 ? 1 : 0) + (who?.awake ? (who.elite ? 2 : 1) : 0);  // 각성한 상대의 공격은 반 칸 더 (사천왕·챔피언은 1칸 더)
-  if (amount >= 2) d = Math.min(d, amount + 1);  // 필살기·큰 공격은 약점·각성이 겹쳐도 반 칸까지만 더
+  // 피해(반 칸 단위): 보통 공격은 1칸(2), 효과가 별로면 반 칸(1), 효과가 굉장하면 1.5칸(3). 효과가 없으면 0
+  // 필살기·큰 공격(amount 2~3)은 1.5~2칸에서 같은 식으로 반 칸씩 더하고 뺀다. 각성한 상대는 반 칸 더 (사천왕·챔피언은 1칸 더)
+  const base = amount >= 2 ? amount + 1 : 2;
+  let d = m === 0 ? 0 : base + (m > 1 ? 1 : m < 1 ? -1 : 0) + (who?.awake ? (who.elite ? 2 : 1) : 0);
+  if (amount >= 2) d = Math.min(d, base + 1);  // 필살기·큰 공격은 약점·각성이 겹쳐도 반 칸까지만 더
   // 쉬움 모드: 피해 절반 (반 칸 단위라 남는 반은 모아 두었다가 다음에 더한다)
   if (EASY && d > 0) { p.easyCarry = (p.easyCarry ?? 0) + d / 2; d = Math.floor(p.easyCarry); p.easyCarry -= d; if (d <= 0) { p.inv = p.invTime; return; } }
   if (hasFx('bulwark') && d > 0) { d -= 1; if (d === 0 && Math.random() < 0.5) d = 1; if (d === 0) { p.inv = 0.5; return say('막아냈다!', p.x, p.y - 60, '#ccf'); } }
@@ -42,6 +45,7 @@ function hurt(type, amount = 1, src = null) {
   if (p.hp - d <= 0 && p.sash) { p.sash = false; p.hp = 1; say('기합의띠로 버텼다!', p.x, p.y - 60, '#ff8'); }
   else p.hp -= d;
   if (m > 1) say('효과가 굉장했다!', p.x, p.y - 60, '#f66');
+  else if (m < 1 && d > 0) say('효과가 별로인 듯하다', p.x, p.y - 60, '#ccc');
   if (p.hp <= 0 && p.revive) { p.revive = false; p.hp = p.maxHp; banner = { text: '무지개깃털이 빛나며 다시 일어섰다!', t: 3 }; }
   if (p.hp <= 0 && map.sub === 'hoopa') { p.hoopaLost = who?.mon.name ?? '전설의 포켓몬'; state = 'win'; return; }  // 챔피언은 이미 됐다: 져도 챔피언 결과 화면으로
   if (p.hp <= 0) { p.cause = who ? `${who.rank === 'trainer' || who.rank === 'boss' ? '상대 ' : who.rank === 'legend' ? '전설의 포켓몬 ' : '야생 '}${who.mon.name}의 ${move ?? '공격'}` : `${TYPE_KO[type]} 타입 공격`; state = 'dead'; clearSave(); ach('die'); checkAch(); }
@@ -614,6 +618,11 @@ function wildShot(e) {
   const p = player, a = Math.atan2(p.y - e.y, p.x - e.x);
   if (e.shotStyle === 'fan') for (const o of [-0.3, 0, 0.3]) enemyShot(e, a + o, 190);
   else if (e.shotStyle === 'burst') { enemyShot(e, a, 220); e.burst = 2; e.burstT = 0.15; }
+  else if (e.shotStyle === 'wave') for (const c of [0.9, -0.9]) enemyShot(e, a - c * 0.35, 170, { curve: c });  // 양쪽으로 휘어 들어오는 두 발
+  else if (e.shotStyle === 'snipe') enemyShot(e, a, 330, { r: 5 });  // 작고 빠른 한 발
+  else if (e.shotStyle === 'spiral') { e.spin = (e.spin ?? Math.random() * 6) + 0.7; for (let k = 0; k < 3; k++) enemyShot(e, e.spin + k * Math.PI * 2 / 3, 150); }  // 돌아가는 세 갈래
+  else if (e.shotStyle === 'ring') for (let k = 0; k < 6; k++) enemyShot(e, a + k * Math.PI / 3, 130);  // 느린 여섯 방향
+  else if (e.shotStyle === 'seeker') enemyShot(e, a, 140, { seek: 1.2, r: 8 });  // 잠깐 따라오는 탄
   else enemyShot(e, a, 210);
 }
 
@@ -727,7 +736,7 @@ function manageSpawns(dt) {
   const p = player, wild = map.enemies.filter(e => e.rank === 'wild');
   for (const e of wild) if (Math.hypot(e.x - p.x, e.y - p.y) > 1400) e.gone = true;
   const here = nodeAt(p.x, p.y), near = wild.filter(e => !e.gone && Math.hypot(e.x - p.x, e.y - p.y) < 900).length;
-  if (near >= 8 + Math.floor(tierAt(here) / 2)) return;  // 넓어진 도로에 맞춰 한 번에 더 많이
+  if (near >= 10 + Math.floor(tierAt(here) / 2)) return;  // 길어진 도로에 맞춰 한 번에 더 많이
   for (let tries = 0; tries < 24; tries++) {
     const a = Math.random() * Math.PI * 2, d = 480 + Math.random() * 280, x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
     const tx = Math.floor(x / TS), ty = Math.floor(y / TS), k = ty * world.tw + tx;

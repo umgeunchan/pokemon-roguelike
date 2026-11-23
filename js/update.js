@@ -13,6 +13,21 @@ function updateQuit(dt) {
   return true;
 }
 
+// 도망칠 수 없는 승부: 트레이너와 싸우는 동안은 트레이너 둘레 밖으로, 전설과 싸우는 동안은 그 장소(도로) 밖으로 나갈 수 없다
+const BATTLE_FENCE = 520;
+const fenceLegend = () => map === world ? map.enemies.find(e => e.rank === 'legend' && e.legend && e.engaged && e.hp > 0) : null;
+function fence(ox, oy) {
+  const p = player, bt = map.battle;
+  let msg = null;
+  if (bt?.npc && !bt.npc.defeated) {
+    const d = Math.hypot(p.x - bt.npc.x, p.y - bt.npc.y);
+    if (d > BATTLE_FENCE && d > Math.hypot(ox - bt.npc.x, oy - bt.npc.y)) { p.x = ox; p.y = oy; msg = '안 돼! 트레이너와의 승부에서 등을 보일 수는 없다!'; }
+  }
+  const lg = fenceLegend();
+  if (lg && nodeAt(ox, oy) === lg.legend.n && nodeAt(p.x, p.y) !== lg.legend.n) { p.x = ox; p.y = oy; msg = `${lg.mon.name}의 기운이 길을 막고 있다! 도망칠 수 없다!`; }
+  if (msg && p.time >= (p.fenceMsgAt ?? 0)) { p.fenceMsgAt = p.time + 1.5; say(msg, p.x, p.y - 80, '#f88'); }
+}
+
 function update(dt) {
   const p = player;
   if (updateQuit(dt)) return;
@@ -86,6 +101,7 @@ function update(dt) {
   }
   if (vx && !(keys.ArrowLeft || keys.ArrowRight)) p.flip = vx > 0;
   moveBody(p, vx * p.speed * dt * (p.webbed > 0 && !abStat('clear', false) ? 0.5 : 1) * moveSpeed(), vy * p.speed * dt * (p.webbed > 0 && !abStat('clear', false) ? 0.5 : 1) * moveSpeed()); clampBody(p);  // 실 장판 위에서는 느려진다
+  fence(ox, oy);
   p.velX = (p.x - ox) / dt; p.velY = (p.y - oy) / dt;  // 라이벌의 읽어내기가 쓰는 이동 속도
   p.walk += Math.hypot(p.x - ox, p.y - oy); p.moving = p.x !== ox || p.y !== oy;
   if (vx || vy) p.face = faceRow(vx, vy);

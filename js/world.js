@@ -71,7 +71,8 @@ function genWorld(seed) {
     n.tier = Math.round(dist.get(n) / maxD * 7);
     // 마을은 건물·NPC만 들어가는 작은 광장, 도로는 넉넉하게 넓은 전투 구역. 일직선으로 지나가는 길은 진행 방향으로 길쭉하다
     const h = n.links.some(l => l.gy === n.gy), v = n.links.some(l => l.gx === n.gx);
-    [n.hx, n.hy] = n.kind === 'T' || n.gym || n.league ? [8, 6] : h && !v ? [15, 8] : v && !h ? [8, 15] : [13, 13];
+    // 2026-11-23: 도로를 길게 (일직선 도로 15→22칸, 갈림길 13→16칸) — 야생·트레이너를 더 자주 만난다
+    [n.hx, n.hy] = n.kind === 'T' || n.gym || n.league ? [8, 6] : h && !v ? [22, 8] : v && !h ? [8, 22] : [16, 16];
   }
 
   const area = new Int16Array(N), zone = new Uint8Array(N), solid = new Uint8Array(N).fill(1), road = new Uint8Array(N), deco = new Uint8Array(N);
@@ -211,7 +212,7 @@ function genWorld(seed) {
       w.pickups.push({ id: `pk${pk++}`, x, y, ball: true, ...rollContent(rnd, n.kind === 'S' ? { tm: 0.2, c: 0.45, r: 0.35, l: 0.2 } : { tm: 0.2, c: 0.68, r: 0.3, l: 0.02 }) });
     }
     const pool = TRAINERS[n.kind] ?? TRAINERS.R;
-    for (let i = 0, c = 2 + Math.floor(rnd() * 2); i < c; i++) {
+    for (let i = 0, c = (n.kind === 'R' ? 4 : 3) + Math.floor(rnd() * 2); i < c; i++) {
       const [sprite, name] = pool[Math.floor(rnd() * pool.length)], [x, y] = spotNear(n, false);
       w.npcs.push({ id: npcId++, kind: 'trainer', sprite, name, x, y, hx: x, hy: y, r: 14, dir: [0, 0], turn: rnd() * 2, node: n });
     }
@@ -378,7 +379,7 @@ function spawnEnemy(m, x, y, rank, tier = 0) {
   const base = { wild: s.hp / 8, trainer: s.hp / 8 * TRAINER_HP, boss: 20 + s.hp * 0.15, legend: 40 + s.hp * 0.3 }[rank], hp = base * hpMult(rank, tier);
   const e = { mon: m, x, y, hx: x, hy: y, rank, tier, hp, maxHp: hp, scale: big ? 2 : 1, r: big ? clamp(w * 0.6, 30, 52) : clamp(w * 0.3, 12, 20), flying: m.flying, seed: Math.random() * 10,
     flip: false, hit: 0, cd: 1 + Math.random(), turn: Math.random(), dir: randDir(), vx: 0, vy: 0, walk: 0, moving: false, burn: 0, burnTick: 0, slow: 0, stun: 0, frozen: 0,
-    z: 0, fade: 0, act: null, lunge: 1 + Math.random() * 2, burst: 0, burstT: 0, shotStyle: pick(['single', 'fan', 'burst']), aggro: rank !== 'wild',
+    z: 0, fade: 0, act: null, lunge: 1 + Math.random() * 2, burst: 0, burstT: 0, shotStyle: pick(tier >= 3 ? ['single', 'fan', 'burst', 'wave', 'snipe', 'spiral', 'ring', 'seeker'] : ['single', 'fan', 'burst', 'wave', 'snipe']), aggro: rank !== 'wild',
     moves: rank === 'wild' ? null : movesFor(m), speed: big ? 30 + s.speed * 0.6 : (40 + s.speed * 0.8) * (rank === 'wild' ? 1.15 : 1), shooter: !big && s['special-attack'] >= s.attack };
   // 준전설 상대: 체력 x0.75, 각성 단계도 늦게
   const sub = rank === 'legend' && isSubLegend(m.id);

@@ -5,24 +5,24 @@
 
 const S = (name, sig, o = {}) => ['sig', name, { sig, ...o }];
 const TYPE_SIG = {
-  normal: [['charge', '전광석화', { reps: 3, wind: 0.25, speed: 640, dur: 0.35 }], S('대폭발', 'selfdestruct')],
-  fire: [S('불꽃소용돌이', 'firespin'), S('분화', 'eruption')],
-  water: [S('소용돌이', 'whirlpool'), S('물의파동', 'aquaRing')],
-  electric: [S('10만볼트', 'boltLines'), S('전자포', 'zapCannon')],
-  grass: [S('꽃잎댄스', 'petalDance'), S('씨뿌리기', 'leechSeed')],
-  ice: [S('싸라기눈', 'hailGrid'), S('냉동빔', 'iceLattice')],
-  fighting: [S('폭발펀치', 'dynamicPunch'), S('기합구슬', 'focusBlast')],
-  poison: [S('독압정', 'toxicSpikes'), S('오물웨이브', 'sludgeWave')],
-  ground: [S('땅가르기', 'fissure'), S('모래지옥', 'sandTomb')],
-  flying: [S('폭풍', 'hurricane'), S('급강하', 'aerialDive')],
-  psychic: [S('사이코필드', 'psyField'), S('순간이동 난사', 'teleBarrage')],
-  bug: [S('실뿜기', 'stringShot'), S('벌레떼', 'swarm')],
-  rock: [S('스텔스록', 'stealthRock'), S('원시의힘', 'ancientPower')],
-  ghost: [S('도깨비불', 'wispCircle'), S('나이트헤드', 'nightShade')],
-  dragon: [['jump', '드래곤다이브', { quake: true }], S('용의 회오리', 'dragonSpin')],
-  dark: [S('속임수', 'feint'), S('깜짝베기', 'nightSlash')],
-  steel: [S('기어소서', 'gearGrind'), S('코멧펀치', 'meteorMash')],
-  fairy: [S('달빛', 'moonlight'), S('꽃의 개화', 'flowerBloom')],
+  normal: [['charge', '전광석화', { reps: 3, wind: 0.25, speed: 640, dur: 0.35 }], S('대폭발', 'selfdestruct'), S('하이퍼보이스', 'hyperVoice')],
+  fire: [S('불꽃소용돌이', 'firespin'), S('분화', 'eruption'), S('오버히트', 'overheat')],
+  water: [S('소용돌이', 'whirlpool'), S('물의파동', 'aquaRing'), S('하이드로펌프', 'hydroPump')],
+  electric: [S('10만볼트', 'boltLines'), S('전자포', 'zapCannon'), S('방전', 'dischargeF')],
+  grass: [S('꽃잎댄스', 'petalDance'), S('씨뿌리기', 'leechSeed'), S('솔라빔', 'solarBeam')],
+  ice: [S('싸라기눈', 'hailGrid'), S('냉동빔', 'iceLattice'), S('눈보라', 'blizzardF')],
+  fighting: [S('폭발펀치', 'dynamicPunch'), S('기합구슬', 'focusBlast'), S('인파이트', 'closeCombat')],
+  poison: [S('독압정', 'toxicSpikes'), S('오물웨이브', 'sludgeWave'), S('애시드봄', 'acidSpray')],
+  ground: [S('땅가르기', 'fissure'), S('모래지옥', 'sandTomb'), S('지진', 'earthquakeF')],
+  flying: [S('폭풍', 'hurricane'), S('급강하', 'aerialDive'), S('에어슬래시', 'airSlashF')],
+  psychic: [S('사이코필드', 'psyField'), S('순간이동 난사', 'teleBarrage'), S('미래예지', 'futureSight')],
+  bug: [S('실뿜기', 'stringShot'), S('벌레떼', 'swarm'), S('시저크로스', 'xScissor')],
+  rock: [S('스텔스록', 'stealthRock'), S('원시의힘', 'ancientPower'), S('스톤에지', 'stoneEdge')],
+  ghost: [S('도깨비불', 'wispCircle'), S('나이트헤드', 'nightShade'), S('섀도볼', 'shadowBallF')],
+  dragon: [['jump', '드래곤다이브', { quake: true }], S('용의 회오리', 'dragonSpin'), S('용성군', 'dracoMeteor')],
+  dark: [S('속임수', 'feint'), S('깜짝베기', 'nightSlash'), S('악의파동', 'darkPulseF')],
+  steel: [S('기어소서', 'gearGrind'), S('코멧펀치', 'meteorMash'), S('러스터캐논', 'flashCannonF')],
+  fairy: [S('달빛', 'moonlight'), S('꽃의 개화', 'flowerBloom'), S('문포스', 'moonblastF')],
 };
 // 급마다 고유 기술
 const RANK_SIG = {
@@ -70,7 +70,7 @@ function pickPatterns(e, cls) {
   if (cls === 'legend') add(legendSig(m));  // 전설은 전용 기술을 늘 갖는다
   const sigs = shuffle(m.types.flatMap(t => TYPE_SIG[t].map(([k, n, o]) => [k, n, { ...o, type: t }])));
   add(sigs[0]);
-  if (big && Math.random() < 0.6) add(sigs[1]);
+  if ((big && Math.random() < 0.8) || Math.random() < 0.35) add(sigs[1]);
   if (big || Math.random() < 0.5) add(pick(RANK_SIG[cls]));
   if (big && e.tier >= 4 && Math.random() < 0.6) add(pick(HEAVY));
   // 남는 자리는 공통 기술로: 타입별 기본 기술 + 돌진·누르기 + 강할수록 까다로운 공통 패턴
@@ -133,6 +133,104 @@ function armsHit(e, a) {
 }
 
 const SIG = {
+  // ---------- 2026-11-23 추가: 타입마다 세 번째 기술 ----------
+  // 노말 하이퍼보이스: 음파 고리 세 겹. 겹마다 빈틈 방향이 다르다
+  hyperVoice: (e, a) => {
+    for (let w = 0; w < 3; w++) if (at(a, w, 0.3 + w * 0.5)) { const n = 16 + 2 * lv(e), gap = toP(e) + (w - 1) * 0.9; for (let i = 0; i < n; i++) { const g = gap + 0.35 + i / n * (Math.PI * 2 - 0.7); enemyShot(e, g, 170, { type: a.type }); } fx.push({ kind: 'ring', x: e.x, y: e.y, t: 0.3, max: 0.3 }); }
+    return a.t >= 1.7;
+  },
+  // 불꽃 오버히트: 빠른 불꽃 부채꼴 세 번 (점점 좁아진다)
+  overheat: (e, a) => {
+    for (let w = 0; w < 3; w++) if (at(a, w, 0.4 + w * 0.45)) fanShots(e, a, toP(e), 7 + lv(e), 0.2 - w * 0.04, 250 + w * 30, { r: 8 });
+    return a.t >= 1.8;
+  },
+  // 물 하이드로펌프: 나를 노리는 굵은 물줄기 세 번
+  hydroPump: (e, a) => {
+    for (let w = 0; w < 3; w++) if (at(a, w, 0.2 + w * 0.7)) lineAt(e, a, e.x, e.y, toP(e), 800, 42, 0.6);
+    return a.t >= 2.5;
+  },
+  // 전기 방전: 보스 둘레 넓은 전기 장판 → 터지며 사방 탄
+  dischargeF: (e, a) => {
+    if (at(a, 0, 0.2)) zoneAt(e, a, e.x, e.y, 160 + 20 * lv(e), 1.0, 0.4);
+    if (at(a, 1, 1.3)) ringShots(e, a, 10 + 2 * lv(e), 210);
+    return a.t >= 1.8;
+  },
+  // 풀 솔라빔: 빛을 모았다가 아주 굵은 광선 한 줄, 끝나고 씨앗 부채꼴
+  solarBeam: (e, a) => {
+    if (at(a, 0, 0)) lineAt(e, a, e.x, e.y, toP(e), 950, 80, 1.3);
+    if (at(a, 1, 1.6)) fanShots(e, a, toP(e), 5, 0.3, 200);
+    return a.t >= 1.9;
+  },
+  // 얼음 눈보라: 내 쪽으로 넓게 흩어지는 얼음 알갱이
+  blizzardF: (e, a, dt) => {
+    if (a.t < 1.6 && every(a, 0.07, dt)) enemyShot(e, toP(e) + (Math.random() - 0.5) * 1.1, 120 + Math.random() * 90, { type: a.type, r: 6 });
+    return a.t >= 1.9;
+  },
+  // 격투 인파이트: 내 쪽으로 뛰어든 뒤 둘레를 세 번 연달아 친다
+  closeCombat: (e, a, dt) => {
+    if (at(a, 0, 0)) { a.tx = player.x; a.ty = player.y; }
+    if (a.t > 0.2 && a.t < 0.6) { const d = Math.hypot(a.tx - e.x, a.ty - e.y); if (d > e.r + 30) { const v = Math.min(d, 600 * dt); moveBody(e, (a.tx - e.x) / d * v, (a.ty - e.y) / d * v); e.moving = true; } }
+    for (let k = 0; k < 3; k++) if (at(a, 1 + k, 0.6 + k * 0.3)) strikeAt(e, a, e.x, e.y, e.r + 60, 0.5);
+    return a.t >= 1.9;
+  },
+  // 독 애시드봄: 내 쪽으로 독 장판이 줄지어 깔린다
+  acidSpray: (e, a) => {
+    if (at(a, 0, 0.2)) { const g = toP(e); for (let i = 1; i <= 5 + lv(e); i++) zoneAt(e, a, e.x + Math.cos(g) * i * 75, e.y + Math.sin(g) * i * 75, 42, 0.5 + i * 0.1, 2.5); }
+    return a.t >= 1.3;
+  },
+  // 땅 지진: 퍼져 나가는 충격파 세 번 (구르기로 넘거나 바위 뒤에 숨는다)
+  earthquakeF: (e, a) => {
+    for (let w = 0; w < 3; w++) if (at(a, w, 0.3 + w * 0.6)) { hz(e, a, { kind: 'quake', x: e.x, y: e.y, R: e.r, hit: false }); shake = 0.2; }
+    return a.t >= 2.2;
+  },
+  // 비행 에어슬래시: 빠른 칼날 부채꼴이 엇갈려 네 번
+  airSlashF: (e, a) => {
+    for (let w = 0; w < 4; w++) if (at(a, w, 0.2 + w * 0.3)) fanShots(e, a, toP(e) + (w % 2 ? 0.14 : -0.14), 4, 0.3, 290, { r: 7 });
+    return a.t >= 1.6;
+  },
+  // 에스퍼 미래예지: 지금 내가 있는 자리에 잠시 뒤 염동 폭발 (세 번)
+  futureSight: (e, a) => {
+    for (let w = 0; w < 3; w++) if (at(a, w, 0.1 + w * 0.5)) strikeAt(e, a, player.x, player.y, 70, 1.2);
+    return a.t >= 2.4;
+  },
+  // 벌레 시저크로스: 나를 지나는 X자 두 줄 → 십자 두 줄
+  xScissor: (e, a) => {
+    const p = player;
+    if (at(a, 0, 0.3)) { a.cx = p.x; a.cy = p.y; for (const g of [Math.PI / 4, -Math.PI / 4]) lineThrough(e, a, a.cx, a.cy, g, 700, 34, 0.8); }
+    if (at(a, 1, 1.2)) for (const g of [0, Math.PI / 2]) lineThrough(e, a, p.x, p.y, g, 700, 34, 0.8);
+    return a.t >= 2.2;
+  },
+  // 바위 스톤에지: 보스에서 내 쪽으로 바위 칼날이 차례로 솟는다
+  stoneEdge: (e, a) => {
+    if (at(a, 0, 0)) a.g = toP(e);
+    for (let i = 0; i < 8; i++) if (at(a, 1 + i, 0.2 + i * 0.08)) strikeAt(e, a, e.x + Math.cos(a.g) * (60 + i * 70), e.y + Math.sin(a.g) * (60 + i * 70), 42, 0.6);
+    return a.t >= 1.5;
+  },
+  // 고스트 섀도볼: 크고 느린 그림자 구슬이 나를 따라온다
+  shadowBallF: (e, a) => {
+    for (let i = 0; i <= (lv(e) >= 1 ? 1 : 0); i++) if (at(a, i, 0.3 + i * 0.6)) enemyShot(e, toP(e) + (i ? 0.5 : 0), 110, { type: a.type, r: 16, seek: 2.5, life: 4.5 });
+    return a.t >= 1.4;
+  },
+  // 드래곤 용성군: 내 둘레에 유성이 여기저기 떨어진다
+  dracoMeteor: (e, a) => {
+    if (at(a, 0, 0.3)) { const p = player; for (let i = 0; i < Math.round((7 + lv(e)) * few(e)); i++) { const g = Math.random() * Math.PI * 2, r = Math.random() * 220; strikeAt(e, a, p.x + Math.cos(g) * r, p.y + Math.sin(g) * r * 0.8, 55, 1.0 + i * 0.08); } }
+    return a.t >= 2.0;
+  },
+  // 악 악의파동: 반은 오른쪽, 반은 왼쪽으로 휘는 고리 두 겹
+  darkPulseF: (e, a) => {
+    for (let w = 0; w < 2; w++) if (at(a, w, 0.2 + w * 0.7)) ringShots(e, a, 16 + 2 * lv(e), 160, { curve: w ? -0.6 : 0.6 });
+    return a.t >= 1.6;
+  },
+  // 강철 러스터캐논: 커다란 빛 구슬이 날아가다 터져 사방으로
+  flashCannonF: (e, a) => {
+    for (let i = 0; i <= (lv(e) >= 1 ? 1 : 0); i++) if (at(a, i, 0.3 + i * 0.7)) enemyShot(e, toP(e), 150, { type: a.type, r: 18, split: 1.0, splitN: 12 + 2 * lv(e) });
+    return a.t >= 1.6;
+  },
+  // 페어리 문포스: 달빛 구슬이 나를 따라오다 터진다
+  moonblastF: (e, a) => {
+    if (at(a, 0, 0.3)) enemyShot(e, toP(e), 120, { type: a.type, r: 20, seek: 1.5, split: 2.0, splitN: 10 + 2 * lv(e), life: 4 });
+    return a.t >= 1.4;
+  },
   // 전설 전용: 여러 동작을 시간차로 겹친다
   legendCombo: (e, a, dt) => {
     let all = true;
