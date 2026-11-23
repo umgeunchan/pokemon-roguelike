@@ -26,6 +26,7 @@ const ACH = [
   { id: 'champ3', name: '세 지방의 챔피언', desc: '서로 다른 지방 3곳에서 챔피언이 되었다' },
   { id: 'champ9', name: '포켓몬 마스터', desc: '모든 지방에서 챔피언이 되었다', reward: 570 },
   { id: 'evil1', name: '악마의 속삭임', desc: '악의 조직과 처음으로 거래했다' },
+  { id: 'evilitem', name: '어둠의 보물', desc: '악의 조직 전용 기술이나 도구를 손에 넣었다' },
   { id: 'evil8', name: '완전한 타락', desc: '한 판에서 악의 조직과 8번 모두 거래했다' },
   { id: 'justice', name: '꺾이지 않는 정의', desc: '한 판에서 악의 조직의 거래를 8번 모두 거절했다' },
   { id: 'evilboss', name: '조직 괴멸', desc: '악의 조직의 보스를 쓰러뜨렸다' },

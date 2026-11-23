@@ -13,6 +13,7 @@ const LCOL = {
   psystrike: ['#ff60ff', '#ffe0ff'], 'expanding-force': ['#e070ff', '#ffe8ff'], 'psycho-boost': ['#ff7040', '#ffe0c0'], 'mystical-power': ['#a080ff', '#f0e8ff'],
   'lunar-blessing': ['#ffc0f0', '#fff8ff'], 'take-heart': ['#ff80a0', '#fff0f4'], 'mist-ball': ['#ff90c0', '#fff0f8'], 'luster-purge': ['#6090ff', '#e8f0ff'], 'astral-barrage': ['#6040c0', '#e0d8ff'],
   'dark-void': ['#301040', '#a070ff'], 'relic-song': ['#ffb0e0', '#ffffff'],
+  'shadow-storm': ['#6020a0', '#e0a0ff'], 'shadow-end': ['#400830', '#ff60c0'],
   'bleakwind-storm': ['#a0d8ff', '#ffffff'], 'wildbolt-storm': ['#ffe040', '#ffffff'], 'sandsear-storm': ['#d09050', '#ffe0a0'],
 };
 const lcol = (m, def) => LCOL[m?.id] ?? def;
@@ -25,7 +26,7 @@ function lburst(x, y, c1, c2, n, spd, life = 0.6, up = 0) {
   }
 }
 // 돌진 기술(화룡점정·액셀브레이크·라이트닝드라이브·불새): 구르기 대신, 공격할 때 1.4초마다 그 방향(가까운 적)으로 혜성처럼 꿰뚫는 돌진 일격
-const CHARGE_COL = { 'dragon-ascent': ['#30e070', '#e8fff0'], 'collision-course': ['#ff5030', '#ffe0a0'], 'electro-drift': ['#40a0ff', '#ffff90'], 'sky-attack': ['#ff8020', '#fff0a0'] };
+const CHARGE_COL = { 'shadow-rush': ['#8020c0', '#ffb0ff'], 'dragon-ascent': ['#30e070', '#e8fff0'], 'collision-course': ['#ff5030', '#ffe0a0'], 'electro-drift': ['#40a0ff', '#ffff90'], 'sky-attack': ['#ff8020', '#fff0a0'] };
 function legendCharge(a) {
   const p = player, m = lmove('dashStrike');
   if (!m || (p.chargeCd ?? 0) > p.time) return;
@@ -294,7 +295,7 @@ function legendHit(e, big) {
     fx.push({ kind: 'lnova', x: e.x, y: e.y, r: R, c1, c2, t: 0.45, max: 0.45 });
     for (const o of [e, ...enemiesNear(e.x, e.y, R, e)]) {
       damage(o, p.dmg * 0.8, m.type, false, true);
-      if (m.type === 'flying') o.slow = Math.max(o.slow ?? 0, 2); else if (m.type === 'electric' && Math.random() < 0.3) o.stun = Math.max(o.stun ?? 0, 0.6); else if (m.type === 'ground') o.burn = Math.max(o.burn ?? 0, 3);
+      if (m.type === 'dark') o.weak = Math.max(o.weak ?? 0, 3); else if (m.type === 'flying') o.slow = Math.max(o.slow ?? 0, 2); else if (m.type === 'electric' && Math.random() < 0.3) o.stun = Math.max(o.stun ?? 0, 0.6); else if (m.type === 'ground') o.burn = Math.max(o.burn ?? 0, 3);
     }
   }
   // V제너레이트: 맞힌 자리에서 작은 불꽃이 터진다
@@ -320,7 +321,7 @@ function legendHit(e, big) {
   if (combo('gaia') && p.surge > 0 && e.hp > 0) pstrikes.push({ x: e.x, y: e.y, t: 0.2, r: 45 * s, mul: 0.9, type: 'ground' });
   // 자연의분노·카타스트로피: 분홍(악은 검붉은) 구체가 짓눌러 체력을 절반으로
   if (hasFx('madness') && !big && e.hp > 0 && Math.random() < (combo('calamity') ? 0.4 : 0.28)) {
-    const dark = has('ruination'); e.hp /= 2; say(dark ? '카타스트로피!' : '자연의 분노!', e.x, e.y - 60, '#f9c');
+    const dark = has('ruination') || has('shadow-end'); e.hp /= 2; say(has('shadow-end') ? '섀도엔드!' : dark ? '카타스트로피!' : '자연의 분노!', e.x, e.y - 60, '#f9c');
     fx.push({ kind: 'lnova', x: e.x, y: e.y, r: e.r + 50, c1: dark ? '#802040' : '#ff70c0', c2: '#ffd0f0', t: 0.45, max: 0.45 });
   }
 }
@@ -330,11 +331,12 @@ function legendBeamHit(e) {
   const p = player, lb = [...p.moves].map(moveDef).filter(m => m?.legend && m.fx === 'beam').at(-1);
   if (!lb || !lcd('beamfx', 0.35)) return false;
   const pillar = { 'photon-geyser': ['#ffe880', '#ffffff'], 'tera-starstorm': ['#c0a0ff', '#fff8ff'], 'blue-flare': ['#40a0ff', '#e0f4ff'], scald: ['#60c0ff', '#ffffff'],
-    'steam-eruption': ['#e0f0ff', '#ffffff'], 'light-that-burns-the-sky': ['#fff0a0', '#ffffff'] }[lb.id];
+    'steam-eruption': ['#e0f0ff', '#ffffff'], 'shadow-blast': ['#7020b0', '#ffc0ff'], 'light-that-burns-the-sky': ['#fff0a0', '#ffffff'] }[lb.id];
   if (pillar) fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1: pillar[0], c2: pillar[1], t: 0.5, max: 0.5, d: 0 });
   else fx.push({ kind: 'lnova', x: e.x, y: e.y, r: 70, c1: TYPE_COLOR[lb.type], c2: '#ffffff', t: 0.4, max: 0.4 });
   const bt = lb.id === 'techno-blast' ? curForm()?.shotType ?? 'normal' : lb.type;
   for (const o of [e, ...enemiesNear(e.x, e.y, 60, e)]) damage(o, p.dmg * 0.9, bt, false, true);
+  if (lb.id === 'shadow-blast') e.weak = Math.max(e.weak ?? 0, 3);
   if (lb.id === 'blue-flare' || (lb.id === 'scald' || lb.id === 'steam-eruption') && Math.random() < 0.4) e.burn = Math.max(e.burn ?? 0, 3);
   return false;
 }

@@ -72,12 +72,13 @@ function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
     * (hasFx('blade') && big ? 1.6 : 1) * (hasFx('madness') && big ? (combo('calamity') ? 1.6 : 1.4) : 1) * (timeStop > 0 && hasFx('timeStop') ? 1.5 : 1) * (has('moonblast') && big ? 1.3 : 1) * (has('earth-power') && big ? 1.25 : 1)
     * (combo('scorch') && dot ? 1.4 : 1) * (combo('quake') && big ? 1.35 : 1) * (combo('dragon') ? 1.25 : 1) * (combo('mind') && e.stun > 0 ? 1.5 : 1)
     * stab(type) * zTypeMul(type) * abDamageMul(type, near) * (has('close-combat') ? closeMul(e) : 1) * (has('play-rough') && near ? 1.4 : 1) * (e.broken > 0 ? 1.2 : 1) * (p.surge > 0 ? 1.5 : 1)
-    * (combo('inferno') && e.burn > 0 ? 1.5 : 1) * (combo('timewarp') && timeStop > 0 ? 2 : 1) * (hasFx('void') && (e.sleep ?? 0) > p.time ? 1.3 : 1) * ((p.thiefT ?? 0) > p.time ? 1.25 : 1);
+    * (combo('inferno') && e.burn > 0 ? 1.5 : 1) * (combo('timewarp') && timeStop > 0 ? 2 : 1) * (hasFx('void') && (e.sleep ?? 0) > p.time ? 1.3 : 1) * ((p.evilMoxT ?? 0) > p.time ? 1.4 : 1) * ((p.thiefT ?? 0) > p.time ? 1.25 : 1);
   const crit = Math.random() < p.crit + extraCrit + moveCrit() + (combo('venom') && e.psn > 0 ? 0.25 : 0);
   if (crit) d *= (has('crunch') ? 2.2 : 1.5) * (abStat('sniper', false) ? 1.5 : 1);
   if (crit && combo('fang') && !tick && Math.random() < 0.15) heal(1);
   if (e.battle || e.rank === 'legend') p.fD = (p.fD ?? 0) + Math.min(d, Math.max(0, e.hp));
   e.hp -= d; e.hit = 0.1; e.aggro = true;
+  if (p.vamp && (p.vampD = (p.vampD ?? 0) + d) >= 18 * Math.max(1, p.dmg / 6)) { p.vampD = 0; heal(1); fx.push({ kind: 'boom', x: p.x, y: p.y - 20, r: 22, t: 0.2, max: 0.2, color: '#a02040' }); }
   if (!tick) sfx(crit ? 'crit' : 'hit');
   if (hasFx('drain') && (p.drain2 += d) >= (combo('deathwing') ? 6 : 12)) { p.drain2 -= combo('deathwing') ? 6 : 12; heal(1); fx.push({ kind: 'boom', x: p.x, y: p.y - 20, r: 26, t: 0.25, max: 0.25, color: '#e04050' }); }
   if (combo('vine') && (p.drain += d) >= 25) { p.drain -= 25; heal(1); say('체력을 흡수했다!', p.x, p.y - 60, '#8f8'); }
@@ -174,6 +175,7 @@ function beamCfg() {
   if (has('photon-geyser')) { type = 'psychic'; mul = Math.max(mul, 2.6); wm *= 1.3; }
   if (has('scald')) { type = 'water'; mul = Math.max(mul, 2.2); }
   if (has('steam-eruption')) { type = 'water'; mul = Math.max(mul, 2.6); wm *= 1.2; }
+  if (has('shadow-blast')) { type = 'dark'; mul = Math.max(mul, 2.7); wm *= 1.2; }
   if (has('fleur-cannon')) { type = 'fairy'; mul = Math.max(mul, 2.8); wm *= 1.15; }
   if (has('techno-blast')) { type = curForm()?.shotType ?? 'normal'; mul = Math.max(mul, 2.5); }  // 카세트를 꽂으면 그 타입
   if (has('light-that-burns-the-sky')) { type = 'psychic'; mul = Math.max(mul, 3.2); wm *= 1.6; cm *= 1.4; }
@@ -779,6 +781,7 @@ function checkLegends() {
 }
 
 function onKill(e) {
+  if (player.evilMoxie) player.evilMoxT = player.time + 6;
   const p = player;
   abKill();
   fx.push({ kind: 'poof', x: e.x, y: e.y, t: 0.3, max: 0.3 });

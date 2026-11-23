@@ -176,7 +176,7 @@ function masterReward() {
   if (mine && Math.random() < 0.75) return give(mine);
   const tera = myTypes().map(t => `${t}-tera-shard`).find(id => !own(id));
   if (tera && Math.random() < 0.35) return give(tera);
-  const lt = LTMS.filter(t => !own(t.id));
+  const lt = LTMS.filter(t => !own(t.id) && !t.evil);
   if (lt.length && Math.random() < 0.6) { const t = pick(lt); taken.add(t.id); return { kind: 'tm', tm: t }; }
   return rollGimmick(Math.random) ?? (lt.length ? (t => (taken.add(t.id), { kind: 'tm', tm: t }))(pick(lt)) : rollContent(Math.random, { c: 0, r: 0, l: 1 }));
 }

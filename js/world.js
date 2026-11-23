@@ -31,7 +31,7 @@ function itemGrade(it) {
   if (tera) return myTypes().includes(tera) ? 3 : 2;
   if (fs.length && fs.some(f => f.mon === p?.mon.id)) return 3;
   if (fs.length && it.r !== 'g') return 2;  // 다이맥스밴드처럼 원래 마스터볼 급인 기믹 도구는 그대로
-  return { c: 0, r: 1, l: 2, k: 2, g: 3 }[it.r] ?? 0;
+  return { c: 0, r: 1, l: 2, k: 2, g: 3, e: 3 }[it.r] ?? 0;
 }
 // 상자 내용물. tm = 일반 기술머신 확률, 나머지(c·r·l)는 아이템 등급 비율
 // 전설의 기술머신(ltm)은 여기서 나오지 않는다: 전설의 포켓몬을 쓰러뜨리면 그 상징 기술머신이 떨어질 때만 얻는다 (ltm 값은 무시)
@@ -45,7 +45,7 @@ function rollContent(rnd, { tm = 0, c = 0.6, r = 0.35, l = 0.05, g = 0.03 }) {
   const r2 = rnd() * (c + r + l), tier = r2 < c ? 'c' : r2 < c + r ? 'r' : 'l';
   if (tier === 'c') { const cs = ITEMS.filter(i => i.r === 'c'); return { kind: 'item', item: cs[Math.floor(rnd() * cs.length)] }; }
   let pool = ITEMS.filter(i => i.r === tier && !taken.has(i.id));
-  if (!pool.length) pool = ITEMS.filter(i => i.r !== 'k' && i.r !== 'g' && !taken.has(i.id));
+  if (!pool.length) pool = ITEMS.filter(i => i.r !== 'k' && i.r !== 'g' && i.r !== 'e' && !taken.has(i.id));
   if (!pool.length) return { kind: 'berry' };
   const it = pool[Math.floor(rnd() * pool.length)];
   taken.add(it.id);

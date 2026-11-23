@@ -295,6 +295,11 @@ const LTMS = [
   L('plasma-fists', 'electric', 'smite', '번개 주먹, 낙뢰, 연쇄 번개'),
   L('jungle-healing', 'grass', 'flare', '맞으면 폭발, 쓰러뜨리면 회복'),
   L('light-that-burns-the-sky', 'psychic', 'beam', '광선 · 멸망의 빛, 아주 거대함'),
+  // 악의 조직 전용 섀도 기술: 거래로만 얻는다 (상자·보상·상점에서는 나오지 않는다)
+  { ...L('shadow-rush', 'dark', 'dashStrike', '조직 전용 · 공격할 때 1.4초마다 검은 혜성 돌진 일격, 자동 조준'), evil: true },
+  { ...L('shadow-blast', 'dark', 'beam', '조직 전용 · 광선 · 어둠의 광선, 아주 강함, 맞은 적은 공격이 뜸해짐'), evil: true },
+  { ...L('shadow-storm', 'dark', 'storm', '조직 전용 · 맞힌 자리에 어둠의 소용돌이, 공격이 뜸해짐'), evil: true },
+  { ...L('shadow-end', 'dark', 'madness', '조직 전용 · 체력 절반 확률, 보스에게 강함'), evil: true },
 ];
 // 휘둘러 치는 기술: 공격 방식이 '베기'(칼) 또는 '주먹'이 된다. 앞쪽 부채꼴을 직접 치고, 칼은 검기·주먹은 충격파가 조금 날아간다
 const SWING = { 'behemoth-blade': 'sword', 'secret-sword': 'sword', 'wicked-blow': 'fist', 'surging-strikes': 'fist', 'spectral-thief': 'fist', 'plasma-fists': 'fist' };
@@ -314,10 +319,12 @@ const LEGEND_KO = { psystrike: '사이코브레이크', 'mist-ball': '미스트�
   'take-heart': '브레이브차지', 'dark-void': '다크홀', judgment: '심판의뭉치', 'v-create': 'V제너레이트', 'bleakwind-storm': '찬바람폭풍', 'wildbolt-storm': '번개폭풍',
   'sandsear-storm': '열사의폭풍', glaciate: '얼어붙은세계', 'freeze-shock': '프리즈볼트', 'secret-sword': '신비의칼', 'relic-song': '옛노래', 'techno-blast': '테크노버스터',
   'hyperspace-hole': '이차원홀', 'hyperspace-fury': '이차원러시', 'steam-eruption': '스팀버스트', 'fleur-cannon': '플뢰르캐논', 'spectral-thief': '섀도스틸',
-  'plasma-fists': '플라스마피스트', 'jungle-healing': '정글힐', 'light-that-burns-the-sky': '하늘을태우는멸망의빛' };
+  'plasma-fists': '플라스마피스트', 'jungle-healing': '정글힐', 'light-that-burns-the-sky': '하늘을태우는멸망의빛',
+  'shadow-rush': '섀도러시', 'shadow-blast': '섀도블래스트', 'shadow-storm': '섀도스톰', 'shadow-end': '섀도엔드' };
 for (const t of LTMS) t.name = LEGEND_KO[t.id] ?? t.name;
 // 게임 안에서는 공격 방식(광선·원뿔·탄…) 말머리를 보여 주지 않는다. 효과만 남긴다
-for (const t of [...TMS, ...LTMS]) t.desc = t.desc.replace(/^(강화|광선|원뿔|구슬|탄|돌진|레이저|알폭탄|구르기) · /, '');
+for (const t of [...TMS, ...LTMS]) t.desc = t.desc.replace(/^(강화|광선|원뿔|구슬|탄|돌진|레이저|알폭탄|구르기) · /, '').replace(/^조직 전용 · (광선 · )?/, '조직 전용 · ');
+for (const t of LTMS) if (t.evil) t.desc = t.desc.replace(/ · 전설$/, ' · 섀도 기술');
 // 전설의 포켓몬 → 상징적인 기술
 const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'zap-cannon', 146: 'sky-attack', 150: 'psystrike', 151: 'expanding-force', 243: 'discharge', 244: 'sacred-fire', 245: 'scald',
   249: 'aeroblast', 250: 'sacred-fire', 251: 'leaf-storm', 377: 'ancient-power', 378: 'frost-breath', 379: 'heavy-slam', 380: 'mist-ball', 381: 'luster-purge',
