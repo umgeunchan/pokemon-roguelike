@@ -271,13 +271,19 @@ function makeIndoor(b) {
 const roadNode = () => world.nodes.find(n => n.name.includes('챔피언로드')) ?? world.nodes.find(n => n.league);
 const roadPortal = r => player.beaten.size >= region.gyms.length ? { x: r.cx, y: (r.y1 - 6.5) * TS, label: `${roadNode().name}(으)로`, road: true } : null;
 // 장소 한가운데에서 가장 가까운, 걸어갈 수 있는 빈칸
+// 체육관 안에서 부르므로 벽 검사는 반드시 바깥 지도(world)로 한다 (map이 체육관이면 체육관 벽으로 검사해서 바깥 벽에 끼였다)
 function openSpot(n) {
-  for (let rad = 0; rad < 12; rad++) for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
-    if (Math.max(Math.abs(dx), Math.abs(dy)) !== rad) continue;
-    const tx = n.tx + dx, ty = n.ty + dy, k = ty * world.tw + tx;
-    if (world.reach[k] && !world.solid[k] && !circleHitsSolid((tx + 0.5) * TS, (ty + 0.5) * TS, 16)) return [(tx + 0.5) * TS, (ty + 0.5) * TS];
-  }
-  return [(n.tx + 0.5) * TS, (n.ty + 0.5) * TS];
+  const prev = map, r = Math.max(player?.r ?? 16, 16) + 6;
+  map = world;
+  try {
+    for (let rad = 0; rad < 24; rad++) for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== rad) continue;
+      const tx = n.tx + dx, ty = n.ty + dy, k = ty * world.tw + tx;
+      if (tx < 0 || ty < 0 || tx >= world.tw || ty >= world.th) continue;
+      if (world.reach[k] && !world.solid[k] && !circleHitsSolid((tx + 0.5) * TS, (ty + 0.5) * TS, r)) return [(tx + 0.5) * TS, (ty + 0.5) * TS];
+    }
+    return [(n.tx + 0.5) * TS, (n.ty + 0.5) * TS];
+  } finally { map = prev; }
 }
 // 관장 방 한가운데 아래쪽: 밟으면 체육관 밖 문 앞으로 나간다
 const gymPortal = r => ({ x: r.cx, y: (r.y1 - 3.5) * TS });

@@ -150,6 +150,69 @@ ITEMS.push(
   I('cornerstone-mask', 'l', '주춧돌의가면', '최대 체력 +1칸, 공격 +0.2', p => { p.maxHp += 2; p.hp += 2; p.dmg += 0.2; }),
   I('tera-orb', 'l', '테라스탈오브', '공격 +0.5, 최대 체력 +1칸', p => { p.dmg += 0.5; p.maxHp += 2; p.hp += 2; }),
 );
+// 나머지 전설·환상 전용 도구 (2026-11-23). 그 포켓몬이 주우면 폼 효과처럼 늘 강해지고, 다른 포켓몬은 능력치가 조금 오른다
+// [포켓몬 번호들, 도구 id, 이름(null이면 이미 있는 도구), 아이콘, 포켓몬 이름들, 전용 효과, 폼(PokeAPI 폼 이름·PMD 번호, 없으면 모습 그대로)]
+// 일반 효과는 전용 효과에서 정한다: 체력이 있으면 최대 체력 +1칸, 연사면 연사 x1.06, 속도면 이동 속도 +0.15, 아니면 공격 +0.5
+const LEGEND_SIGS = [
+  [[144], 'sig-articuno', '얼음깃털', 'never-melt-ice', ['프리져'], { mul: 1.25, rate: 0.9 }],
+  [[145], 'sig-zapdos', '번개깃털', 'magnet', ['썬더'], { mul: 1.25, spd: 1.1 }],
+  [[146], 'sig-moltres', '불꽃깃털', 'charcoal', ['파이어'], { mul: 1.35 }],
+  [[150], 'sig-mewtwo', '뮤츠의 갑옷', 'metal-coat', ['뮤츠'], { mul: 1.25, hp: 4 }],
+  [[151], 'old-sea-map', '오래된해도', 'old-sea-map', ['뮤'], { mul: 1.2, rate: 0.85, spd: 1.1 }],
+  [[243], 'sig-raikou', '천둥의 결정', 'thunder-stone', ['라이코'], { mul: 1.25, rate: 0.9 }],
+  [[244], 'sig-entei', '화산의 결정', 'fire-stone', ['앤테이'], { mul: 1.35 }],
+  [[245], 'clear-bell', '투명한방울', 'clear-bell', ['스이쿤'], { mul: 1.2, hp: 4 }],
+  [[249], 'silver-wing', null, null, ['루기아'], { mul: 1.3, hp: 2 }],
+  [[250], 'rainbow-wing', null, null, ['칠색조'], { mul: 1.35 }],
+  [[251], 'sig-celebi', '시간의 뿌리', 'big-root', ['세레비'], { mul: 1.2, rate: 0.85 }],
+  [[377], 'sig-regirock', '바위 점자석판', 'hard-stone', ['레지락'], { mul: 1.15, hp: 6 }],
+  [[378], 'sig-regice', '얼음 점자석판', 'ice-stone', ['레지아이스'], { mul: 1.2, hp: 4, rate: 0.95 }],
+  [[379], 'sig-registeel', '강철 점자석판', 'comet-shard', ['레지스틸'], { mul: 1.15, hp: 6 }],
+  [[380, 381], 'soul-dew', null, null, ['라티아스', '라티오스'], { mul: 1.3 }],
+  [[385], 'sig-jirachi', '소원의 별', 'star-piece', ['지라치'], { mul: 1.3 }],
+  [[480, 481, 482], 'red-chain', '빨간쇠사슬', 'red-chain', ['유크시', '엠라이트', '아그놈'], { mul: 1.3 }],
+  [[488], 'lunar-wing', '초승달날개', 'lunar-wing', ['크레세리아'], { mul: 1.2, hp: 4 }],
+  [[490], 'sig-manaphy', '바다의 왕관', 'mystic-water', ['마나피'], { mul: 1.2, rate: 0.85 }],
+  [[491], 'sig-darkrai', '악몽의 결정', 'dusk-stone', ['다크라이'], { mul: 1.35 }],
+  [[494], 'liberty-pass', '리버티패스', 'liberty-pass', ['비크티니'], { mul: 1.3, spd: 1.1 }],
+  [[643], 'light-stone', '라이트스톤', 'light-stone', ['레시라무'], { mul: 1.3, hp: 2 }],
+  [[644], 'dark-stone', '다크스톤', 'dark-stone', ['제크로무'], { mul: 1.3, hp: 2 }],
+  [[647], 'sig-keldeo', '신비의검 비전서', 'black-belt', ['케르디오'], { mul: 1.3 }, ['keldeo-resolute', '/0001', '케르디오 각오의 모습']],
+  [[648], 'sig-meloetta', '고대의 노래 악보', 'gb-sounds', ['메로엣타'], { mul: 1.3, spd: 1.1, types: ['normal', 'fighting'], shotType: 'fighting' }, ['meloetta-pirouette', '/0001', '메로엣타 스텝폼']],
+  [[716], 'sig-xerneas', '생명의 나뭇가지', 'dawn-stone', ['제르네아스'], { mul: 1.3, hp: 2 }, ['xerneas-active', '', '제르네아스 액티브모드']],
+  [[717], 'sig-yveltal', '파괴의 고치', 'reaper-cloth', ['이벨타르'], { mul: 1.35 }],
+  [[719], 'sig-diancie', '핑크 다이아', 'shiny-stone', ['디안시'], { mul: 1.2, hp: 4 }],
+  [[721], 'sig-volcanion', '증기의 핵', 'magmarizer', ['볼케니온'], { mul: 1.3, shot: 1.15 }],
+  [[785], 'electric-seed', '일렉트릭시드', 'electric-seed', ['카푸꼬꼬꼭'], { mul: 1.3, spd: 1.1 }],
+  [[786], 'psychic-seed', '사이코시드', 'psychic-seed', ['카푸나비나'], { mul: 1.3, rate: 0.9 }],
+  [[787], 'grassy-seed', '그래스시드', 'grassy-seed', ['카푸브루루'], { mul: 1.25, hp: 4 }],
+  [[788], 'misty-seed', '미스트시드', 'misty-seed', ['카푸느지느'], { mul: 1.25, hp: 2, rate: 0.95 }],
+  [[791], 'sun-flute', '해의피리', 'sun-flute', ['솔가레오'], { mul: 1.3, hp: 2 }],
+  [[792], 'moon-flute', '달의피리', 'moon-flute', ['루나아라'], { mul: 1.25, rate: 0.9 }],
+  [[801], 'sig-magearna', '소울하트', 'prism-scale', ['마기아나'], { mul: 1.3 }, ['magearna-original', '/0001', '마기아나 500년 전의 색']],
+  [[802], 'sig-marshadow', '그림자 두건', 'spell-tag', ['마샤도'], { mul: 1.3, spd: 1.1 }],
+  [[807], 'sig-zeraora', '뇌전의 발톱', 'electirizer', ['제라오라'], { mul: 1.25, rate: 0.85 }],
+  [[893], 'sig-zarude', '정글의 덩굴', 'miracle-seed', ['자루도'], { mul: 1.3, hp: 2 }],
+  [[1001], 'sig-wo-chien', '재앙의 목간', 'rare-bone', ['총지엔'], { mul: 1.25, hp: 4 }],
+  [[1002], 'sig-chien-pao', '재앙의 검', 'dragon-scale', ['파오젠'], { mul: 1.35 }],
+  [[1003], 'sig-ting-lu', '재앙의 그릇', 'odd-keystone', ['딩루'], { mul: 1.15, hp: 6 }],
+  [[1004], 'sig-chi-yu', '재앙의 구슬', 'magma-stone', ['위유이'], { mul: 1.3, rate: 0.9 }],
+  [[1007, 1008], 'booster-energy', '부스터에너지', 'booster-energy', ['코라이돈', '미라이돈'], { mul: 1.3, spd: 1.15 }],
+];
+for (const [mons, item, ko, icon, bases, st, form] of LEGEND_SIGS) {
+  if (ko) {
+    const [gd, ga] = st.hp ? ['최대 체력 +1칸', p => { p.maxHp += 2; p.hp += 2; }] : st.rate ? ['연사 x1.06', p => p.fireDelay *= 0.94] : st.spd ? ['이동 속도 +0.15', p => p.speed += 30] : ['공격 +0.5', p => p.dmg += 0.5];
+    ITEMS.push({ ...I(item, 'l', ko, `${bases.join('·')}의 보물: ${gd}`, ga), icon });
+  }
+  const extra = [st.hp && `최대 체력 +${st.hp / 2}칸`, st.rate && '연사 증가', st.spd && '이동 속도 증가', st.shot && '탄속 증가', st.shotType && `${TYPE_KO[st.shotType]} 타입 공격`].filter(Boolean);
+  const iname = ko ?? ITEMS.find(it => it.id === item)?.name;
+  mons.forEach((mon, i) => {
+    const base = bases[i] ?? bases[0], [key, pmd, fname] = form ?? [`sig-${mon}`, undefined, base];
+    LEGEND_FORMS[key] = { item, mon, ...(form ? { pmd } : { form: null }), base, name: fname, ...st,
+      note: `${form ? `${fname}(으)로 변신, ` : '전설의 힘이 깨어남, '}화력 x${st.mul}${extra.length ? '·' + extra.join('·') : ''}`,
+      say: form ? `${base}은(는) ${iname}의 힘으로 ${fname}이(가) 되었다!` : `${base}은(는) ${iname}의 힘으로 전설의 힘이 깨어났다!` };
+  });
+}
 const formsOf = itemId => Object.values(LEGEND_FORMS).filter(f => f.item === itemId);
 const formFor = (itemId, monId) => Object.keys(LEGEND_FORMS).find(k => LEGEND_FORMS[k].item === itemId && LEGEND_FORMS[k].mon === monId) ?? null;
 const curForm = () => LEGEND_FORMS[player?.legendForm];
@@ -175,12 +238,13 @@ function checkLegendForm(itemId) {
   banner = { text: f.say, t: 4, glow: '#ffd060' };
   loadFormArt();
 }
-const formName = p => LEGEND_FORMS[p.legendForm]?.name ?? `${p.mega ? '메가' : ''}${p.mon.name}`;
+// 모습이 그대로인 전용 도구(form: null)는 메가진화했으면 메가 이름을 그대로 쓴다
+const formName = p => { const f = LEGEND_FORMS[p.legendForm]; return f && !(f.form === null && p.mega && !f.mega) ? f.name : `${p.mega ? '메가' : ''}${p.mon.name}`; };
 // 바뀐 모습 그림: 배틀 그림은 PokeAPI 폼, 필드 그림은 PMD 폼 (없으면 원래 그림)
 async function loadFormArt() {
   const p = player, key = p.legendForm, f = LEGEND_FORMS[key], m = p.mon;
   if (!f) return;
-  if (f.form === null) { p.megaArt = undefined; return; }
+  if (f.form === null) { if (p.mega && !f.mega) loadMegaArt(); else p.megaArt = undefined; return; }
   const [j, field] = await Promise.all([getJson(`${API}/pokemon-form/${key}`).catch(() => null), loadField(m.id, f.pmd ?? '/0001')]);
   const src = p.shiny ? j?.sprites?.front_shiny ?? j?.sprites?.front_default : j?.sprites?.front_default;
   const img = src ? await loadImg(src).catch(() => null) : null;

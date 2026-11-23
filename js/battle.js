@@ -129,7 +129,7 @@ function startRival(n) {
     banner = { text: `라이벌 ${n.name}에게 이겼다! 원래 자리로 돌아간다`, t: 3 };
     world.pickups.push({ ...rollContent(Math.random, { tm: 0.45, c: b ? 0 : 0.5, r: 0.6, l: b >= 5 ? 0.4 : 0.1 }), x: n.x, y: n.y + 40, ball: true });
     world.pickups.push({ kind: 'candy', x: n.x + 40, y: n.y + 40 });
-    world.pickups.push({ ...masterReward(), x: n.x, y: n.y + 90, ball: true });  // 마스터볼 급
+    world.pickups.push({ ...bossReward(), x: n.x, y: n.y + 90, ball: true });  // 슈퍼볼~마스터볼 급
     if (Math.random() < 0.35) { const g = rollGimmick(Math.random); if (g) world.pickups.push({ ...g, x: n.x - 40, y: n.y + 40, ball: true }); }
     map.returnT = 3.5;
   } });
@@ -158,6 +158,13 @@ function hyperReward() {
   const pool = [...new Set([...Object.values(LEGEND_FORMS).map(f => f.item), ...Object.keys(TYPE_KO).map(t => `${t}-tera-shard`)])].filter(id => !own(id) && itemById(id) && ballGrade({ kind: 'item', item: itemById(id) }) === 2);
   if (pool.length && Math.random() < 0.6) { const id = pick(pool); taken.add(id); return { kind: 'item', item: itemById(id) }; }
   return rollContent(Math.random, { c: 0, r: 0, l: 1, g: 0 });
+}
+// 라이벌·관장 보상: 슈퍼볼(희귀한 도구) 50% · 하이퍼볼 급 35% · 마스터볼 급 15%
+function bossReward() {
+  const r = Math.random();
+  if (r < 0.15) return masterReward();
+  if (r < 0.5) return hyperReward();
+  return rollContent(Math.random, { c: 0, r: 1, l: 0, g: 0 });
 }
 function masterReward() {
   const p = player, own = id => taken.has(id) || p.moves.has(id) || p.items.some(i => i.id === id), give = id => (taken.add(id), { kind: 'item', item: itemById(id) });
@@ -195,7 +202,7 @@ function startRoom(r) {
     if (map.roadPortal) dialog = { name: r.who.leader, text: `배지 ${region.gyms.length}개를 다 모았구나. 저 고리를 타면 ${roadNode().name}까지 단숨에 갈 수 있어!`, t: 6, keep: true };
     map.pickups.push({ ...rollContent(Math.random, { tm: 0.55, c: 0, r: 0.7, l: 0.3 }), x: r.cx, y: (r.y0 + 4.5) * TS });
     map.pickups.push({ kind: 'candy', x: r.cx + 60, y: (r.y0 + 4.5) * TS });
-    map.pickups.push({ ...masterReward(), x: r.cx, y: (r.y0 + 6) * TS, ball: true });  // 마스터볼 급
+    map.pickups.push({ ...bossReward(), x: r.cx, y: (r.y0 + 6) * TS, ball: true });  // 슈퍼볼~마스터볼 급
     if (Math.random() < 0.35) gimmickReward(r.cx - 60, (r.y0 + 4.5) * TS);
   } });
   // 사천왕 → 이기면 위쪽 방 문이 열린다. 마지막 방은 챔피언
