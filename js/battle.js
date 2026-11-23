@@ -110,6 +110,18 @@ function makeRivalArena(who, type) {
   return { kind: 'indoor', sub: 'rival', building: null, tw, th, solid, voids, rooms: [room], room, npcs: [], pickups: [], enemies: [], buildings: [], signs: [], battle: null, type, furn: [], leader: null };
 }
 
+// 기술 없이 시작한 전설: 첫 라이벌전을 이기면 힘이 깨어난다. 전용 기술을 배우고, 전용 도구가 발밑에 떨어진다
+// 버드렉스는 기술 대신 유대의 고삐 하나 (고삐를 주우면 그 말에 올라타며 기술을 배운다)
+function legendAwaken(n) {
+  const p = player, id = p.mon.id, mv = id === 898 ? null : LEGEND_MOVE[id];
+  const own = it => taken.has(it) || p.items.some(i => i.id === it);
+  const kit = [...new Set(Object.values(LEGEND_FORMS).filter(f => f.mon === id && itemById(f.item)).map(f => f.item))].filter(it => !own(it));
+  if (mv && !p.moves.has(mv) && p.moves.size < MAX_MOVES) { learnMove(mv); { const c = TYPE_COLOR[moveDef(mv).type] ?? '#fff'; fx.push({ kind: 'lnova', x: p.x, y: p.y, r: 140, c1: c, c2: '#ffffff', t: 0.9, max: 0.9, d: 0 }); } }
+  if (kit.length) { const it = pick(kit); taken.add(it); world.pickups.push({ kind: 'item', item: itemById(it), x: n.x + 40, y: n.y + 90, ball: true }); }
+  const parts = [mv && `${moveDef(mv).name}을(를) 깨달았다`, kit.length && (id === 898 ? '유대의 고삐가 떨어졌다' : '전용 도구가 떨어졌다')].filter(Boolean);
+  if (parts.length) banner = { text: `${p.mon.name}의 힘이 깨어났다! ${parts.join(', ')}!`, t: 3.5, glow: '#ffe060' };
+}
+
 function startRival(n) {
   // 악의 조직과 한 번이라도 거래했으면 라이벌은 적대적: 대사가 바뀌고, 포켓몬이 더 많고 더 단단하다
   const p = player, b = p.beaten.size, hostile = rivalHostile(), [hi, bye] = (hostile ? RIVAL_TALK_HOSTILE : RIVAL_TALK)[n.rival].map(orgSay);
@@ -132,8 +144,7 @@ function startRival(n) {
     world.pickups.push({ kind: 'candy', x: n.x + 40, y: n.y + 40 });
     world.pickups.push({ ...bossReward(), x: n.x, y: n.y + 90, ball: true });  // 슈퍼볼~마스터볼 급
     if (Math.random() < 0.35) { const g = rollGimmick(Math.random); if (g) world.pickups.push({ ...g, x: n.x - 40, y: n.y + 40, ball: true }); }
-    // 버드렉스는 첫 라이벌전을 이기면 유대의 고삐 하나를 바로 받는다 (기술 없이 시작하는 대신)
-    if (n.rival === 'start' && p.mon.id === 898) { const rs = ['ice-reins', 'shadow-reins'].filter(id => !taken.has(id) && !p.items.some(i => i.id === id)); if (rs.length) { const id = pick(rs); taken.add(id); world.pickups.push({ kind: 'item', item: itemById(id), x: n.x + 40, y: n.y + 90, ball: true }); banner = { text: `라이벌에게 이겼다! 유대의 고삐가 떨어졌다`, t: 3 }; } }
+    if (n.rival === 'start' && NO_START_MOVE.has(p.mon.id)) legendAwaken(n);
     // 악의 조직의 거래를 8번 모두 거절했다면 마지막 승부 뒤에 라이벌이 조건 없는 최고급 거래를 해 준다
     if (n.rival === 'road' && !hostile && (p.evilRefused ?? 0) >= 8 && !p.rivalGiftDone) p.rivalGiftDue = true;
     map.returnT = 3.5;

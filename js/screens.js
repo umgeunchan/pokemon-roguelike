@@ -318,7 +318,7 @@ function drawSelect() {
   text(m.types.map(t => TYPE_KO[t]).join('/'), px, 306, 12, TYPE_COLOR[m.types[0]]);
   text(`체력 ${st.hp / 2}칸 · 공격 ${st.dmg.toFixed(1)} · 속도 ${(st.speed / 200).toFixed(2)}`, px, 324, 11, '#ccc');
   const ab = monAb(m); if (ab) text(`특성 ${ab.ko}`, px, 341, 11, '#9cf');
-  if (NO_START_MOVE.has(m.id)) { text('시작 기술 없음', px, 362, 13, '#f99'); wrap('첫 라이벌전에서 이기면 유대의 고삐 하나를 받는다. 고삐를 얻으면 그 모습으로 바뀌며 전용 기술을 배우고, 두 고삐의 힘은 겹친다', px, 380, 200, 10, '#aaa', text, 'center'); }
+  if (NO_START_MOVE.has(m.id)) { text('시작 기술 없음', px, 362, 13, '#f99'); wrap(m.id === 898 ? '첫 라이벌전에서 이기면 유대의 고삐 하나를 받는다. 고삐를 얻으면 그 말에 올라타며 전용 기술을 배우고, 두 고삐의 힘은 겹친다' : `첫 라이벌전에서 이기면 전용 기술 ${moveDef(LEGEND_MOVE[m.id]).name}을(를) 깨닫고 전용 도구를 얻는다`, px, 380, 200, 10, '#aaa', text, 'center'); }
   if (mv) { nameText(mv, `시작 기술 ${mv.name}`, px, 362, 13, mv.legend ? '#fd6' : TYPE_COLOR[mv.type], 'center'); wrap(mv.desc, px, 380, 200, 10, '#aaa', text, 'center'); }
   text('WASD 이동 · 방향키 공격 · E 대화 · 배지 8개 → 포켓몬리그 → 챔피언', CW / 2, CH - 14, 12, '#888');
 }

@@ -112,8 +112,8 @@ Object.assign(LEGEND_FORMS, {
   'necrozma-dusk': { item: 'n-solarizer', mon: 800, pmd: '/0001', base: '네크로즈마', name: '황혼의 갈기 네크로즈마', mul: 1.3, types: ['psychic', 'steel'], note: '황혼의 갈기, 강철 타입 추가·화력 x1.3', say: '네크로즈마가 솔가레오와 합체했다! 황혼의 갈기!' },
   'necrozma-dawn': { item: 'n-lunarizer', mon: 800, pmd: '/0002', base: '네크로즈마', name: '새벽의 날개 네크로즈마', mul: 1.2, rate: 0.85, types: ['psychic', 'ghost'], note: '새벽의 날개, 고스트 타입 추가·화력 x1.2·연사 증가', say: '네크로즈마가 루나아라와 합체했다! 새벽의 날개!' },
   'necrozma-ultra': { item: 'ultranecrozium-z', mon: 800, pmd: '/0003', base: '네크로즈마', name: '울트라네크로즈마', mul: 1.5, hp: 4, types: ['psychic', 'dragon'], note: '울트라네크로즈마, 화력 x1.5·최대 체력 +2칸', say: '빛이 넘쳐흐른다! 울트라네크로즈마!' },
-  'calyrex-ice': { item: 'ice-reins', mon: 898, pmd: '/0001', base: '버드렉스', name: '백마 버드렉스', mul: 1.35, hp: 4, types: ['psychic', 'ice'], stack: true, note: '백마 탄 모습, 화력 x1.35·최대 체력 +2칸, 블리자드랜스 습득 (흑마의 고삐와 힘이 겹친다, 둘 다 모으면 화력 x1.25 더)', say: '버드렉스가 블리자포스에 올라탔다!' },
-  'calyrex-shadow': { item: 'shadow-reins', mon: 898, pmd: '/0002', base: '버드렉스', name: '흑마 버드렉스', mul: 1.2, rate: 0.8, spd: 1.15, types: ['psychic', 'ghost'], stack: true, note: '흑마 탄 모습, 화력 x1.2·연사·속도 증가, 아스트랄비트 습득 (백마의 고삐와 힘이 겹친다, 둘 다 모으면 화력 x1.25 더)', say: '버드렉스가 레이스포스에 올라탔다!' },
+  'calyrex-ice': { item: 'ice-reins', mon: 898, pmd: '/0001', base: '버드렉스', name: '백마 버드렉스', ride: 896, mul: 1.35, hp: 4, types: ['psychic', 'ice'], stack: true, note: '백마 탄 모습, 화력 x1.35·최대 체력 +2칸, 블리자드랜스 습득 (흑마의 고삐와 힘이 겹친다, 둘 다 모으면 화력 x1.25 더)', say: '버드렉스가 블리자포스에 올라탔다!' },
+  'calyrex-shadow': { item: 'shadow-reins', mon: 898, pmd: '/0002', base: '버드렉스', name: '흑마 버드렉스', ride: 897, mul: 1.2, rate: 0.8, spd: 1.15, types: ['psychic', 'ghost'], stack: true, note: '흑마 탄 모습, 화력 x1.2·연사·속도 증가, 아스트랄비트 습득 (백마의 고삐와 힘이 겹친다, 둘 다 모으면 화력 x1.25 더)', say: '버드렉스가 레이스포스에 올라탔다!' },
   'urshifu-single-strike': { item: 'scroll-of-darkness', mon: 892, form: null, base: '우라오스', name: '일격의 우라오스', mul: 1.35, note: '일격의 태세, 화력 x1.35', say: '악의 족자를 읽었다! 우라오스는 일격의 태세를 갈고닦았다!' },
   'urshifu-rapid-strike': { item: 'scroll-of-waters', mon: 892, pmd: '/0001', base: '우라오스', name: '연격의 우라오스', mul: 1.1, rate: 0.75, types: ['fighting', 'water'], shotType: 'water', note: '연격의 태세, 물 타입·연사 크게 증가', say: '물의 족자를 읽었다! 우라오스는 연격의 태세가 되었다!' },
   'ogerpon-wellspring-mask': { item: 'wellspring-mask', mon: 1017, pmd: '/0005', base: '오거폰', name: '우물의 가면 오거폰', mul: 1.25, rate: 0.85, types: ['grass', 'water'], shotType: 'water', note: '우물의 가면, 물 타입·화력 x1.25·연사 증가', say: '오거폰이 우물의 가면을 썼다!' },
@@ -291,10 +291,12 @@ async function loadFormArt() {
   const p = player, key = p.legendForm, f = LEGEND_FORMS[key], m = p.mon;
   if (!f) return;
   if (f.form === null) { if (p.mega && !f.mega) loadMegaArt(); else p.megaArt = undefined; return; }
-  const [j, field] = await Promise.all([getJson(`${API}/pokemon-form/${key}`).catch(() => null), loadField(m.id, f.pmd ?? '/0001')]);
+  // 말에 올라탄 폼(버드렉스): 필드 그림이 따로 없어서 말(블리자포스·레이스포스)을 그리고 그 위에 버드렉스를 얹는다
+  const [j, field] = await Promise.all([getJson(`${API}/pokemon-form/${key}`).catch(() => null), f.ride ? loadField(f.ride) : loadField(m.id, f.pmd ?? '/0001')]);
   const src = p.shiny ? j?.sprites?.front_shiny ?? j?.sprites?.front_default : j?.sprites?.front_default;
   const img = src ? await loadImg(src).catch(() => null) : null;
-  if (player === p && p.legendForm === key) p.megaArt = { img: img ?? m.img, box: img ? spriteBox(img) : m.box, field: field ?? m.field };
+  const rider = f.ride && field ? (p.shiny && m.shinyArt?.field || m.field) : null;
+  if (player === p && p.legendForm === key) p.megaArt = { img: img ?? m.img, box: img ? spriteBox(img) : m.box, field: field ?? m.field, rider };
 }
 
 // ---------- Z기술 ----------

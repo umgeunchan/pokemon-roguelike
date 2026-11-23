@@ -65,6 +65,7 @@ const effMul = raw => raw >= 1 ? raw : raw === 0 ? 0.5 : raw >= 0.5 ? 0.75 : 0.6
 // tick: 광선처럼 짧은 간격으로 들어가는 피해. secondary: 다른 효과가 만든 피해라 또 연쇄하지 않음
 function damage(e, base, type, tick = false, secondary = false, extraCrit = 0) {
   if (e.hp <= 0 || untargetable(e)) return;
+  if (!tick && !(e.sparkT > now)) { e.sparkT = now + 0.08; const pl = player; fx.push({ kind: 'spark', x: e.x + (Math.random() - 0.5) * e.r * 0.6, y: e.y - 6, a: Math.atan2(e.y - pl.y, e.x - pl.x), color: pl.pcol?.[0] ?? TYPE_COLOR[type] ?? '#fff', s: isBig(e) ? 1.5 : 1, t: 0.28, max: 0.28 }); }
   // 전설은 제 장소 안에서만 싸울 수 있다 (장소 밖에서 쏘아 맞히는 꼼수 방지)
   if (outsideLegendHome(e)) { if (!tick) say('전설의 기운에 막혔다', e.x, e.y - 70, '#c8f'); return; }
   const p = player, raw = eff(type, e.mon.types), big = isBig(e), near = Math.hypot(e.x - p.x, e.y - p.y) < 110 + e.r, dot = e.burn > 0 || e.psn > 0;

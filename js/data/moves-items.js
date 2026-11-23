@@ -337,8 +337,8 @@ const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'zap-cannon', 146: 'sky-attack', 1
   // 환상의 포켓몬: 지방 지도에는 없고 후파의 고리 너머에서만 만난다
   385: 'doom-desire', 386: 'psycho-boost', 490: 'take-heart', 491: 'dark-void', 492: 'seed-flare', 493: 'judgment', 494: 'v-create', 647: 'secret-sword',
   648: 'relic-song', 649: 'techno-blast', 720: 'hyperspace-hole', 721: 'steam-eruption', 801: 'fleur-cannon', 802: 'spectral-thief', 807: 'plasma-fists', 893: 'jungle-healing' };
-// 기술 없이 시작하는 전설: 버드렉스는 유대의 고삐를 얻어야 전용 기술을 배운다
-const NO_START_MOVE = new Set([898]);
+// 전설·환상은 모두 기술 없이 시작한다. 첫 라이벌전을 이기면 전용 기술과 전용 도구를 얻는다 (버드렉스는 유대의 고삐로 기술을 배운다)
+const NO_START_MOVE = new Set(Object.keys(LEGEND_MOVE).map(Number));
 // 후파의 고리 너머에서 나올 수 있는 전설·환상의 포켓몬 전체
 const HOOPA_POOL = Object.keys(LEGEND_MOVE).map(Number);
 // 기술이 늘 주는 능력치 보너스(조건 없는 것만). 왼쪽 능력치 창과 실제 계산이 같은 값을 쓴다
