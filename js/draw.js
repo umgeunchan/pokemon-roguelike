@@ -826,7 +826,7 @@ function drawPlay() {
     ctx.drawImage(IMG[k.kind === 'tm' ? k.tm.tm : k.item.id], k.x - 30, k.y - 54 + bob, 60, 60);
   }
   const enemies = map.enemies.filter(e => inView(e.x, e.y, 200));
-  for (const e of enemies) p.seen.add(e.mon.id);
+  for (const e of enemies) if (!p.seen.has(e.mon.id)) markSeen(e.mon.id);
   if (map === world) for (const m of world.mouths) drawMouth(m);
   for (const h of hazards) drawHazard(h);
   for (const e of enemies) drawTelegraphs(e, 'ground');
@@ -857,6 +857,7 @@ function drawPlay() {
   if (p.surge > 0) { ctx.strokeStyle = `rgba(255,150,210,${0.4 + Math.abs(Math.sin(now * 8)) * 0.4})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y, 30, 14, 0, 0, Math.PI * 2); ctx.stroke(); }
   list.push({ y: p.y, draw: () => drawActor(p, (p.warpS ?? 1) * (p.dmax ? 1.4 : 1), p.vanish > 0 ? 0.15 : p.warpS !== undefined ? p.warpS : p.inv > 0 && Math.floor(p.inv * 10) % 2 ? 0.3 : 1) });
   for (const t of tears) list.push({ y: t.y, draw: () => {
+    if (t.lance) return drawLance(t);
     const s = t.r * 2, x = Math.round(t.x - t.r), y = Math.round(t.y - TEAR_Z - t.r);
     // 내 기술 탄: 뒤로 빛 잔상이 끌리고 둘레가 은은하게 빛난다
     if (t.from === 'p') {
@@ -898,7 +899,7 @@ function drawPlay() {
     ctx.fillStyle = '#f4ecd8'; ctx.fillRect(x - 6, y - 9, 12, 18); ctx.fillRect(x - 8, y - 5, 16, 10);
     ctx.fillStyle = p.pcol?.[0] ?? '#7cb342'; ctx.fillRect(x - 4, y - 4, 4, 4); ctx.fillStyle = p.pcol?.[1] ?? '#7cb342'; ctx.fillRect(x + 2, y + 2, 4, 4);
   } });
-  for (const s of pstrikes) list.push({ y: s.y, draw: () => { ctx.fillStyle = s.type === 'ground' ? '#a07848' : '#7a6a48'; ctx.fillRect(s.x - 10, s.y - 20 - Math.max(0, s.t) * 300, 20, 18); } });
+  for (const s of pstrikes) list.push({ y: s.y, draw: () => { if (s.meteor) return drawMeteor(s); ctx.fillStyle = s.type === 'ground' ? '#a07848' : '#7a6a48'; ctx.fillRect(s.x - 10, s.y - 20 - Math.max(0, s.t) * 300, 20, 18); } });
   list.sort((a, b) => a.y - b.y).forEach(a => a.draw());
   for (const e of enemies) drawTelegraphs(e, 'air');
   beams.forEach(drawBeam);

@@ -36,6 +36,9 @@ const store = { get: k => { try { return JSON.parse(localStorage.getItem(k)); } 
 const loadUnlocked = () => store.get(LEGEND_KEY) ?? [];
 // 도감: 한 번이라도 쓰러뜨린 포켓몬. 판이 끝나도 남고, 다음 판 스타팅 후보가 된다
 const DEX = new Set(store.get(DEX_KEY) ?? []), SHINY = new Set(store.get(SHINY_KEY) ?? []);
+// 발견 도감: 한 번이라도 마주친 포켓몬. 판이 끝나도 쌓인다 (예전 기록은 쓰러뜨린 포켓몬부터 채운다)
+const SEEN = new Set(store.get(SEEN_KEY) ?? [...DEX]);
+const markSeen = id => { player.seen.add(id); if (!SEEN.has(id)) { SEEN.add(id); store.set(SEEN_KEY, [...SEEN]); } };
 // 스타팅으로 고를 수 있게 되는 포켓몬: 각 세대 스타팅 계열(쓰러뜨리면 첫 단계가 열림)과 전설·환상(LEGEND_KEY)뿐. 나머지는 도감에만 등록된다
 const ALL_STARTERS = REGIONS.flatMap(r => r.starters);
 const starterBase = id => ALL_STARTERS.find(s => id >= s && id <= s + 2) ?? null;

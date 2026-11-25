@@ -110,15 +110,22 @@ function makeRivalArena(who, type) {
   return { kind: 'indoor', sub: 'rival', building: null, tw, th, solid, voids, rooms: [room], room, npcs: [], pickups: [], enemies: [], buildings: [], signs: [], battle: null, type, furn: [], leader: null };
 }
 
-// 기술 없이 시작한 전설: 첫 라이벌전을 이기면 힘이 깨어난다. 전용 기술을 배우고, 전용 도구가 발밑에 떨어진다
+// 전설: 첫 라이벌전을 이기면 힘이 깨어난다. 시작 기술이 전용 기술로 바뀌고(이미 잊었으면 새로 배운다), 전용 도구가 발밑에 떨어진다
 // 버드렉스는 기술 대신 유대의 고삐 하나 (고삐를 주우면 그 말에 올라타며 기술을 배운다)
 function legendAwaken(n) {
   const p = player, id = p.mon.id, mv = id === 898 ? null : LEGEND_MOVE[id];
   const own = it => taken.has(it) || p.items.some(i => i.id === it);
   const kit = [...new Set(Object.values(LEGEND_FORMS).filter(f => f.mon === id && itemById(f.item)).map(f => f.item))].filter(it => !own(it));
-  if (mv && !p.moves.has(mv) && p.moves.size < MAX_MOVES) { learnMove(mv); { const c = TYPE_COLOR[moveDef(mv).type] ?? '#fff'; fx.push({ kind: 'lnova', x: p.x, y: p.y, r: 140, c1: c, c2: '#ffffff', t: 0.9, max: 0.9, d: 0 }); } }
+  if (mv && !p.moves.has(mv)) {
+    const from = p.moves.has(p.first) ? moveDef(p.first).name : null;
+    formMove({ move: mv, drop: from ? [p.first] : [] }, true);
+    if (from) say(`${from}이(가) ${moveDef(mv).name}(으)로 변했다!`, p.x, p.y - 150, '#ffe060');
+    const c = TYPE_COLOR[moveDef(mv).type] ?? '#fff';
+    fx.push({ kind: 'lnova', x: p.x, y: p.y, r: 140, c1: c, c2: '#ffffff', t: 0.9, max: 0.9, d: 0 }, { kind: 'lflash', x: p.x, y: p.y, c1: c, t: 0.35, max: 0.35 });
+    ach('awaken');
+  }
   if (kit.length) { const it = pick(kit); taken.add(it); world.pickups.push({ kind: 'item', item: itemById(it), x: n.x + 40, y: n.y + 90, ball: true }); }
-  const parts = [mv && `${moveDef(mv).name}을(를) 깨달았다`, kit.length && (id === 898 ? '유대의 고삐가 떨어졌다' : '전용 도구가 떨어졌다')].filter(Boolean);
+  const parts = [mv && p.moves.has(mv) && `${moveDef(mv).name}을(를) 깨달았다`, kit.length && (id === 898 ? '유대의 고삐가 떨어졌다' : '전용 도구가 떨어졌다')].filter(Boolean);
   if (parts.length) banner = { text: `${p.mon.name}의 힘이 깨어났다! ${parts.join(', ')}!`, t: 3.5, glow: '#ffe060' };
 }
 

@@ -23,7 +23,7 @@ function hurt(type, amount = 1, src = null) {
   // 엄폐: 낙하·장판·선 같은 범위 기술도 쏜 포켓몬과 나 사이에 기둥·바위가 있으면 맞지 않는다 (탄과 광선은 원래 벽에 막힌다)
   if (src?.kind && src.src && losBlocked(src.src.x, src.src.y, p.x, p.y)) { if (!(p.coverT > p.time)) { p.coverT = p.time + 1; say('엄폐물 뒤에서 피했다!', p.x, p.y - 60, '#aef'); } return; }
   if (Math.random() < p.dodge + (hasFx('shard') ? 0.1 : 0)) { p.inv = 0.5; return say('공격을 피했다!', p.x, p.y - 60, '#aef'); }
-  // 거대방패: 8초마다 다시 차오르는 방패가 공격 한 번을 완전히 막는다
+  // 거수탄: 8초마다 다시 차오르는 방패가 공격 한 번을 완전히 막는다
   if (hasFx('bulwark') && p.shieldUp) { p.shieldUp = false; p.shieldT = 8; p.inv = 0.6; fx.push({ kind: 'boom', x: p.x, y: p.y, r: 50, t: 0.25, max: 0.25, color: '#c8d4e8' }); sfx('crit'); return say('방패가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   if (combo('fortress') && Math.random() < 0.2) { p.inv = 0.5; return say('강철 요새가 막아냈다!', p.x, p.y - 60, '#ccf'); }
   const m = eff(type, myTypes());
@@ -208,12 +208,23 @@ function aimAngle(sd) {
 // 유도 세기: 사이코 계열 > 스피드스타. 탄·알·광선·레이저(알에서 나온 것 포함) 모두 같은 값을 쓴다
 const homing = () => hasFx('psy') ? 9 : has('swift') ? 5 : 0;
 function shootTear(a, extra = {}) {
-  const p = player, sp = p.shotSpeed * moveShot(), psy = hasFx('psy'), orb = orbCount() > 0;
+  const p = player, sp = p.shotSpeed * moveShot(), psy = hasFx('psy'), orb = orbCount() > 0, life = extra.life ?? p.range * (has('psychic') ? 2.5 : 1);  // 사이코키네시스: 반(1.25배 사거리)은 가고 반은 돌아온다
   if (has('bullet-seed')) a += (Math.random() - 0.5) * 0.16;  // 씨앗은 조금씩 흩어진다
-  tears.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: p.range, life0: p.range, r: ((orb ? 17 : 7) + (hasFx('blade') ? 3 : 0)) * shotScale() * fxScale(), from: 'p', type: p.type,
+  tears.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life, life0: life, r: ((orb ? 17 : 7) + (hasFx('blade') ? 3 : 0)) * shotScale() * fxScale(), from: 'p', type: p.type,
     pierce: has('shadow-ball') || has('psychic') || psy || has('x-scissor') || hasFx('blade'), ghost: has('shadow-ball') || p.ghostShot, boom: has('psychic'), home: homing(), hit: new Set(),
     xs: has('x-scissor') ? 1 : 0, blade: has('air-slash'), split2: combo('skyfall'), fire: has('will-o-wisp'), psn: has('sludge-bomb'), color: p.pcol?.[0], accent: p.pcol?.[1],
     mul: (has('bullet-seed') ? 0.55 : 1) * (psy ? 1.4 : 1) * (has('razor-leaf') && !has('pin-missile') ? 0.7 : 1), ...extra });
+}
+// 사이코키네시스 탄이 되돌아선다 (사거리 끝이나 벽). 돌아올 때는 맞았던 적도 다시 맞힌다
+function psyTurn(t) {
+  const p = player, s = fxScale();
+  t.back = true; t.hit.clear(); t.life = t.life0;
+  if (combo('psycut') && t.xs) t.xs = Math.min(t.xs * 2, 32);
+  fx.push({ kind: 'lnova', x: t.x, y: t.y, r: 26 * s, c1: '#ff70c0', c2: '#ffe0ff', t: 0.25, max: 0.25 });
+  // 염동 그림자: 되돌아서는 자리에서 염동 폭발
+  if (combo('psyshade')) { fx.push({ kind: 'lnova', x: t.x, y: t.y, r: 70 * s, c1: '#b060e0', c2: '#ffe0ff', t: 0.35, max: 0.35 }); for (const o of enemiesNear(t.x, t.y, 70 * s)) damage(o, p.dmg * 0.9, 'psychic', false, true); }
+  // 염동 칼바람: 돌아오는 탄 둘이 양옆으로 더 갈라진다 (갈라진 탄도 돌아온다)
+  if (combo('psyleaf') && !t.split) for (const o of [-0.5, 0.5]) { const a = Math.atan2(t.vy, t.vx) + Math.PI + o; playerShot(t.x, t.y, a, { type: t.type, mul: t.mul * 0.7, r: t.r * 0.8, life: t.life0, life0: t.life0, pierce: true, back: true, split: true, color: t.color, accent: t.accent }); }
 }
 // 플레이어 쪽 탄을 아무 자리에서나 쏜다 (파편, 갈라지는 탄)
 function playerShot(x, y, a, o = {}) {
@@ -225,7 +236,7 @@ function playerShot(x, y, a, o = {}) {
 const laserType = () => moveDef(lastOf(LASERS) ?? 'thunderbolt').type;
 function fireLaser(a, o = {}) {
   const p = player;
-  beams.push({ a, laser: true, ltype: laserType(), t: 0.2, t0: 0.2, tick: 0, w: 7 * fxScale(), len: Math.min(560, p.range * p.shotSpeed * 1.5) * kindScale(), bounce: combo('psyspark'), ...o });
+  beams.push({ a, laser: true, ltype: laserType(), t: 0.2, t0: 0.2, tick: 0, w: 7 * fxScale(), len: Math.min(560, p.range * p.shotSpeed * 1.5) * kindScale() * (has('psychic') ? 1.4 : 1), bounce: combo('psyspark'), mul: combo('psyspark') ? 1.5 : 1, ...o });
 }
 function laserHits(b) {
   const p = player, pts = b.pts = beamPath(b), [x0, y0] = pts[0];
@@ -258,7 +269,7 @@ function fireCone(a, o = {}) {
   if (has('rock-slide') && !o.half) for (let i = 0; i < 3; i++) { const r = len * (0.4 + Math.random() * 0.6), aa = a + (Math.random() * 2 - 1) * half; pstrikes.push({ x: p.x + Math.cos(aa) * r, y: p.y + Math.sin(aa) * r, t: 0.3 + i * 0.12, r: 40 * s, mul: 0.8, type: 'rock' }); }
 }
 
-// 베기·주먹(거대검돌격·신비의칼·암흑강타·수류연타·섀도스틸·플라스마피스트): 앞쪽 부채꼴을 바로 친다
+// 베기·주먹(거수참·신비의칼·암흑강타·수류연타·섀도스틸·플라스마피스트): 앞쪽 부채꼴을 바로 친다
 // 칼은 넓게 휘두르고 검기가 날아가며, 주먹은 좁고 세게 치고 짧은 충격파가 나간다. 수류연타는 3연타, 암흑강타·수류연타는 늘 급소급
 const swingMove = () => [...player.moves].filter(id => SWING[id]).at(-1);
 function swingWave(a, o = {}) {
@@ -267,11 +278,13 @@ function swingWave(a, o = {}) {
 }
 function fireSlash(a, o = {}) {
   const p = player, id = swingMove(), d = moveDef(id), sword = SWING[id] === 'sword', s = fxScale();
-  const R = (sword ? 110 : 80) * s + p.range * p.shotSpeed * 0.1, half = sword ? 1.05 : 0.55, hits = id === 'surging-strikes' ? 3 : 1;
-  const always = id === 'wicked-blow' || id === 'surging-strikes' ? 1 : 0, mul = (sword ? 1.5 : 1.8) / (hits > 1 ? 2.2 : 1) * (o.mul ?? 1);
+  // 거수참: 검기 없이 거대한 검 자체로 더 넓고 길게 벤다 (날아가는 검기 몫까지 위력에 더했다)
+  const giant = id === 'behemoth-blade';
+  const R = (giant ? 165 : sword ? 110 : 80) * s + p.range * p.shotSpeed * 0.1, half = giant ? 1.35 : sword ? 1.05 : 0.55, hits = id === 'surging-strikes' ? 3 : 1;
+  const always = id === 'wicked-blow' || id === 'surging-strikes' ? 1 : 0, mul = (giant ? 2.2 : sword ? 1.5 : 1.8) / (hits > 1 ? 2.2 : 1) * (o.mul ?? 1);
   const col = { 'behemoth-blade': ['#80c0ff', '#ffffff'], 'secret-sword': ['#40e0d0', '#f0fff8'], 'wicked-blow': ['#c02050', '#ffd0e0'], 'surging-strikes': ['#2a70ff', '#d0f0ff'],
     'spectral-thief': ['#7040c0', '#e0c8ff'], 'plasma-fists': ['#ffe040', '#ffffff'] }[id] ?? [TYPE_COLOR[d.type], '#ffffff'];
-  for (let h = 0; h < hits; h++) fx.push({ kind: 'lswing', x: p.x, y: p.y, a: a + (h - (hits - 1) / 2) * 0.25, R, half, sword, c1: col[0], c2: col[1], t: 0.22 + h * 0.07, max: 0.22 + h * 0.07, d: h * 0.07 });
+  for (let h = 0; h < hits; h++) fx.push({ kind: 'lswing', x: p.x, y: p.y, a: a + (h - (hits - 1) / 2) * 0.25, R, half, sword, giant, flip: (p.swingN = (p.swingN ?? 0) + 1) % 2, c1: col[0], c2: col[1], t: (giant ? 0.34 : 0.22) + h * 0.07, max: (giant ? 0.34 : 0.22) + h * 0.07, d: h * 0.07 });
   for (const e of [...map.enemies]) {
     if (e.hp <= 0 || untargetable(e)) continue;
     const dx = e.x - p.x, dy = e.y - p.y, dd = Math.hypot(dx, dy) || 1;
@@ -282,6 +295,7 @@ function fireSlash(a, o = {}) {
     if (id === 'spectral-thief' && e.hp > 0) p.thiefT = p.time + 3;  // 섀도스틸: 상대의 힘을 빼앗아 잠깐 공격 x1.25
     if (!isBig(e) && e.hp > 0 && !e.act) moveBody(e, dx / dd * (sword ? 30 : 50), dy / dd * (sword ? 30 : 50));
   }
+  if (giant) { shake = Math.max(shake, 0.14); fx.push({ kind: 'lnova', x: p.x + Math.cos(a) * R * 0.7, y: p.y + Math.sin(a) * R * 0.7, r: 60 * s, c1: col[0], c2: col[1], t: 0.3, max: 0.3, d: 0.12 }); return; }
   swingWave(a, o);
   shake = Math.max(shake, sword ? 0.06 : 0.08);
 }
@@ -293,7 +307,7 @@ const doubleBeam = () => { const ids = [...player.moves], lb = ids.filter(id => 
 function fireAt(kind, a, o = {}) {
   const p = player, mul = o.mul ?? 1;
   if (kind === 'tear') shootTear(a, o.tear ?? {});
-  else if (kind === 'slash') swingWave(a, { mul });  // 갈래·뒤로 한 번 더는 검기·충격파만
+  else if (kind === 'slash') swingMove() === 'behemoth-blade' ? fireSlash(a, { mul }) : swingWave(a, { mul });  // 갈래·뒤로 한 번 더는 검기·충격파만 (거수참은 검기가 없어 한 번 더 벤다)
   else if (kind === 'laser') fireLaser(a, { mul });
   else if (kind === 'beam') beams.push({ a, t: 0.4, tick: 0, w: beamWidth() * (mul < 1 ? 0.6 : 1), bounce: combo('psyflame'), mul });
   else if (kind === 'cone') fireCone(a, { mul, half: o.wide });
@@ -378,7 +392,7 @@ function attack(dt) {
 // 경로: 12px씩 나아가며, 유도 기술(스피드스타·사이코 계열)이 있으면 앞쪽의 가장 가까운 적으로 조금씩 휜다
 // bounce(염동 화염·염동 전류): 벽에 막히거나 끝에 닿으면 한 번 꺾여 되돌아온다
 function beamPath(b) {
-  const p = player, home = hasFx('psy') ? 0.08 : has('swift') ? 0.05 : 0, len = b.len ?? 520 * kindScale();
+  const p = player, home = hasFx('psy') ? 0.08 : has('swift') ? 0.05 : 0, len = b.len ?? 520 * kindScale() * (has('psychic') ? 1.4 : 1);
   let x = b.ox ?? p.x, y = b.oy ?? p.y, a = b.a, turned = !b.bounce, s = 0, limit = len;
   const pts = [[x, y]];
   while (s < limit) {
@@ -789,7 +803,7 @@ function onKill(e) {
   abKill();
   fx.push({ kind: 'poof', x: e.x, y: e.y, t: 0.3, max: 0.3 });
   sfx(isBig(e) ? 'boss' : 'faint');
-  p.seen.add(e.mon.id); p.defeated[e.mon.id] = (p.defeated[e.mon.id] ?? 0) + 1;
+  markSeen(e.mon.id); p.defeated[e.mon.id] = (p.defeated[e.mon.id] ?? 0) + 1;
   if (!DEX.has(e.mon.id)) { DEX.add(e.mon.id); p.newDex = (p.newDex ?? 0) + 1; store.set(DEX_KEY, [...DEX]); say(`${e.mon.name} 도감 등록!`, e.x, e.y - 90, '#8cf'); }
   const sb = starterBase(e.mon.id);
   if (sb && !STARTERS.has(sb)) {

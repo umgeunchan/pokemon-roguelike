@@ -13,7 +13,7 @@ const FIREBASE_CONFIG = {
 const FB_VER = '10.12.2', FB = `https://www.gstatic.com/firebasejs/${FB_VER}`;
 const GUEST_KEY = 'pokemon-dungeon-guest';
 // 클라우드로 맞추는 기록: 도감, 이로치, 전설, 스타팅, 클리어한 지방, 도전과제, 이어하기, 안내, 볼륨
-const SYNC_KEYS = () => [DEX_KEY, SHINY_KEY, LEGEND_KEY, STARTER_KEY, CLEAR_KEY, ACH_KEY, SAVE_KEY, TUT_KEY, VOL_KEY];
+const SYNC_KEYS = () => [DEX_KEY, SEEN_KEY, SHINY_KEY, LEGEND_KEY, STARTER_KEY, CLEAR_KEY, ACH_KEY, SAVE_KEY, TUT_KEY, VOL_KEY];
 let acct = { ready: !FIREBASE_CONFIG, user: null, status: '', busy: false }, fb = null, syncing = false, upT = null;
 
 function onStoreChange(k) {
@@ -70,7 +70,7 @@ async function uploadAll() {
 // 합친 기록을 게임이 들고 있는 값에 다시 반영
 function reloadProgress() {
   const fill = (set, k) => { set.clear(); (store.get(k) ?? []).forEach(v => set.add(v)); };
-  fill(DEX, DEX_KEY); fill(SHINY, SHINY_KEY); fill(STARTERS, STARTER_KEY); fill(CLEARED, CLEAR_KEY); fill(ACHIEVED, ACH_KEY);
+  fill(DEX, DEX_KEY); fill(SEEN, SEEN_KEY); fill(SHINY, SHINY_KEY); fill(STARTERS, STARTER_KEY); fill(CLEARED, CLEAR_KEY); fill(ACHIEVED, ACH_KEY);
   Object.assign(VOL, store.get(VOL_KEY) ?? {}); applyVolume();
   tutDone = !!store.get(TUT_KEY);
 }

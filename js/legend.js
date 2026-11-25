@@ -26,11 +26,14 @@ function lburst(x, y, c1, c2, n, spd, life = 0.6, up = 0) {
   }
 }
 // 돌진 기술(화룡점정·액셀브레이크·라이트닝드라이브·불새): 구르기 대신, 공격할 때 1.4초마다 그 방향(가까운 적)으로 혜성처럼 꿰뚫는 돌진 일격
-const CHARGE_COL = { 'shadow-rush': ['#8020c0', '#ffb0ff'], 'dragon-ascent': ['#30e070', '#e8fff0'], 'collision-course': ['#ff5030', '#ffe0a0'], 'electro-drift': ['#40a0ff', '#ffff90'], 'sky-attack': ['#ff8020', '#fff0a0'] };
+const CHARGE_COL = { 'behemoth-bash': ['#e03048', '#ffe0a0'], 'shadow-rush': ['#8020c0', '#ffb0ff'], 'dragon-ascent': ['#30e070', '#e8fff0'], 'collision-course': ['#ff5030', '#ffe0a0'], 'electro-drift': ['#40a0ff', '#ffff90'], 'sky-attack': ['#ff8020', '#fff0a0'] };
 function legendCharge(a) {
-  const p = player, m = lmove('dashStrike');
+  // 거수탄: 돌진 기술은 아니지만 방패를 앞세워 같은 방식으로 들이받는다
+  const p = player, m = lmove('dashStrike') ?? (has('behemoth-bash') ? moveDef('behemoth-bash') : null);
+  if (has('glacial-lance')) glacialLance(a);
   if (!m || (p.chargeCd ?? 0) > p.time) return;
   p.chargeCd = p.time + (combo('stormdash') ? 1.1 : 1.4);
+  if (m.id === 'dragon-ascent') return meteorRain(a);
   const tg = nearestEnemy(p.x, p.y, null, 440);
   if (tg) a = Math.atan2(tg.y - p.y, tg.x - p.x);
   const s = fxScale(), L = 420 * s, [c1, c2] = CHARGE_COL[m.id] ?? [TYPE_COLOR[m.type], '#ffffff'];
@@ -49,6 +52,61 @@ function legendCharge(a) {
   fx.push({ kind: 'lnova', x, y, r: R, c1, c2, t: 0.45, max: 0.45, d: 0.15 });
   if (hit.length) p.inv = Math.max(p.inv, 0.3);
   shake = Math.max(shake, 0.15); sfx('beam');
+}
+// 화룡점정: 하늘 높이 솟았다가 운석이 되어 내리꽂힌다. 가까운 적들 머리 위로 녹색 불꽃 운석이 연달아 떨어진다 (적이 없으면 앞쪽에)
+function meteorRain(a) {
+  const p = player, s = fxScale(), tg = enemiesNear(p.x, p.y, 480).filter(e => !untargetable(e)).sort((u, v) => Math.hypot(u.x - p.x, u.y - p.y) - Math.hypot(v.x - p.x, v.y - p.y)).slice(0, 4);
+  const spots = tg.length ? tg.flatMap(e => [[e.x, e.y], [e.x + (Math.random() - 0.5) * 90, e.y + (Math.random() - 0.5) * 60]]) : [0, 1, 2, 3].map(i => [p.x + Math.cos(a) * (140 + i * 60) + (Math.random() - 0.5) * 80, p.y + Math.sin(a) * (140 + i * 60) + (Math.random() - 0.5) * 60]);
+  spots.slice(0, 7).forEach(([x, y], i) => pstrikes.push({ x, y, t: 0.35 + i * 0.09, t0: 0.35 + i * 0.09, r: 70 * s, mul: i % 2 ? 1.4 : 2.4, type: 'flying', meteor: true, side: Math.random() < 0.5 ? -1 : 1 }));
+  fx.push({ kind: 'lnova', x: p.x, y: p.y, r: 70 * s, c1: '#30e070', c2: '#e8fff0', t: 0.4, max: 0.4 });
+  lburst(p.x, p.y, '#30e070', '#fff8a0', 16, 200, 0.5, 220);
+  sfx('beam');
+}
+// 블리자드랜스: 1.2초마다 거대한 얼음 창을 정면으로 던진다. 꿰뚫으며 날아가고 맞은 적은 얼어붙는다
+function glacialLance(a) {
+  const p = player;
+  if ((p.lanceCd ?? 0) > p.time) return;
+  p.lanceCd = p.time + 1.2;
+  const s = fxScale(), sp = p.shotSpeed * 1.6, tg = nearestEnemy(p.x, p.y, null, 460);
+  if (tg) a = Math.atan2(tg.y - p.y, tg.x - p.x);
+  playerShot(p.x, p.y, a, { lance: true, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 20 * s, life: p.range * 1.4, life0: p.range * 1.4, pierce: true, type: 'ice', mul: 2.6, freeze: 0.6, color: '#bfefff', accent: '#ffffff' });
+  fx.push({ kind: 'lnova', x: p.x + Math.cos(a) * 30, y: p.y + Math.sin(a) * 30, r: 50 * s, c1: '#9fe8ff', c2: '#ffffff', t: 0.3, max: 0.3 });
+  shake = Math.max(shake, 0.08);
+}
+// 운석(화룡점정) 그림: 하늘에서 비스듬히 떨어지는 불꽃 바위와 긴 꼬리, 떨어질 자리의 경고 원
+function drawMeteor(s) {
+  const u = clamp(1 - s.t / s.t0, 0, 1), H = 420 * (1 - u), x = s.x + s.side * H * 0.45, y = s.y - 20 - H;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 0.25 + u * 0.4; ctx.strokeStyle = '#30e070'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(s.x, s.y, s.r * (0.4 + u * 0.6), s.r * 0.45 * (0.4 + u * 0.6), 0, 0, Math.PI * 2); ctx.stroke();
+  const tx = s.side * 0.45, len = 160, gx = x + tx * len / Math.hypot(tx, 1), gy = y - len / Math.hypot(tx, 1);
+  const g = ctx.createLinearGradient(x, y, gx, gy); g.addColorStop(0, '#fff8a0'); g.addColorStop(0.25, '#30e070'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.9; ctx.strokeStyle = g; ctx.lineCap = 'round'; ctx.shadowColor = '#30e070'; ctx.shadowBlur = 24;
+  for (const w of [30, 14]) { ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(gx, gy); ctx.stroke(); }
+  ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#7dffb0'; ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI * 2); ctx.globalAlpha = 0.5; ctx.fill();
+  ctx.restore();
+  if (Math.random() < 0.6) lburst(x, y + 20, '#30e070', '#fff8a0', 1, 60, 0.3);
+}
+// 운석이 떨어진 순간 (update.js): 녹색 폭발, 불티, 화면 흔들림
+function meteorImpact(s) {
+  fx.push({ kind: 'lnova', x: s.x, y: s.y, r: s.r * 1.3, c1: '#30e070', c2: '#fff8a0', t: 0.5, max: 0.5 }, { kind: 'lstrike', x: s.x, y: s.y, c1: '#30e070', c2: '#ffffff', t: 0.35, max: 0.35, d: 0 });
+  lburst(s.x, s.y, '#30e070', '#fff8a0', 14, 260, 0.6, 160);
+  shake = Math.max(shake, 0.16);
+}
+// 블리자드랜스 그림: 날아가는 방향으로 길쭉한 얼음 창(뾰족한 창끝, 결정 무늬, 냉기 꼬리)
+function drawLance(t) {
+  const L = t.r * 5, w = t.r * 0.55;
+  ctx.save(); ctx.translate(t.x, t.y - 20); ctx.rotate(Math.atan2(t.vy, t.vx));
+  ctx.globalCompositeOperation = 'lighter'; ctx.shadowColor = '#9fe8ff'; ctx.shadowBlur = 26;
+  const g = ctx.createLinearGradient(-L * 1.6, 0, 0, 0); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, '#9fe8ff');
+  ctx.globalAlpha = 0.6; ctx.fillStyle = g; ctx.fillRect(-L * 1.6, -w * 1.6, L * 1.6, w * 3.2);
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  ctx.fillStyle = '#e8fbff'; ctx.strokeStyle = '#5ab8e0'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(L * 0.6, 0); ctx.lineTo(L * 0.1, -w * 1.5); ctx.lineTo(-L * 0.7, -w * 0.6); ctx.lineTo(-L * 0.9, 0); ctx.lineTo(-L * 0.7, w * 0.6); ctx.lineTo(L * 0.1, w * 1.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#a8e4ff'; ctx.beginPath(); ctx.moveTo(L * 0.6, 0); ctx.lineTo(L * 0.1, -w * 0.5); ctx.lineTo(-L * 0.8, 0); ctx.lineTo(L * 0.1, w * 0.5); ctx.closePath(); ctx.fill();
+  for (const o of [-0.5, 0, 0.5]) { ctx.fillStyle = '#ffffff'; ctx.fillRect(-L * 0.3 + o * L * 0.5, -1, 6, 2); }
+  ctx.restore();
+  if (Math.random() < 0.7) lburst(t.x, t.y, '#9fe8ff', '#ffffff', 1, 50, 0.4);
 }
 const segDist = (px, py, x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, l = dx * dx + dy * dy || 1, u = clamp(((px - x1) * dx + (py - y1) * dy) / l, 0, 1); return Math.hypot(px - x1 - u * dx, py - y1 - u * dy); };
 
@@ -84,7 +142,28 @@ function drawLegendFx(f, k) {
     if (kk <= 0) return;
     const cy = f.y - 20;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    if (f.sword) {
+    if (f.giant) {
+      // 거수참: 자시안이 문 거대한 검이 한쪽 끝에서 반대쪽 끝까지 크게 휘둘러진다. 지나간 자리에 빛의 부채꼴 잔상이 남는다
+      const dir = f.flip ? -1 : 1, sw = 1 - (1 - Math.min(1, kk * 1.8)) ** 3, a0 = f.a - f.half * dir, ang = a0 + f.half * 2 * dir * sw, fade = 1 - Math.max(0, kk - 0.55) / 0.45;
+      const lo = Math.min(a0, ang), hi = Math.max(a0, ang);
+      const g = ctx.createRadialGradient(f.x, cy, f.R * 0.2, f.x, cy, f.R * 1.05);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.7, f.c1); g.addColorStop(1, f.c2);
+      ctx.globalAlpha = 0.45 * fade; ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(f.x, cy); ctx.arc(f.x, cy, f.R * 1.05, lo, hi); ctx.closePath(); ctx.fill();
+      ctx.shadowColor = f.c1; ctx.shadowBlur = 28; ctx.lineCap = 'round';
+      for (const [rr, w, c, al] of [[1.0, 14, f.c1, 0.5], [1.0, 4, f.c2, 0.8], [0.7, 3, f.c2, 0.35]]) { ctx.globalAlpha = al * fade; ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(f.x, cy, f.R * rr, lo, hi); ctx.stroke(); }
+      // 칼날: 손잡이·코등이·넓은 날·뾰족한 끝 (흰 테두리에 푸른 빛)
+      if (fade > 0.05) {
+        ctx.translate(f.x, cy); ctx.rotate(ang); ctx.globalAlpha = fade; ctx.globalCompositeOperation = 'source-over';
+        const L = f.R * 1.08, w = Math.max(10, f.R * 0.11);
+        ctx.fillStyle = '#c89030'; ctx.fillRect(4, -4, 22, 8);  // 손잡이
+        ctx.fillStyle = '#ffd860'; ctx.fillRect(24, -w * 1.2, 8, w * 2.4);  // 코등이
+        ctx.shadowBlur = 0; ctx.fillStyle = '#7aa8e0'; ctx.beginPath(); ctx.moveTo(32, -w); ctx.lineTo(L - w * 2, -w); ctx.lineTo(L, 0); ctx.lineTo(L - w * 2, w); ctx.lineTo(32, w); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#1c2c50'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.fillStyle = '#e8f4ff'; ctx.beginPath(); ctx.moveTo(32, -w * 0.9); ctx.lineTo(L - w * 2, -w * 0.9); ctx.lineTo(L - 4, 0); ctx.lineTo(32, 0); ctx.closePath(); ctx.fill();  // 빛 받는 윗날
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(36, -2, L - w * 2 - 40, 4);  // 날 가운데 빛줄기
+      }
+      if (!f.sp && kk > 0.3) { f.sp = true; for (let i = 0; i < 22; i++) { const gg = lo + (hi - lo) * Math.random(), r = f.R * (0.6 + Math.random() * 0.45); lburst(f.x + Math.cos(gg) * r, f.y + Math.sin(gg) * r, f.c1, f.c2, 1, 180, 0.55, 40); } }
+    } else if (f.sword) {
       const a0 = f.a - f.half, a1 = f.a - f.half + f.half * 2 * Math.min(1, kk * 2.2);
       for (const [w, c, al] of [[26, f.c1, 0.55], [10, f.c2, 0.95]]) {
         ctx.globalAlpha = al * (1 - Math.max(0, kk - 0.5) * 2); ctx.strokeStyle = c; ctx.lineWidth = w * (1 - kk * 0.4); ctx.lineCap = 'round';
@@ -200,7 +279,7 @@ function drawLegendFx(f, k) {
 
 // ---------- 전설 기술이 맞았을 때 (평소 공격) ----------
 // 원작 연출을 본떴다. 공간절단: 적 자리의 공간이 X자로 찢어짐 / 크로스썬더: 하늘에서 낙뢰 / 단애의칼: 땅에서 바위 칼날이 줄지어 솟음
-// 시드플레어: 몸에서 빛이 터져 퍼짐 / 사이코브레이크: 적 둘레에 염동파가 모여 터짐 / 성스러운불꽃: 불기둥 / 메테오드라이브·거대검: 금빛 참격
+// 시드플레어: 몸에서 빛이 터져 퍼짐 / 사이코브레이크: 적 둘레에 염동파가 모여 터짐 / 성스러운불꽃: 불기둥 / 메테오드라이브·거수참: 금빛 참격
 // 자연의분노·카타스트로피: 분홍·붉은 구체가 짓누름 / 다이아스톰: 다이아가 흩날림 / 시간의포효: 일그러지는 파동
 function legendHit(e, big) {
   const p = player, s = fxScale();
@@ -255,7 +334,7 @@ function legendHit(e, big) {
     fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1: '#ff9020', c2: '#fff0a0', t: 0.55, max: 0.55, d: 0 });
     for (const o of [e, ...enemiesNear(e.x, e.y, 60, e)]) { damage(o, p.dmg * 1.2, 'fire', false, true); o.burn = Math.max(o.burn ?? 0, 4); o.holy = true; }
   }
-  // 메테오드라이브·거대검돌격·암흑강타: 금빛(악은 검붉은) 참격이 적을 가른다
+  // 메테오드라이브·거수참·암흑강타: 금빛(악은 검붉은) 참격이 적을 가른다
   if (hasFx('blade') && lcd('blade', 0.22)) {
     const dark = has('wicked-blow'), a = Math.atan2(e.y - p.y, e.x - p.x) + Math.PI / 2;
     rift(e.x, e.y, a, 150 * s, dark ? '#a02050' : '#ffc040', dark ? '#ffb0c8' : '#fff6d0', 0.3);

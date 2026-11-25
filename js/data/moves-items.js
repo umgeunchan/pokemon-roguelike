@@ -114,7 +114,7 @@ const TMS = [
   { id: 'earthquake', tm: 'tm-ground', name: '지진', type: 'ground', desc: '원뿔 · 땅 위 적에게 강함' },
   { id: 'surf', tm: 'tm-water', name: '파도타기', type: 'water', desc: '원뿔 · 넓게 밀어냄' },
   { id: 'sludge-bomb', tm: 'tm-poison', name: '오물폭탄', type: 'poison', desc: '강화 · 모든 공격에 독' },
-  { id: 'psychic', tm: 'tm-psychic', name: '사이코키네시스', type: 'psychic', desc: '강화 · 공격이 되돌아옴' },
+  { id: 'psychic', tm: 'tm-psychic', name: '사이코키네시스', type: 'psychic', desc: '강화 · 사거리 대폭 증가, 탄이 부메랑처럼 되돌아옴(돌아올 때 피해 x1.5, 벽에 닿아도 되돌아옴), 광선·레이저 사거리 +40%' },
   { id: 'dragon-pulse', tm: 'tm-dragon', name: '용의파동', type: 'dragon', desc: '광선 · 가끔 폭발' },
   { id: 'dazzling-gleam', tm: 'tm-fairy', name: '매지컬샤인', type: 'fairy', desc: '원뿔 · 4번째 공격마다 사방' },
   { id: 'rock-slide', tm: 'tm-rock', name: '스톤샤워', type: 'rock', desc: '원뿔 · 바위 낙하' },
@@ -172,11 +172,15 @@ const COMBOS = [
   { id: 'rift', name: '지각변동', need: ['earth-power', 'earthquake'], desc: '원뿔이 1.5배 길어지고 공중의 적에게도 제대로 맞는다', color: '#c08040' },
   { id: 'nightmare', name: '악몽', need: ['shadow-ball', 'dark-pulse'], desc: '풀죽은 적은 악몽에 시달려 계속 피해를 입는다', color: '#402060' },
   // 사이코키네시스 조합: 무엇이든 되돌아오게 만든다
-  { id: 'psyflame', name: '염동 화염', need: ['psychic', 'flamethrower'], desc: '광선이 벽이나 끝에서 꺾여 되돌아온다', color: '#ff70c0' },
-  { id: 'psyspark', name: '염동 전류', need: ['psychic', 'thunderbolt'], desc: '레이저가 벽이나 끝에서 꺾여 되돌아온다', color: '#ffe0ff' },
+  { id: 'psyflame', name: '염동 화염', need: ['psychic', 'flamethrower'], desc: '광선이 벽이나 끝에서 꺾여 되돌아오며 피해 x1.5', color: '#ff70c0' },
+  { id: 'psyspark', name: '염동 전류', need: ['psychic', 'thunderbolt'], desc: '레이저가 벽이나 끝에서 꺾여 되돌아오며 피해 x1.5', color: '#ffe0ff' },
   { id: 'psychill', name: '염동 냉기', need: ['psychic', 'icy-wind'], desc: '원뿔이 맞은 적을 내 앞으로 끌어당긴다', color: '#c0b0ff' },
   { id: 'psyegg', name: '염동 알', need: ['psychic', 'egg-bomb'], desc: '터진 알이 한 번 튀어 올라 돌아오며 다시 터진다', color: '#ffc0e8' },
   { id: 'psycut', name: '사이코 커터', need: ['psychic', 'x-scissor'], desc: '돌아오는 탄은 꿰뚫기 배수가 한 번 더 2배', color: '#f070ff' },
+  { id: 'psystar', name: '염동 별똥별', need: ['psychic', 'swift'], desc: '돌아온 탄이 가까운 적에게 한 번 더 날아간다', color: '#ffd0ff' },
+  { id: 'psyshade', name: '염동 그림자', need: ['psychic', 'shadow-ball'], desc: '탄이 되돌아서는 자리에서 염동 폭발', color: '#b060e0' },
+  { id: 'psyleaf', name: '염동 칼바람', need: ['psychic', 'razor-leaf'], desc: '되돌아서는 순간 탄이 셋으로 갈라진다', color: '#a0ff90' },
+  { id: 'psyburn', name: '염동 업화', need: ['psychic', 'will-o-wisp'], desc: '돌아오는 탄에 맞은 적은 화상이 두 배로 오래 간다', color: '#ff9060' },
   // 번개 조합
   { id: 'stormfront', name: '폭풍우', need: ['thunder', 'hydro-pump'], desc: '광선이 지나가는 자리에 벼락이 연달아 떨어진다', color: '#5070ff' },
   { id: 'raijin', name: '뇌신', need: ['thunder', 'thunder-wave'], desc: '마비된 적에게는 벼락이 거의 반드시 떨어진다', color: '#ffff40' },
@@ -237,7 +241,7 @@ const LTMS = [
   L('origin-pulse', 'water', 'fan5', '강화 · 파동 5갈래 추가'),
   L('precipice-blades', 'ground', 'erupt', '강화 · 땅의 칼날'),
   L('thousand-arrows', 'ground', 'erupt', '강화 · 땅의 칼날'),
-  L('dragon-ascent', 'flying', 'dashStrike', '공격할 때 1.4초마다 녹색 혜성이 되어 꿰뚫는 돌진 일격, 자동 조준'),
+  L('dragon-ascent', 'flying', 'dashStrike', '공격할 때 1.4초마다 적들 머리 위로 운석이 쏟아짐'),
   L('collision-course', 'fighting', 'dashStrike', '공격할 때 1.4초마다 불꽃 돌진 일격, 자동 조준, 속도 증가'),
   L('electro-drift', 'electric', 'dashStrike', '공격할 때 1.4초마다 번개 돌진 일격, 자동 조준, 속도 증가'),
   L('roar-of-time', 'dragon', 'timeStop', '강화 · 주기적으로 시간 정지'),
@@ -246,8 +250,8 @@ const LTMS = [
   L('fusion-bolt', 'electric', 'smite', '강화 · 낙뢰, 연쇄 번개'),
   L('sheer-cold', 'ice', 'freeze', '강화 · 얼림'),
   L('sunsteel-strike', 'steel', 'blade', '강화 · 관통, 보스에게 강함'),
-  L('behemoth-blade', 'steel', 'blade', '검을 크게 휘둘러 벰, 검기가 날아감, 보스에게 강함'),
-  L('behemoth-bash', 'steel', 'bulwark', '강화 · 피해 감소, 방패'),
+  L('behemoth-blade', 'steel', 'blade', '거대한 검을 크게 휘둘러 넓게 벰, 보스에게 강함'),
+  L('behemoth-bash', 'steel', 'bulwark', '피해 감소, 방패, 1.4초마다 방패를 앞세워 돌진'),
   L('geomancy', 'fairy', 'geo', '강화 · 능력치 상승, 주기적 강화'),
   L('oblivion-wing', 'flying', 'drain', '강화 · 체력 흡수'),
   L('seed-flare', 'grass', 'flare', '강화 · 맞으면 폭발'),
@@ -255,7 +259,7 @@ const LTMS = [
   L('ruination', 'dark', 'madness', '강화 · 체력 절반 확률'),
   L('diamond-storm', 'rock', 'shard', '강화 · 급소, 다이아 파편'),
   L('photon-geyser', 'psychic', 'beam', '광선 · 아주 강한 빛'),
-  L('glacial-lance', 'ice', 'freeze', '강화 · 얼림'),
+  L('glacial-lance', 'ice', 'freeze', '공격할 때 1.2초마다 거대한 얼음 창을 던짐, 얼림'),
   L('astral-barrage', 'ghost', 'psy', '탄 · 강한 유도, 관통'),
   L('wicked-blow', 'dark', 'blade', '강한 주먹 한 방, 늘 급소급, 보스에게 강함'),
   L('surging-strikes', 'water', 'fan5', '물의 주먹 3연타(늘 급소), 물결 갈래 추가'),
@@ -311,7 +315,7 @@ const MYTHICAL = new Set([151, 251, 385, 386, 489, 490, 491, 492, 493, 494, 647,
 const LEGEND_KO = { psystrike: '사이코브레이크', 'mist-ball': '미스트볼', 'luster-purge': '러스터퍼지', aeroblast: '에어로블라스트', 'blue-flare': '푸른불꽃', 'moongeist-beam': '섀도레이',
   eternabeam: '무한다이빔', 'sacred-fire': '성스러운불꽃', 'origin-pulse': '근원의파동', 'precipice-blades': '단애의칼', 'thousand-arrows': '사우전드애로', 'dragon-ascent': '화룡점정',
   'collision-course': '액셀브레이크', 'electro-drift': '라이트닝드라이브', 'roar-of-time': '시간의포효', 'spacial-rend': '공간절단', 'shadow-force': '섀도다이브', 'fusion-bolt': '크로스썬더',
-  'sheer-cold': '절대영도', 'sunsteel-strike': '메테오드라이브', 'behemoth-blade': '거대검돌격', 'behemoth-bash': '거대방패돌격', geomancy: '지오컨트롤', 'oblivion-wing': '데스윙',
+  'sheer-cold': '절대영도', 'sunsteel-strike': '메테오드라이브', 'behemoth-blade': '거수참', 'behemoth-bash': '거수탄', geomancy: '지오컨트롤', 'oblivion-wing': '데스윙',
   'seed-flare': '시드플레어', 'natures-madness': '자연의분노', ruination: '카타스트로피', 'diamond-storm': '다이아스톰',
   'photon-geyser': '포톤가이저', 'glacial-lance': '블리자드랜스', 'astral-barrage': '아스트랄비트', 'wicked-blow': '암흑강타', 'surging-strikes': '수류연타', 'ivy-cudgel': '덩굴방망이', 'tera-starstorm': '테라클러스터',
   'zap-cannon': '전자포', 'sky-attack': '불새', 'expanding-force': '와이드포스', discharge: '방전', scald: '열탕', 'leaf-storm': '리프스톰', 'ancient-power': '원시의힘',
@@ -337,7 +341,7 @@ const LEGEND_MOVE = { 144: 'sheer-cold', 145: 'zap-cannon', 146: 'sky-attack', 1
   // 환상의 포켓몬: 지방 지도에는 없고 후파의 고리 너머에서만 만난다
   385: 'doom-desire', 386: 'psycho-boost', 490: 'take-heart', 491: 'dark-void', 492: 'seed-flare', 493: 'judgment', 494: 'v-create', 647: 'secret-sword',
   648: 'relic-song', 649: 'techno-blast', 720: 'hyperspace-hole', 721: 'steam-eruption', 801: 'fleur-cannon', 802: 'spectral-thief', 807: 'plasma-fists', 893: 'jungle-healing' };
-// 전설·환상은 모두 기술 없이 시작한다. 첫 라이벌전을 이기면 전용 기술과 전용 도구를 얻는다 (버드렉스는 유대의 고삐로 기술을 배운다)
+// 전설·환상은 타입에 맞는 일반 기술로 시작한다. 첫 라이벌전을 이기면 그 기술이 전용 기술로 바뀌고 전용 도구를 얻는다 (버드렉스는 유대의 고삐로 기술을 배운다)
 const NO_START_MOVE = new Set(Object.keys(LEGEND_MOVE).map(Number));
 // 후파의 고리 너머에서 나올 수 있는 전설·환상의 포켓몬 전체
 const HOOPA_POOL = Object.keys(LEGEND_MOVE).map(Number);

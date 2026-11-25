@@ -39,9 +39,8 @@ function newRun(m, shiny = false) {
   clearSave();
   taken = new Set(); texts = []; banner = null; dialog = null; fx = []; dayTime = 0;
   player = makePlayer(m); player.shiny = shiny; player.startId = m.id;
-  // 전설의 포켓몬은 상징적인 기술을 갖고 시작한다
-  // 전설이 아니면 타입에 맞는 기술머신 하나를 갖고 시작한다
-  const first = NO_START_MOVE.has(m.id) ? null : LEGEND_MOVE[m.id] ?? typeMove(m);
+  // 타입에 맞는 기술머신 하나를 갖고 시작한다. 전설·환상도 같고, 첫 라이벌전을 이기면 이 기술이 전용 기술로 바뀐다 (battle.js legendAwaken)
+  const first = typeMove(m);
   if (first) { taken.add(first); learnMove(first); }
   player.first = first ?? null;
   world = genWorld(Math.floor(Math.random() * 2 ** 31));

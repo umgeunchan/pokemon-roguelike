@@ -36,6 +36,18 @@ const ACH = [
   { id: 'trainer40', name: '도로의 지배자', desc: '한 판에서 필드 트레이너 40명을 이겼다' },
   { id: 'subchamp', name: '준전설의 긍지', desc: '준전설의 포켓몬으로 챔피언이 되었다' },
   { id: 'mythchamp', name: '환상의 챔피언', desc: '환상의 포켓몬으로 챔피언이 되었다' },
+  // 2026-11-25: 도감·이로치·전설 각성·숨은 조합
+  { id: 'seen100', name: '관찰력', desc: '도감에서 포켓몬 100마리를 발견했다' },
+  { id: 'seen300', name: '걸어 다니는 도감', desc: '도감에서 포켓몬 300마리를 발견했다' },
+  { id: 'dex400', name: '도감 400', desc: '도감에 포켓몬 400마리를 등록했다' },
+  { id: 'rdexseen', name: '지방 탐험가', desc: '한 지방 도감의 포켓몬을 모두 발견했다' },
+  { id: 'rdexfull', name: '지방 도감 완성', desc: '한 지방 도감의 포켓몬을 모두 쓰러뜨렸다' },
+  { id: 'shiny5', name: '반짝이 수집가', desc: '서로 다른 이로치 포켓몬 5마리를 도감에 등록했다' },
+  { id: 'shiny20', name: '빛나는 도감', desc: '서로 다른 이로치 포켓몬 20마리를 도감에 등록했다' },
+  { id: 'awaken', name: '깨어난 힘', desc: '전설의 포켓몬으로 라이벌을 이겨 전용 기술을 깨달았다' },
+  { id: 'combo1', name: '숨은 조합', desc: '숨은 기술 조합을 처음으로 찾아냈다' },
+  { id: 'combo3', name: '조합의 달인', desc: '한 판에서 숨은 기술 조합 3개를 동시에 켰다' },
+  { id: 'psymaster', name: '염동력자', desc: '사이코키네시스와 함께 염동 조합을 켰다' },
   { id: 'die', name: '다시 일어서기', desc: '처음으로 쓰러졌다. 다음엔 더 멀리!' },
 ];
 const achRewards = () => ACH.filter(a => a.reward && ACHIEVED.has(a.id)).map(a => a.reward);
@@ -56,6 +68,16 @@ function checkAch() {
   if (DEX.size >= 50) ach('dex50');
   if (DEX.size >= 100) ach('dex100');
   if (DEX.size >= 200) ach('dex200');
+  if (DEX.size >= 400) ach('dex400');
+  if (SEEN.size >= 100) ach('seen100');
+  if (SEEN.size >= 300) ach('seen300');
+  if (region?.dex?.every(id => SEEN.has(id))) ach('rdexseen');
+  if (region?.dex?.every(id => DEX.has(id))) ach('rdexfull');
+  if (SHINY.size >= 5) ach('shiny5');
+  if (SHINY.size >= 20) ach('shiny20');
+  if (p.combos?.size >= 1) ach('combo1');
+  if (p.combos?.size >= 3) ach('combo3');
+  if (['psyflame', 'psyspark', 'psychill', 'psyegg', 'psycut', 'psystar', 'psyshade', 'psyleaf', 'psyburn'].some(combo)) ach('psymaster');
   if (p.level >= 50) ach('lv50');
   if (p.money >= 50000) ach('rich');
   if (p.items.length >= 15) ach('items15');

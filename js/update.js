@@ -146,6 +146,7 @@ function update(dt) {
   hazards = hazards.filter(h => !h.done);
   for (const s of pstrikes) if ((s.t -= dt) <= 0) {
     s.done = true; fx.push({ kind: 'boom', x: s.x, y: s.y, r: s.r ?? 40, t: 0.25, max: 0.25, color: TYPE_COLOR[s.type ?? 'rock'] });
+    if (s.meteor) meteorImpact(s);
     for (const e of enemiesNear(s.x, s.y, s.r ?? 40)) damage(e, p.dmg * (s.mul ?? 0.8), s.type ?? 'rock', false, true);
   }
   pstrikes = pstrikes.filter(s => !s.done);
@@ -165,7 +166,7 @@ function update(dt) {
     const pts = beamPath(b);
     for (const e of enemies) {
       if (!pts.some(([x, y]) => Math.hypot(e.x - x, e.y - y) < b.w / 2 + e.r)) continue;
-      damage(e, p.dmg * 0.45 * bc.mul * (b.mul ?? 1) * (combo('steam') ? 1.4 : 1) * (combo('solar') ? 1.4 : 1), bc.type, true, false, bc.crit);
+      damage(e, p.dmg * 0.45 * bc.mul * (b.mul ?? 1) * (b.bounce && combo('psyflame') ? 1.5 : 1) * (combo('steam') ? 1.4 : 1) * (combo('solar') ? 1.4 : 1), bc.type, true, false, bc.crit);
       if (combo('solar') && Math.random() < 0.04) { fx.push({ kind: 'boom', x: e.x, y: e.y, r: 50, t: 0.2, max: 0.2, color: '#f8ff80' }); for (const o of enemiesNear(e.x, e.y, 50)) damage(o, p.dmg * 0.5, 'grass', false, true); }
       if (has('blue-flare')) e.burn = 3;
       // 광선 + 레이저: 광선에 감긴 전기·얼음 레이저가 함께 지진다
@@ -212,19 +213,25 @@ function update(dt) {
       if (e) { const na = turnToward(Math.atan2(t.vy, t.vx), Math.atan2(e.y - t.y, e.x - t.x), t.home * dt), sp = Math.hypot(t.vx, t.vy); t.vx = Math.cos(na) * sp; t.vy = Math.sin(na) * sp; }
     }
     // 사이코키네시스: 사거리 절반에서 플레이어 쪽으로 되돌아온다
-    if (t.boom && !t.back && t.life < t.life0 / 2) { t.back = true; t.hit.clear(); t.life = t.life0; if (combo('psycut') && t.xs) t.xs = Math.min(t.xs * 2, 32); }
+    if (t.boom && !t.back && t.life < t.life0 / 2) psyTurn(t);
     // 하늘 가르기: 사거리 절반에서 둘로 갈라진다
     if (t.split2 && t.life < t.life0 / 2) { t.split2 = false; const a = Math.atan2(t.vy, t.vx); for (const o of [-0.35, 0.35]) playerShot(t.x, t.y, a + o, { type: t.type, mul: t.mul, r: t.r, life: t.life, pierce: t.pierce, ghost: t.ghost, home: t.home, blade: t.blade, xs: t.xs, fire: t.fire, psn: t.psn, hit: new Set(t.hit), color: t.color, accent: t.accent }); }
-    if (t.back) { const d = Math.hypot(p.x - t.x, p.y - t.y) || 1, sp = Math.hypot(t.vx, t.vy); t.vx = (p.x - t.x) / d * sp; t.vy = (p.y - t.y) / d * sp; if (d < 20) t.life = 0; }
+    if (t.back) {
+      const d = Math.hypot(p.x - t.x, p.y - t.y) || 1, sp = Math.hypot(t.vx, t.vy); t.vx = (p.x - t.x) / d * sp; t.vy = (p.y - t.y) / d * sp;
+      // 염동 별똥별: 돌아온 탄이 가까운 적에게 한 번 더 날아간다
+      if (d < 20) { const e = combo('psystar') && !t.again && nearestEnemy(p.x, p.y, null, 420); if (e) { const a = Math.atan2(e.y - p.y, e.x - p.x); Object.assign(t, { back: false, again: true, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: t.life0 }); t.hit.clear(); } else t.life = 0; }
+    }
     if (!(t.from === 'e' && moveEnemyShot(t, dt))) { t.x += t.vx * dt; t.y += t.vy * dt; t.life -= dt; }
-    if (t.life > 0 && shotBlocked(Math.floor(t.x / TS), Math.floor(t.y / TS), t.ghost && t.from === 'p') && !(t.from === 'e' && bounceShot(t, dt))) { t.life = 0; fx.push({ kind: 'splash', x: t.x, y: t.y, t: 0.2, max: 0.2, color: TYPE_COLOR[t.type] }); }
+    if (t.life > 0 && !t.back && shotBlocked(Math.floor(t.x / TS), Math.floor(t.y / TS), t.ghost && t.from === 'p') && t.boom) psyTurn(t);
+    else if (t.life > 0 && !t.back && shotBlocked(Math.floor(t.x / TS), Math.floor(t.y / TS), t.ghost && t.from === 'p') && !(t.from === 'e' && bounceShot(t, dt))) { t.life = 0; fx.push({ kind: 'splash', x: t.x, y: t.y, t: 0.2, max: 0.2, color: TYPE_COLOR[t.type] }); }
     if (t.life <= 0) continue;
     if (t.from === 'p') {
       for (const e of enemies) {
         if (t.hit.has(e) || e.hp <= 0 || untargetable(e) || Math.hypot(e.x - t.x, e.y - t.y) > e.r + t.r) continue;
         t.hit.add(e);
         // 시저크로스: 꿰뚫을 때마다 피해 2배 (최대 16배, 사이코 커터로 돌아오면 더)
-        damage(e, p.dmg * t.mul * (t.xs || 1), t.type);
+        damage(e, p.dmg * t.mul * (t.xs || 1) * (t.back ? 1.5 : 1), t.type);
+        if (t.back && combo('psyburn') && e.burn > 0) e.burn = Math.min(e.burn * 2, 8);
         if (t.xs) t.xs = Math.min(t.xs * 2, combo('psycut') && t.back ? 32 : 16);
         if (t.freeze && Math.random() < t.freeze) { e.frozen = 1; say('얼어붙었다!', e.x, e.y - 50, '#aef'); }
         if (!isBig(e) && !e.act) moveBody(e, t.vx * 0.03, t.vy * 0.03);

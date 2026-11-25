@@ -35,6 +35,7 @@ function menuKey(code) {
     if (up) menu.sel = Math.max(0, menu.sel - 1);
     if (down) menu.sel = Math.max(0, Math.min(bagList().length - 1, menu.sel + 1));
   }
+  if (menu.screen === '포켓몬 도감' && ok) { menu.shinyView = !menu.shinyView; sfx('menu'); }
   if (menu.screen === '포켓몬 도감') menu.sel = clamp(menu.sel + (up ? -DEX_COLS : down ? DEX_COLS : left ? -1 : right ? 1 : 0), 0, region.dex.length - 1);
 }
 
@@ -137,27 +138,32 @@ function drawBagScreen(x, y) {
 }
 
 function drawDexScreen(x, y) {
-  const p = player, ids = region.dex, cw = 82, ch = 78;
-  plain(`발견 ${ids.filter(id => p.seen.has(id)).length} · 쓰러뜨림 ${ids.filter(id => p.defeated[id]).length} / ${ids.length}`, x + 170, y, 13, '#505060');
+  // 지방 도감은 판이 끝나도 쌓인다: 발견(SEEN)·쓰러뜨림(DEX)·이로치(SHINY). A(Enter)로 이로치 모습 보기
+  const p = player, ids = region.dex, cw = 82, ch = 78, sv = menu.shinyView;
+  plain(`발견 ${ids.filter(id => SEEN.has(id)).length} · 쓰러뜨림 ${ids.filter(id => DEX.has(id)).length} · ★이로치 ${ids.filter(id => SHINY.has(id)).length} / ${ids.length}`, x + 170, y, 13, '#505060');
+  plain(sv ? '이로치 보기 (A: 보통 모습)' : 'A: 이로치 모습 보기', x + 650, y, 11, sv ? '#c08a00' : '#808090', 'right');
   const row0 = clamp(Math.floor(menu.sel / DEX_COLS) - DEX_ROWS + 1, 0, Math.max(0, Math.ceil(ids.length / DEX_COLS) - DEX_ROWS));
   for (let r = 0; r < DEX_ROWS; r++) for (let c = 0; c < DEX_COLS; c++) {
     const i = (row0 + r) * DEX_COLS + c, id = ids[i];
     if (id === undefined) continue;
     const cx = x + c * cw, cy = y + 16 + r * ch, m = MON[id];
-    ctx.fillStyle = i === menu.sel ? '#d8e0ff' : '#eceef4'; ctx.fillRect(cx, cy, cw - 4, ch - 4);
-    if (p.seen.has(id)) { const b = m.box, s = 0.6; ctx.drawImage(m.img, cx + cw / 2 - 2 - (b.x0 + b.x1) / 2 * s, cy + ch - 10 - b.y1 * s, 96 * s, 96 * s); }
+    const sh = SHINY.has(id), img = sv && sh ? (loadShiny(m), m.shinyArt?.img ?? m.img) : m.img;
+    ctx.fillStyle = i === menu.sel ? '#d8e0ff' : sv && sh ? '#fff4d0' : '#eceef4'; ctx.fillRect(cx, cy, cw - 4, ch - 4);
+    if (SEEN.has(id)) { const b = m.box, s = 0.6; ctx.globalAlpha = sv && !sh ? 0.35 : 1; ctx.drawImage(img, cx + cw / 2 - 2 - (b.x0 + b.x1) / 2 * s, cy + ch - 10 - b.y1 * s, 96 * s, 96 * s); ctx.globalAlpha = 1; }
     else plain('?', cx + cw / 2 - 2, cy + 48, 22, '#a0a4b4', 'center');
     plain(String(id).padStart(4, '0'), cx + 4, cy + 12, 9, '#808090');
+    if (DEX.has(id)) plain('●', cx + cw - 10, cy + 12, 9, '#e05050', 'right');
+    if (sh) plain('★', cx + cw - 20, cy + 12, 10, '#e0a000', 'right');
   }
   const id = ids[menu.sel], m = MON[id];
-  plain(p.seen.has(id) ? `No.${String(id).padStart(4, '0')} ${m.name} · ${m.types.map(t => TYPE_KO[t]).join('/')} · 쓰러뜨림 ${p.defeated[id] ?? 0}마리` : `No.${String(id).padStart(4, '0')} ???`, x, y + 16 + DEX_ROWS * ch + 18, 13);
+  plain(SEEN.has(id) ? `No.${String(id).padStart(4, '0')} ${m.name} · ${m.types.map(t => TYPE_KO[t]).join('/')} · ${DEX.has(id) ? '쓰러뜨림' : '발견만'}${SHINY.has(id) ? ' · ★이로치 등록' : ''} · 이번 판 ${p.defeated[id] ?? 0}마리` : `No.${String(id).padStart(4, '0')} ???`, x, y + 16 + DEX_ROWS * ch + 18, 13);
 }
 
 function drawCardScreen(x, y) {
   const p = player, t = Math.floor(p.time), kills = Object.values(p.defeated).reduce((a, b) => a + b, 0);
   ctx.fillStyle = '#e8eef8'; ctx.fillRect(x, y + 14, 650, 340);
   plain(`${region.name}지방 트레이너`, x + 20, y + 48, 16);
-  [['함께하는 포켓몬', `${p.mon.name} Lv.${p.level}`], ['돈', `₽ ${p.money.toLocaleString()}`], ['도감', `${region.dex.filter(id => p.seen.has(id)).length}마리 발견`],
+  [['함께하는 포켓몬', `${p.mon.name} Lv.${p.level}`], ['돈', `₽ ${p.money.toLocaleString()}`], ['도감', `${region.dex.filter(id => SEEN.has(id)).length}마리 발견`],
    ['쓰러뜨린 포켓몬', `${kills}마리`], ['모험 시간', `${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`], ['전설 해금', `${loadUnlocked().length}마리`], ['챔피언이 된 지방', `${CLEARED.size} / ${REGIONS.length}`], ['도전과제', `${ACHIEVED.size} / ${ACH.length}`], ['상대 강함 (화력 따라가기)', `x${powerScale(p.beaten.size).toFixed(1)}`]]
     .forEach(([k, v], i) => { plain(k, x + 20, y + 84 + i * 28, 13, '#505060'); plain(v, x + 300, y + 84 + i * 28, 13, '#202028', 'right'); });
   plain('배지', x + 340, y + 48, 14, '#303060');
@@ -234,14 +240,15 @@ function drawAchList() {
   text(`도전과제 ${ACHIEVED.size} / ${ACH.length}`, CW / 2, 40, 24, '#fd6');
   text(`${TOUCH ? '화면을 누르면 돌아가기' : 'T 또는 Esc = 돌아가기'} · 보상이 있는 과제를 달성하면 그 포켓몬으로 시작할 수 있습니다`, CW / 2, 64, 11, '#888');
   taps.push({ x: 0, y: 0, w: CW, h: CH, fn: () => state = 'region' });
-  const cols = 3, cw = (CW - 64) / cols, rh = 34;
+  // 과제가 늘어도 한 화면에 들어가게 줄 높이를 줄인다
+  const cols = 3, cw = (CW - 64) / cols, rh = Math.min(34, Math.floor((CH - 84) / Math.ceil(ACH.length / cols)));
   ACH.forEach((a, i) => {
     const on = ACHIEVED.has(a.id), x = 16 + (i % cols) * (cw + 16), y = 80 + Math.floor(i / cols) * rh;
-    ctx.fillStyle = on ? '#262634' : '#1c1c24'; ctx.fillRect(x, y, cw, rh - 4);
-    drawTrophy(x + 18, y + 18, on);
-    on ? glowText(a.name, x + 36, y + 13, 11, '#fff', '#fd6', 'left') : text(a.name, x + 36, y + 13, 11, '#777', 'left');
-    text(a.desc, x + 36, y + 26, 9, on ? '#bbb' : '#555', 'left');
-    if (a.reward && MON[a.reward]) text(`보상 ${MON[a.reward].name}`, x + cw - 8, y + 14, 10, on ? '#8cf' : '#456', 'right');
+    ctx.fillStyle = on ? '#262634' : '#1c1c24'; ctx.fillRect(x, y, cw, rh - 3);
+    drawTrophy(x + 18, y + Math.round(rh / 2) + 1, on);
+    on ? glowText(a.name, x + 36, y + rh * 0.38, 11, '#fff', '#fd6', 'left') : text(a.name, x + 36, y + rh * 0.38, 11, '#777', 'left');
+    text(a.desc, x + 36, y + rh * 0.78, 9, on ? '#bbb' : '#555', 'left');
+    if (a.reward && MON[a.reward]) text(`보상 ${MON[a.reward].name}`, x + cw - 8, y + rh * 0.4, 10, on ? '#8cf' : '#456', 'right');
   });
 }
 
@@ -306,7 +313,7 @@ function drawSelect() {
   if (pages > 1) text(`${Math.floor(selCur / SEL_PAGE) + 1} / ${pages} 페이지`, 324, 430, 12, '#888');
   text(`도감 ${DEX.size}마리 · 전설·환상을 쓰러뜨리면 도감 번호 순으로 여기에 추가됩니다`, 324, 452, 11, '#777');
   // 오른쪽 상세
-  const m = MON[ids[selCur]], st = baseOf(m), mv = NO_START_MOVE.has(m.id) ? null : moveDef(LEGEND_MOVE[m.id] ?? typeMove(m)), px = 760;
+  const m = MON[ids[selCur]], st = baseOf(m), mv = moveDef(typeMove(m)), px = 760;
   ctx.fillStyle = '#23232e'; ctx.fillRect(650, 112, 220, 296);
   drawShadow(px, 260, (m.box.x1 - m.box.x0) * 1.5, 0);
   const shiny = selShiny && shinyOk(m.id);
@@ -318,8 +325,9 @@ function drawSelect() {
   text(m.types.map(t => TYPE_KO[t]).join('/'), px, 306, 12, TYPE_COLOR[m.types[0]]);
   text(`체력 ${st.hp / 2}칸 · 공격 ${st.dmg.toFixed(1)} · 속도 ${(st.speed / 200).toFixed(2)}`, px, 324, 11, '#ccc');
   const ab = monAb(m); if (ab) text(`특성 ${ab.ko}`, px, 341, 11, '#9cf');
-  if (NO_START_MOVE.has(m.id)) { text('시작 기술 없음', px, 362, 13, '#f99'); wrap(m.id === 898 ? '첫 라이벌전에서 이기면 유대의 고삐 하나를 받는다. 고삐를 얻으면 그 말에 올라타며 전용 기술을 배우고, 두 고삐의 힘은 겹친다' : `첫 라이벌전에서 이기면 전용 기술 ${moveDef(LEGEND_MOVE[m.id]).name}을(를) 깨닫고 전용 도구를 얻는다`, px, 380, 200, 10, '#aaa', text, 'center'); }
-  if (mv) { nameText(mv, `시작 기술 ${mv.name}`, px, 362, 13, mv.legend ? '#fd6' : TYPE_COLOR[mv.type], 'center'); wrap(mv.desc, px, 380, 200, 10, '#aaa', text, 'center'); }
+  if (mv) nameText(mv, `시작 기술 ${mv.name}`, px, 362, 13, mv.legend ? '#fd6' : TYPE_COLOR[mv.type], 'center');
+  if (NO_START_MOVE.has(m.id)) wrap(m.id === 898 ? '첫 라이벌전에서 이기면 유대의 고삐 하나를 받는다. 고삐를 얻으면 그 말에 올라타며 전용 기술을 배우고, 두 고삐의 힘은 겹친다' : `첫 라이벌전에서 이기면 ${mv?.name ?? '시작 기술'}이(가) 전용 기술 ${moveDef(LEGEND_MOVE[m.id]).name}(으)로 변하고 전용 도구를 얻는다`, px, 380, 200, 10, '#fd6', text, 'center');
+  else if (mv) wrap(mv.desc, px, 380, 200, 10, '#aaa', text, 'center');
   text('WASD 이동 · 방향키 공격 · E 대화 · 배지 8개 → 포켓몬리그 → 챔피언', CW / 2, CH - 14, 12, '#888');
 }
 
