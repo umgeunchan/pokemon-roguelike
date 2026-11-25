@@ -673,6 +673,12 @@ function updateEnemy(e, dt) {
     fx.push({ kind: 'ring', x: e.x, y: e.y, t: 0.5, max: 0.5 }); fx.push({ kind: 'boom', x: e.x, y: e.y, r: e.r + 60, t: 0.5, max: 0.5, color: '#ff3040' });
     banner = { text: `${e.mon.name}이(가) 각성했다! 새로운 기술을 꺼낸다`, t: 2.5, glow: '#f44' };
   }
+  // 적대하는 라이벌의 포켓몬: 체력 절반에서 한 번 더 각성 (기술 둘 더 바뀌고, 더 빠르고, 맞으면 1칸 더 아프다)
+  if (e.evilAwake && !e.awake2 && e.hp > 0 && e.hp < e.maxHp * 0.5) {
+    e.awake2 = e.elite = true; e.speed *= 1.1; shake = 0.5; sfx('boss'); awaken(e);
+    fx.push({ kind: 'ring', x: e.x, y: e.y, t: 0.5, max: 0.5 }); fx.push({ kind: 'boom', x: e.x, y: e.y, r: e.r + 90, t: 0.6, max: 0.6, color: '#a00020' });
+    banner = { text: `${e.mon.name}이(가) 한계를 넘어 다시 각성했다!`, t: 2.5, glow: '#f22' };
+  }
   curEnemy = e; updateEnemyInner(e, dt); curEnemy = null;
   if (e.battle) keepInRoom(e);
   // 야생·전설이 마을 경계를 넘으려 하면 막고, 쫓기를 그만두고 제자리로 돌아가게 한다

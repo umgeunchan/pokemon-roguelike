@@ -131,6 +131,7 @@ function legendAwaken(n) {
 
 function startRival(n) {
   // 악의 조직과 한 번이라도 거래했으면 라이벌은 적대적: 대사가 바뀌고, 포켓몬이 더 많고 더 단단하다
+  // 게다가 각성한 채로 나온다(evilAwake): 처음부터 각성 상태, 체력 절반에서 한 번 더 각성. 거래 횟수만큼 체력이 더 붙는다
   const p = player, b = p.beaten.size, hostile = rivalHostile(), [hi, bye] = (hostile ? RIVAL_TALK_HOSTILE : RIVAL_TALK)[n.rival].map(orgSay);
   if (map !== world || legendFight) return;
   n.fighting = true; n.flip = p.x > n.x;
@@ -140,7 +141,7 @@ function startRival(n) {
   resetCombat(); p.warpIn = 0.6;
   const r = map.room, at = { x: r.cx, y: (r.y0 + 1.6) * TS };
   p.x = r.cx; p.y = (map.th - 2.5) * TS;
-  startBattle({ who: n.name, title: hostile ? '적대하는 라이벌' : '라이벌', queue: rivalTeam(hostile ? b + 2 : b), ...at, rank: 'boss', tier: clamp(b - 1, 0, 7), hpMul: (b ? 1.15 : 0.55) * (hostile ? 1.25 : 1), rival: true, wait: 2.5,
+  startBattle({ who: n.name, title: hostile ? '적대하는 라이벌' : '라이벌', queue: rivalTeam(hostile ? b + 2 : b), ...at, rank: 'boss', tier: clamp(b - 1, 0, 7), hpMul: (b ? 1.15 : 0.55) * (hostile ? 1.25 + 0.08 * Math.min(8, p.evilDeals - 1) : 1), rival: true, evilAwake: hostile, wait: 2.5,
     say: (i, ace) => ace && i > 0 ? (hostile ? '이 녀석만큼은... 절대 지지 않아!' : '아직 끝나지 않았어! 내 파트너, 가자!') : i === 0 ? hi : null, onWin: () => {
     n.fighting = false; n.defeated = true; n.leaveT = 5; p.rival.done.add(n.rival); r.cleared = true;
     ach('rival1'); if (RIVAL_EVENTS.every(ev => p.rival.done.has(ev))) ach('rival6');
@@ -281,6 +282,10 @@ function updateBattle(dt) {
     const m = MON[bt.queue.shift()], ang = Math.atan2(p.y - bt.y, p.x - bt.x), e = spawnEnemy(m, bt.x + Math.cos(ang) * 50, bt.y + Math.sin(ang) * 50, bt.rank, bt.tier);
     if (bt.rival) e.moves = pickPatterns(e, 'rival');
     if (bt.elite) e.elite = true;  // 사천왕·챔피언: 각성하면 반 칸 더 아프다
+    if (bt.evilAwake) {  // 조직과 손잡은 걸 본 라이벌: 포켓몬이 처음부터 각성해서 나온다
+      e.enraged = e.evilAwake = true; e.speed *= 1.25; awaken(e);
+      fx.push({ kind: 'boom', x: e.x, y: e.y, r: e.r + 60, t: 0.5, max: 0.5, color: '#ff3040' });
+    }
     if (!bt.queue.length && bt.rank === 'boss') { e.hp *= 1.3; e.maxHp = e.hp; }  // 마지막 에이스는 더 단단하게
     if (bt.hpMul) { e.hp *= bt.hpMul; e.maxHp = e.hp; }  // 라이벌 체력 보정 (첫 승부는 보스급이지만 체력은 낮게)
     bt.hpSum = (bt.hpSum ?? 0) + e.maxHp;
@@ -288,7 +293,7 @@ function updateBattle(dt) {
     map.enemies.push(e); bt.wait = 1.2;
     const line = bt.say?.(bt.sent = (bt.sent ?? -1) + 1, !bt.queue.length);
     if (line) dialog = { name: bt.who, text: line, t: 3, keep: true };
-    banner = { text: `${bt.who}은(는) ${m.name}을(를) 내보냈다!`, t: 2 };
+    banner = bt.evilAwake ? { text: `${bt.who}의 ${m.name}은(는) 분노로 각성해 있다!`, t: 2.2, glow: '#f44' } : { text: `${bt.who}은(는) ${m.name}을(를) 내보냈다!`, t: 2 };
   } else if (!bt.queue.length) { map.battle = null; samplePower(); bt.onWin(bt); }
 }
 

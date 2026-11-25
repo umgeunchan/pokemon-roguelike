@@ -210,7 +210,7 @@ function drawDeal() {
   const btn = (bx, label, c, fn) => { ctx.fillStyle = c; ctx.fillRect(bx, y + h - 56, 200, 38); text(label, bx + 100, y + h - 32, 13, '#fff'); taps.push({ x: bx, y: y + h - 56, w: 200, h: 38, fn }); };
   if (dl.rival) btn(x + (w - 200) / 2, TOUCH ? '받는다' : '[1] 받는다', '#806020', acceptDeal);
   else { btn(x + 70, TOUCH ? '거래한다' : '[1] 거래한다', '#702040', acceptDeal); btn(x + w - 270, TOUCH ? '거절한다 (승부)' : '[2] 거절한다 (승부)', '#304060', refuseDeal); }
-  if (!dl.rival) text(rivalHostile() ? '이미 조직과 손을 잡았다...' : `한 번이라도 거래하면 라이벌이 등을 돌린다 · 거절 ${player.evilRefused ?? 0}/8`, x + w / 2, y + h - 8, 10, '#888');
+  if (!dl.rival) text(rivalHostile() ? '이미 조직과 손을 잡았다... 라이벌은 각성한 채로 기다린다' : `한 번이라도 거래하면 라이벌이 등을 돌리고 각성한다 · 거절 ${player.evilRefused ?? 0}/8`, x + w / 2, y + h - 8, 10, '#888');
 }
 function dealKey(code, d) {
   if (!deal) return;
