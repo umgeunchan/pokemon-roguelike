@@ -374,10 +374,14 @@ function movesFor(m) {
 const ADV_MOVES = [['homing', '추적탄'], ['wall', '탄막 벽'], ['chase', '연속 낙하'], ['split', '분열탄'], ['sweep', '휩쓸기 광선']];
 const RAIN_NAME = { fire: '불꽃 비', water: '폭우', ice: '우박', electric: '낙뢰', rock: '낙석', ground: '낙석', grass: '씨앗 폭격', poison: '독 비', psychic: '사이코 유성', dragon: '용성군', fairy: '별빛 비' };
 // rank: wild(야생) / trainer(트레이너) / boss(관장·사천왕) / legend(전설)
+// 보스·전설 크기 통일: 원래는 무조건 2배로 그려서 그란돈·레쿠쟈 같은 큰 포켓몬이 화면을 덮고 몸통 판정(최대 반지름 52)도 커서 피할 수가 없었다
+// → 그려지는 몸 크기를 대략 BIG_SIZE 픽셀에 맞추고(작은 포켓몬은 최대 2배까지만 키움), 몸통 판정은 모두 BIG_R로 같게
+const BIG_SIZE = 100, BIG_R = 30;
+const bigScale = m => { const a = { mon: m }, h = bodyH(a, 1), w = bodyW(a, 1); return h > 0 && w > 0 ? clamp(Math.min(BIG_SIZE / h, BIG_SIZE * 1.25 / w), 0.8, 2) : 2; };
 function spawnEnemy(m, x, y, rank, tier = 0) {
   const s = m.st, big = rank === 'boss' || rank === 'legend', w = m.box.x1 - m.box.x0;
   const base = { wild: s.hp / 8, trainer: s.hp / 8 * TRAINER_HP, boss: 20 + s.hp * 0.15, legend: 40 + s.hp * 0.3 }[rank], hp = base * hpMult(rank, tier);
-  const e = { mon: m, x, y, hx: x, hy: y, rank, tier, hp, maxHp: hp, scale: big ? 2 : 1, r: big ? clamp(w * 0.6, 30, 52) : clamp(w * 0.3, 12, 20), flying: m.flying, seed: Math.random() * 10,
+  const e = { mon: m, x, y, hx: x, hy: y, rank, tier, hp, maxHp: hp, scale: big ? bigScale(m) : 1, r: big ? BIG_R : clamp(w * 0.3, 12, 20), flying: m.flying, seed: Math.random() * 10,
     flip: false, hit: 0, cd: 1 + Math.random(), turn: Math.random(), dir: randDir(), vx: 0, vy: 0, walk: 0, moving: false, burn: 0, burnTick: 0, slow: 0, stun: 0, frozen: 0,
     z: 0, fade: 0, act: null, lunge: 1 + Math.random() * 2, burst: 0, burstT: 0, shotStyle: pick(tier >= 3 ? ['single', 'fan', 'burst', 'wave', 'snipe', 'spiral', 'ring', 'seeker'] : ['single', 'fan', 'burst', 'wave', 'snipe']), aggro: rank !== 'wild',
     moves: rank === 'wild' ? null : movesFor(m), speed: big ? 30 + s.speed * 0.6 : (40 + s.speed * 0.8) * (rank === 'wild' ? 1.15 : 1), shooter: !big && s['special-attack'] >= s.attack };
