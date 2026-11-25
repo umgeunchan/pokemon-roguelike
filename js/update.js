@@ -147,6 +147,7 @@ function update(dt) {
   for (const s of pstrikes) if ((s.t -= dt) <= 0) {
     s.done = true; fx.push({ kind: 'boom', x: s.x, y: s.y, r: s.r ?? 40, t: 0.25, max: 0.25, color: TYPE_COLOR[s.type ?? 'rock'] });
     if (s.meteor) meteorImpact(s);
+    if (s.arrow) { fx.push({ kind: 'lnova', x: s.x, y: s.y, r: s.r * 0.8, c1: '#30c060', c2: '#d0ffd8', t: 0.3, max: 0.3 }); lburst(s.x, s.y, '#30c060', '#e8c090', 4, 140, 0.4, 80); }
     for (const e of enemiesNear(s.x, s.y, s.r ?? 40)) damage(e, p.dmg * (s.mul ?? 0.8), s.type ?? 'rock', false, true);
   }
   pstrikes = pstrikes.filter(s => !s.done);
@@ -265,7 +266,7 @@ function pickupOk(tx, ty) {
   const r = map.room ?? roomAt(ty);
   return !r || (tx > r.x0 && tx < r.x1 && ty > r.y0 && ty < r.y1);
 }
-function glowImg(img, x, y, w, h, c) { ctx.save(); ctx.shadowColor = c; ctx.shadowBlur = 8 + Math.sin(now * 4) * 3; ctx.drawImage(img, x, y, w, h); ctx.restore(); }
+function glowImg(img, x, y, w, h, c) { ctx.save(); ctx.globalAlpha = 0.3 + Math.sin(now * 4) * 0.1; ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2, w * 0.55, h * 0.55, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); ctx.drawImage(img, x, y, w, h); }
 function placePickup(k) {
   k.placed = true;
   const cx = Math.floor(k.x / TS), cy = Math.floor(k.y / TS);

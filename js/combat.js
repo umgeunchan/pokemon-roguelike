@@ -212,7 +212,7 @@ function shootTear(a, extra = {}) {
   if (has('bullet-seed')) a += (Math.random() - 0.5) * 0.16;  // 씨앗은 조금씩 흩어진다
   tears.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life, life0: life, r: ((orb ? 17 : 7) + (hasFx('blade') ? 3 : 0)) * shotScale() * fxScale(), from: 'p', type: p.type,
     pierce: has('shadow-ball') || has('psychic') || psy || has('x-scissor') || hasFx('blade'), ghost: has('shadow-ball') || p.ghostShot, boom: has('psychic'), home: homing(), hit: new Set(),
-    xs: has('x-scissor') ? 1 : 0, blade: has('air-slash'), split2: combo('skyfall'), fire: has('will-o-wisp'), psn: has('sludge-bomb'), color: p.pcol?.[0], accent: p.pcol?.[1],
+    xs: has('x-scissor') ? 1 : 0, blade: has('air-slash'), wisp: has('astral-barrage'), split2: combo('skyfall'), fire: has('will-o-wisp'), psn: has('sludge-bomb'), color: p.pcol?.[0], accent: p.pcol?.[1],
     mul: (has('bullet-seed') ? 0.55 : 1) * (psy ? 1.4 : 1) * (has('razor-leaf') && !has('pin-missile') ? 0.7 : 1), ...extra });
 }
 // 사이코키네시스 탄이 되돌아선다 (사거리 끝이나 벽). 돌아올 때는 맞았던 적도 다시 맞힌다
@@ -339,7 +339,9 @@ function attack(dt) {
     if (hasFx('fan5')) {
       const offs = combo('tsunami') ? [-1.05, -0.7, -0.35, 0.35, 0.7, 1.05] : [-0.7, -0.35, 0.35, 0.7], m = combo('tsunami') ? 1.5 : 1.1;
       if (kind === 'cone') fireCone(base, { mul: m, half: Math.max(...offs) + 0.3 });  // 원뿔은 갈래 대신 아주 넓은 원뿔 하나
-      else for (const off of offs) fireAt(kind, base + off, { mul: m, tear: { r: combo('tsunami') ? 16 : 11, pierce: true, type: 'water', mul: m } });
+      // 근원의파동: 물방울 대신 푸른 빛줄기가 부채꼴로 뻗어 나간다
+      const op = has('origin-pulse') ? { blade: true, color: '#3a78ff', accent: '#e0f0ff' } : {};
+      for (const off of offs) fireAt(kind, base + off, { mul: m, tear: { r: combo('tsunami') ? 16 : 11, pierce: true, type: 'water', mul: m, ...op } });
     }
     if (combo('tidal') && (p.tide = (p.tide ?? 0) + 1) % 6 === 0) {
       fx.push({ kind: 'wave', x: p.x, y: p.y, t: 0.45, max: 0.45 });

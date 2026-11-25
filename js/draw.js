@@ -534,7 +534,6 @@ function drawHoopaRing(o, scale = 1) {
     for (let s = 0; s <= 24; s++) { const t = s / 24, a = now * 4 + i * Math.PI / 2 + t * 5, rr = R * 0.9 * t; s ? ctx.lineTo(o.x + Math.cos(a) * rr, y + Math.sin(a) * rr * 1.15) : ctx.moveTo(o.x, y); }
     ctx.stroke();
   }
-  ctx.shadowColor = '#ffd860'; ctx.shadowBlur = 12 + Math.sin(now * 5) * 5;
   ctx.strokeStyle = '#e8c048'; ctx.lineWidth = 7; ctx.beginPath(); ctx.ellipse(o.x, y, R, R * 1.15, 0, 0, Math.PI * 2); ctx.stroke();
   ctx.shadowBlur = 0; ctx.strokeStyle = '#fff2b0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(o.x, y, R - 2, R * 1.15 - 2, 0, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
   ctx.restore();
@@ -553,7 +552,7 @@ function drawWarp() {
     for (let s = 0; s <= 30; s++) { const u = s / 30, a = t * (5 + g * 6) + i * Math.PI / 3 + u * 6, rr = R * u; s ? ctx.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr) : ctx.moveTo(sx, sy); }
     ctx.stroke();
   }
-  ctx.strokeStyle = '#e8c048'; ctx.lineWidth = 8 + g * 20; ctx.shadowColor = '#ffd860'; ctx.shadowBlur = 20;
+  ctx.strokeStyle = '#e8c048'; ctx.lineWidth = 8 + g * 20;
   ctx.beginPath(); ctx.arc(sx, sy, R, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
   for (let i = 0; i < 24; i++) { const a = i * 2.4 + t * 3, d = ((i * 37 + t * 260) % 420) * (1 - g * 0.5); ctx.fillStyle = i % 3 ? '#c8a8ff' : '#fff'; ctx.fillRect(sx + Math.cos(a) * (420 - d), sy + Math.sin(a) * (420 - d), 3, 3); }
   const flash = clamp((t - 1.7) / 0.6, 0, 1);
@@ -587,7 +586,7 @@ function glowPath(pts, c, w) {
 }
 function drawLaser(b) {
   const pts = b.pts ?? beamPath(b), [c, core] = LASER_COLOR[b.ltype] ?? [player.pcol?.[0] ?? '#fff', '#fff'], k = Math.min(1, Math.max(0, b.t / b.t0) * 1.6);
-  ctx.save(); ctx.globalAlpha = k; ctx.translate(0, -TEAR_Z); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.shadowColor = c; ctx.shadowBlur = 12;
+  ctx.save(); ctx.globalAlpha = k; ctx.translate(0, -TEAR_Z); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   const jit = b.ltype === 'electric' ? 5 : 0;
   // 풀밭 위에서도 보이게 어두운 테두리 → 색 → 하얀 심
   for (const [w, col] of [[b.w + 4, mix(c, '#000000', 0.6)], [b.w, c], [Math.max(2, b.w * 0.4), core]]) {
@@ -595,7 +594,7 @@ function drawLaser(b) {
     pts.forEach(([x, y], i) => { const j = i && i < pts.length - 1 ? (Math.random() - 0.5) * jit : 0; i ? ctx.lineTo(x + j, y + j) : ctx.moveTo(x, y); });
     ctx.stroke();
   }
-  ctx.shadowBlur = 0; glowPath(pts, c, b.w);
+  glowPath(pts, c, b.w);
   if (b.ltype === 'ice') { ctx.fillStyle = '#fff'; for (let i = 2; i < pts.length; i += 4) ctx.fillRect(pts[i][0] - 2 + Math.random() * 6 - 3, pts[i][1] - 2 + Math.random() * 6 - 3, 3, 3); }
   ctx.restore();
 }
@@ -858,6 +857,7 @@ function drawPlay() {
   list.push({ y: p.y, draw: () => drawActor(p, (p.warpS ?? 1) * (p.dmax ? 1.4 : 1), p.vanish > 0 ? 0.15 : p.warpS !== undefined ? p.warpS : p.inv > 0 && Math.floor(p.inv * 10) % 2 ? 0.3 : 1) });
   for (const t of tears) list.push({ y: t.y, draw: () => {
     if (t.lance) return drawLance(t);
+    if (t.wisp) return drawWisp(t);
     const s = t.r * 2, x = Math.round(t.x - t.r), y = Math.round(t.y - TEAR_Z - t.r);
     // 내 기술 탄: 뒤로 빛 잔상이 끌리고 둘레가 은은하게 빛난다
     if (t.from === 'p') {
@@ -899,7 +899,7 @@ function drawPlay() {
     ctx.fillStyle = '#f4ecd8'; ctx.fillRect(x - 6, y - 9, 12, 18); ctx.fillRect(x - 8, y - 5, 16, 10);
     ctx.fillStyle = p.pcol?.[0] ?? '#7cb342'; ctx.fillRect(x - 4, y - 4, 4, 4); ctx.fillStyle = p.pcol?.[1] ?? '#7cb342'; ctx.fillRect(x + 2, y + 2, 4, 4);
   } });
-  for (const s of pstrikes) list.push({ y: s.y, draw: () => { if (s.meteor) return drawMeteor(s); ctx.fillStyle = s.type === 'ground' ? '#a07848' : '#7a6a48'; ctx.fillRect(s.x - 10, s.y - 20 - Math.max(0, s.t) * 300, 20, 18); } });
+  for (const s of pstrikes) list.push({ y: s.y, draw: () => { if (s.meteor) return drawMeteor(s); if (s.arrow) return drawArrow(s); ctx.fillStyle = s.type === 'ground' ? '#a07848' : '#7a6a48'; ctx.fillRect(s.x - 10, s.y - 20 - Math.max(0, s.t) * 300, 20, 18); } });
   list.sort((a, b) => a.y - b.y).forEach(a => a.draw());
   for (const e of enemies) drawTelegraphs(e, 'air');
   beams.forEach(drawBeam);

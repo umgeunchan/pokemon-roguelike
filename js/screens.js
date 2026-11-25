@@ -197,9 +197,11 @@ function drawShop() {
 
 // 희귀한 것의 이름: 글씨 둘레가 은은하게 숨 쉬듯 빛난다
 function glowText(s, x, y, size, color, glow = color, align = 'center', draw = text) {
-  ctx.save(); ctx.shadowColor = glow; ctx.shadowBlur = 7 + Math.sin(now * 4 + x * 0.01) * 3;
-  draw(s, x, y, size, color, align);
+  // 빛 번짐(shadowBlur)은 매 프레임 그리면 아주 무겁다: 빛 색 글자를 둘레에 겹쳐 그려 은은하게 빛나 보이게 한다
+  ctx.save(); ctx.globalAlpha = 0.35 + Math.sin(now * 4 + x * 0.01) * 0.15;
+  for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) draw(s, x + dx, y + dy, size, glow, align);
   ctx.restore();
+  draw(s, x, y, size, color, align);
 }
 // 아이템·기술 등급에 따른 빛 색: 희귀 금색, 아주 희귀·특별한 기술 보라
 const rareGlow = it => it?.r === 'g' ? '#f8c' : it?.legend || it?.r === 'l' ? '#c8f' : it?.r === 'r' ? '#fc4' : null;

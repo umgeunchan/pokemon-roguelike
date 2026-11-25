@@ -18,18 +18,20 @@ const LCOL = {
 };
 const lcol = (m, def) => LCOL[m?.id] ?? def;
 // 빛가루: 사방으로 튀어 오르다 떨어지며 사라지는 작은 빛 (그릴 때 위치를 계산해서 따로 움직일 필요가 없다)
+// 빛가루는 많아지면 프레임이 튄다: 화면의 효과가 많을수록 덜 만들고 260개를 넘으면 만들지 않는다
 function lburst(x, y, c1, c2, n, spd, life = 0.6, up = 0) {
-  if (fx.length > 1100) return;
+  if (fx.length > 260) return;
+  n = Math.ceil(n * (fx.length > 120 ? 0.35 : 0.7));
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, v = spd * (0.35 + Math.random() * 0.65), t = life * (0.6 + Math.random() * 0.4);
     fx.push({ kind: 'lpart', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.7 - up, g: 260, c: i % 3 ? c1 : c2, s: 2 + Math.random() * 4, t, max: t });
   }
 }
 // 돌진 기술(화룡점정·액셀브레이크·라이트닝드라이브·불새): 구르기 대신, 공격할 때 1.4초마다 그 방향(가까운 적)으로 혜성처럼 꿰뚫는 돌진 일격
-const CHARGE_COL = { 'behemoth-bash': ['#e03048', '#ffe0a0'], 'shadow-rush': ['#8020c0', '#ffb0ff'], 'dragon-ascent': ['#30e070', '#e8fff0'], 'collision-course': ['#ff5030', '#ffe0a0'], 'electro-drift': ['#40a0ff', '#ffff90'], 'sky-attack': ['#ff8020', '#fff0a0'] };
+const CHARGE_COL = { 'behemoth-bash': ['#e03048', '#ffe0a0'], 'sunsteel-strike': ['#ffa020', '#fff8d0'], 'heavy-slam': ['#8890a8', '#f0f4ff'], 'shadow-rush': ['#8020c0', '#ffb0ff'], 'dragon-ascent': ['#30e070', '#e8fff0'], 'collision-course': ['#ff5030', '#ffe0a0'], 'electro-drift': ['#40a0ff', '#ffff90'], 'sky-attack': ['#ff8020', '#fff0a0'] };
 function legendCharge(a) {
-  // 거수탄: 돌진 기술은 아니지만 방패를 앞세워 같은 방식으로 들이받는다
-  const p = player, m = lmove('dashStrike') ?? (has('behemoth-bash') ? moveDef('behemoth-bash') : null);
+  // 거수탄(방패)·메테오드라이브(불타는 혜성)·헤비봄버(몸통 박치기): 돌진 기술은 아니지만 원작처럼 같은 방식으로 들이받는다
+  const p = player, m = lmove('dashStrike') ?? ['behemoth-bash', 'sunsteel-strike', 'heavy-slam'].filter(has).map(moveDef).at(-1);
   if (has('glacial-lance')) glacialLance(a);
   if (!m || (p.chargeCd ?? 0) > p.time) return;
   p.chargeCd = p.time + (combo('stormdash') ? 1.1 : 1.4);
@@ -80,12 +82,30 @@ function drawMeteor(s) {
   ctx.globalAlpha = 0.25 + u * 0.4; ctx.strokeStyle = '#30e070'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(s.x, s.y, s.r * (0.4 + u * 0.6), s.r * 0.45 * (0.4 + u * 0.6), 0, 0, Math.PI * 2); ctx.stroke();
   const tx = s.side * 0.45, len = 160, gx = x + tx * len / Math.hypot(tx, 1), gy = y - len / Math.hypot(tx, 1);
   const g = ctx.createLinearGradient(x, y, gx, gy); g.addColorStop(0, '#fff8a0'); g.addColorStop(0.25, '#30e070'); g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.globalAlpha = 0.9; ctx.strokeStyle = g; ctx.lineCap = 'round'; ctx.shadowColor = '#30e070'; ctx.shadowBlur = 24;
+  ctx.globalAlpha = 0.9; ctx.strokeStyle = g; ctx.lineCap = 'round';
   for (const w of [30, 14]) { ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(gx, gy); ctx.stroke(); }
   ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#7dffb0'; ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI * 2); ctx.globalAlpha = 0.5; ctx.fill();
   ctx.restore();
   if (Math.random() < 0.6) lburst(x, y + 20, '#30e070', '#fff8a0', 1, 60, 0.3);
+}
+// 사우전드애로 그림: 위에서 비스듬히 내리꽂히는 초록 화살과 떨어질 자리 표시
+function drawArrow(s) {
+  const u = clamp(1 - s.t / s.t0, 0, 1), H = 360 * (1 - u), x = s.x - H * 0.18, y = s.y - 20 - H, a = Math.atan2(1, 0.18);
+  ctx.globalAlpha = 0.3 + u * 0.5; ctx.strokeStyle = '#40e070'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(s.x, s.y, s.r * 0.5, s.r * 0.25, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'lighter';
+  ctx.strokeStyle = '#30c060'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(-60, 0); ctx.lineTo(0, 0); ctx.stroke();
+  ctx.strokeStyle = '#d0ffd8'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#80ff90'; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-4, -8); ctx.lineTo(-4, 8); ctx.fill();
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+// 아스트랄비트 그림: 꼬리가 흔들리는 보랏빛 영혼 (원 몇 개뿐이라 가볍다)
+function drawWisp(t) {
+  const a = Math.atan2(t.vy, t.vx), cx = t.x, cy = t.y - 20, r = Math.max(8, t.r);
+  ctx.save();
+  for (let i = 4; i >= 0; i--) { const d = i * r * 0.55, w = Math.sin(now * 14 + i + t.x * 0.05) * r * 0.25 * i * 0.4; ctx.globalAlpha = 0.3 + (4 - i) * 0.15; ctx.fillStyle = i ? '#5a30b0' : '#c8b8ff'; ctx.beginPath(); ctx.arc(cx - Math.cos(a) * d - Math.sin(a) * w, cy - Math.sin(a) * d + Math.cos(a) * w, r * (1 - i * 0.15), 0, Math.PI * 2); ctx.fill(); }
+  ctx.globalAlpha = 1; ctx.fillStyle = '#20103a'; ctx.fillRect(cx - 4 + Math.cos(a) * 2, cy - 3, 3, 3); ctx.fillRect(cx + 2 + Math.cos(a) * 2, cy - 3, 3, 3);
+  ctx.restore();
 }
 // 운석이 떨어진 순간 (update.js): 녹색 폭발, 불티, 화면 흔들림
 function meteorImpact(s) {
@@ -97,7 +117,7 @@ function meteorImpact(s) {
 function drawLance(t) {
   const L = t.r * 5, w = t.r * 0.55;
   ctx.save(); ctx.translate(t.x, t.y - 20); ctx.rotate(Math.atan2(t.vy, t.vx));
-  ctx.globalCompositeOperation = 'lighter'; ctx.shadowColor = '#9fe8ff'; ctx.shadowBlur = 26;
+  ctx.globalCompositeOperation = 'lighter';
   const g = ctx.createLinearGradient(-L * 1.6, 0, 0, 0); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, '#9fe8ff');
   ctx.globalAlpha = 0.6; ctx.fillStyle = g; ctx.fillRect(-L * 1.6, -w * 1.6, L * 1.6, w * 3.2);
   ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
@@ -114,16 +134,14 @@ const segDist = (px, py, x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, 
 function drawLegendFx(f, k) {
   if (f.kind === 'lpart') {
     const age = f.max - f.t, x = f.x + f.vx * age, y = f.y - 20 + f.vy * age + 0.5 * f.g * age * age, sz = f.s * (1 - k * 0.5);
-    const g0 = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 1 - k; ctx.fillStyle = f.c; ctx.fillRect(x - sz / 2, y - sz / 2, sz, sz);
-    if (f.s > 3.5) { ctx.globalAlpha = (1 - k) * 0.3; ctx.beginPath(); ctx.arc(x, y, sz * 1.8, 0, Math.PI * 2); ctx.fill(); }
-    ctx.globalAlpha = 1; ctx.globalCompositeOperation = g0;
+    ctx.globalAlpha = 1;
     return;
   }
   if (f.kind === 'lcharge') {
     // 혜성 같은 돌진: 머리가 끝까지 날아가고, 지나간 자리에 빛의 꼬리가 남았다가 사라진다
     const u = Math.min(1, k * 3), hx = f.x + (f.x2 - f.x) * u, hy = f.y + (f.y2 - f.y) * u, fade = k < 0.34 ? 1 : 1 - (k - 0.34) / 0.66;
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.shadowColor = f.c1; ctx.shadowBlur = 24;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
     for (const [w, c, al] of [[f.w, f.c1, 0.35], [f.w * 0.45, f.c1, 0.85], [f.w * 0.15, f.c2, 1]]) { ctx.globalAlpha = al * fade; ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(f.x, f.y - 20); ctx.lineTo(hx, hy - 20); ctx.stroke(); }
     if (u < 1) { const g = ctx.createRadialGradient(hx, hy - 20, 0, hx, hy - 20, f.w * 1.2); g.addColorStop(0, '#ffffff'); g.addColorStop(0.4, f.c1); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy - 20, f.w * 1.2, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
@@ -149,7 +167,7 @@ function drawLegendFx(f, k) {
       const g = ctx.createRadialGradient(f.x, cy, f.R * 0.2, f.x, cy, f.R * 1.05);
       g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.7, f.c1); g.addColorStop(1, f.c2);
       ctx.globalAlpha = 0.45 * fade; ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(f.x, cy); ctx.arc(f.x, cy, f.R * 1.05, lo, hi); ctx.closePath(); ctx.fill();
-      ctx.shadowColor = f.c1; ctx.shadowBlur = 28; ctx.lineCap = 'round';
+      ctx.lineCap = 'round';
       for (const [rr, w, c, al] of [[1.0, 14, f.c1, 0.5], [1.0, 4, f.c2, 0.8], [0.7, 3, f.c2, 0.35]]) { ctx.globalAlpha = al * fade; ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(f.x, cy, f.R * rr, lo, hi); ctx.stroke(); }
       // 칼날: 손잡이·코등이·넓은 날·뾰족한 끝 (흰 테두리에 푸른 빛)
       if (fade > 0.05) {
@@ -157,7 +175,7 @@ function drawLegendFx(f, k) {
         const L = f.R * 1.08, w = Math.max(10, f.R * 0.11);
         ctx.fillStyle = '#c89030'; ctx.fillRect(4, -4, 22, 8);  // 손잡이
         ctx.fillStyle = '#ffd860'; ctx.fillRect(24, -w * 1.2, 8, w * 2.4);  // 코등이
-        ctx.shadowBlur = 0; ctx.fillStyle = '#7aa8e0'; ctx.beginPath(); ctx.moveTo(32, -w); ctx.lineTo(L - w * 2, -w); ctx.lineTo(L, 0); ctx.lineTo(L - w * 2, w); ctx.lineTo(32, w); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#7aa8e0'; ctx.beginPath(); ctx.moveTo(32, -w); ctx.lineTo(L - w * 2, -w); ctx.lineTo(L, 0); ctx.lineTo(L - w * 2, w); ctx.lineTo(32, w); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = '#1c2c50'; ctx.lineWidth = 3; ctx.stroke();
         ctx.fillStyle = '#e8f4ff'; ctx.beginPath(); ctx.moveTo(32, -w * 0.9); ctx.lineTo(L - w * 2, -w * 0.9); ctx.lineTo(L - 4, 0); ctx.lineTo(32, 0); ctx.closePath(); ctx.fill();  // 빛 받는 윗날
         ctx.fillStyle = '#ffffff'; ctx.fillRect(36, -2, L - w * 2 - 40, 4);  // 날 가운데 빛줄기
@@ -171,13 +189,13 @@ function drawLegendFx(f, k) {
       }
       ctx.globalAlpha = 0.5 * (1 - kk); ctx.fillStyle = f.c1; ctx.beginPath(); ctx.moveTo(f.x, cy); ctx.arc(f.x, cy, f.R, a0, a1); ctx.closePath(); ctx.fill();
       // 잔상 호 두 겹과 칼끝 불티
-      ctx.shadowColor = f.c1; ctx.shadowBlur = 16;
+     
       for (const [rr, al] of [[0.62, 0.45], [1.0, 0.3]]) { ctx.globalAlpha = al * (1 - kk); ctx.strokeStyle = f.c2; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(f.x, cy, f.R * rr, a0, a1); ctx.stroke(); }
       if (kk < 0.5 && !f.sp) { f.sp = true; for (let i = 0; i < 10; i++) { const g = a0 + (a1 - a0) * Math.random(); lburst(f.x + Math.cos(g) * f.R * 0.82, f.y + Math.sin(g) * f.R * 0.82, f.c1, f.c2, 1, 120, 0.45); } }
     } else {
       const r = f.R * (0.55 + kk * 0.45), x = f.x + Math.cos(f.a) * r, y = cy + Math.sin(f.a) * r;
       if (!f.sp) { f.sp = true; lburst(x, y + 20, f.c1, f.c2, 12, 200, 0.45); }
-      ctx.shadowColor = f.c1; ctx.shadowBlur = 18;
+     
       ctx.globalAlpha = 1 - kk; ctx.fillStyle = f.c1; ctx.beginPath(); ctx.arc(x, y, 26 * (1 - kk * 0.3), 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = f.c2; ctx.beginPath(); ctx.arc(x, y, 12 * (1 - kk * 0.5), 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = f.c2; ctx.lineWidth = 3;
@@ -199,7 +217,7 @@ function drawLegendFx(f, k) {
     ctx.globalAlpha = (1 - k) * 0.28; ctx.fillStyle = bg; ctx.beginPath(); ctx.ellipse(f.x, f.y - 20, f.r * 1.2 * (0.4 + e * 0.6), f.r * 0.8 * (0.4 + e * 0.6), 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = (1 - k) * 0.9; ctx.fillStyle = f.c2;
     for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(f.x, f.y - 20, f.r * 1.3 * (1 - k * 0.5), 3 + 4 * (1 - k), i * Math.PI / 4 + k * 1.2, 0, Math.PI * 2); ctx.fill(); }
-    ctx.shadowColor = f.c1; ctx.shadowBlur = 18;
+   
     for (let i = 0; i < 4; i++) {
       const r = f.r * clamp(e - i * 0.08, 0, 1);
       ctx.globalAlpha = (1 - k) * (0.9 - i * 0.18); ctx.strokeStyle = i % 2 ? f.c2 : f.c1; ctx.lineWidth = 14 - i * 3;
@@ -207,15 +225,16 @@ function drawLegendFx(f, k) {
     }
     ctx.globalAlpha = (1 - k) * 0.8; ctx.strokeStyle = f.c2; ctx.lineWidth = 3;
     for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2 + k * 1.5, r1 = f.r * e * 0.3, r2 = f.r * e * 1.05; ctx.beginPath(); ctx.moveTo(f.x + Math.cos(a) * r1, f.y - 20 + Math.sin(a) * r1 * 0.62); ctx.lineTo(f.x + Math.cos(a) * r2, f.y - 20 + Math.sin(a) * r2 * 0.62); ctx.stroke(); }
-    const g = ctx.createRadialGradient(f.x, f.y - 20, 0, f.x, f.y - 20, 120 * (1 - k) + 20);
+    // 가운데 섬광은 파동 크기에 맞춘다 (작은 파동에 큰 섬광은 화면을 하얗게 덮고 무겁다)
+    const fr = Math.min(140, f.r * 1.1), g = ctx.createRadialGradient(f.x, f.y - 20, 0, f.x, f.y - 20, fr * (1 - k) + 10);
     g.addColorStop(0, `rgba(255,255,255,${1 - k})`); g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, f.y - 20, 140, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, f.y - 20, fr + 10, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
   if (f.kind === 'lrift') {
     // 공간의 균열: 들쭉날쭉한 빛의 선이 벌어졌다 닫힌다
     const open = Math.sin(Math.min(1, k * 1.4) * Math.PI), pts = 14;
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.shadowColor = f.c1; ctx.shadowBlur = 22;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
     for (const [w, c, a] of [[22 * open + 4, f.c1, 0.55], [8 * open + 2, f.c2, 0.95]]) {
       ctx.globalAlpha = a * (1 - k * 0.6); ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineJoin = 'bevel'; ctx.beginPath();
       for (let i = 0; i <= pts; i++) {
@@ -237,7 +256,7 @@ function drawLegendFx(f, k) {
     const gg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 110); gg.addColorStop(0, f.c2); gg.addColorStop(0.3, f.c1); gg.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.globalAlpha = (1 - kk) * 0.35; ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(f.x, f.y, 110, 50, 0, 0, Math.PI * 2); ctx.fill();
     if (kk < 0.2) { ctx.globalAlpha = (0.2 - kk) * 2.5; ctx.fillStyle = f.c2; ctx.beginPath(); ctx.arc(f.x, f.y - 30, 50 * (1 - kk * 2), 0, Math.PI * 2); ctx.fill(); }
-    ctx.globalAlpha = 1 - kk; ctx.shadowColor = f.c1; ctx.shadowBlur = 20;
+    ctx.globalAlpha = 1 - kk;
     if (f.spike) {
       // 단애의칼·사우전드애로: 땅에서 바위 칼날이 솟는다
       const hgt = 90 * Math.sin(Math.min(1, kk * 2.2) * Math.PI / 2) * (1 - Math.max(0, kk - 0.6) / 0.4);
@@ -265,7 +284,7 @@ function drawLegendFx(f, k) {
   if (f.kind === 'lbeam') {
     const a = Math.atan2(f.y2 - f.y, f.x2 - f.x), L = Math.hypot(f.x2 - f.x, f.y2 - f.y), w = f.w * Math.sin(Math.min(1, k * 1.3) * Math.PI);
     if (Math.random() < 0.7) { const u = Math.random(); lburst(f.x + Math.cos(a) * L * u, f.y + Math.sin(a) * L * u, f.c1, f.c2, 2, 120, 0.4, 40); }
-    ctx.save(); ctx.translate(f.x, f.y - 20); ctx.rotate(a); ctx.globalCompositeOperation = 'lighter'; ctx.shadowColor = f.c1; ctx.shadowBlur = 26;
+    ctx.save(); ctx.translate(f.x, f.y - 20); ctx.rotate(a); ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.25; ctx.fillStyle = f.c1; ctx.fillRect(0, -w * 1.4, L, w * 2.8);
     ctx.globalAlpha = 0.5; ctx.fillStyle = f.c1; ctx.fillRect(0, -w * 0.8, L, w * 1.6);
     ctx.globalAlpha = 0.9; ctx.fillRect(0, -w / 2, L, w);
@@ -309,12 +328,22 @@ function legendHit(e, big) {
   if (hasFx('erupt') && p.eruptCd <= 0) {
     const tc = combo('tectonic');
     p.eruptCd = tc ? 0.2 : 0.35;
-    const d0 = Math.hypot(e.x - p.x, e.y - p.y) || 1, ux = (e.x - p.x) / d0, uy = (e.y - p.y) / d0;
-    for (let i = 0; i < (tc ? 7 : 5); i++) {
-      const x = e.x + ux * 55 * i, y = e.y + uy * 55 * i;
-      pstrikes.push({ x, y, t: 0.08 + i * 0.1, r: 50 * s * (tc ? 1.35 : 1), mul: 1.5, type: 'ground' });
-      fx.push({ kind: 'lstrike', x, y, c1: '#9a5a2a', c2: '#e8c090', spike: true, t: 0.6 + i * 0.1, max: 0.6 + i * 0.1, d: 0.08 + i * 0.1 });
+    // 사우전드애로: 하늘로 쏘아 올린 초록 화살이 적 둘레로 쏟아진다
+    if (lmove('erupt')?.id === 'thousand-arrows') {
+      for (let i = 0, n = tc ? 7 : 5; i < n; i++) { const a = Math.random() * Math.PI * 2, r = i ? 30 + Math.random() * 60 * s : 0; pstrikes.push({ x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r * 0.6, t: 0.12 + i * 0.07, t0: 0.12 + i * 0.07, r: 48 * s * (tc ? 1.35 : 1), mul: 1.5, type: 'ground', arrow: true }); }
+    } else {
+      const d0 = Math.hypot(e.x - p.x, e.y - p.y) || 1, ux = (e.x - p.x) / d0, uy = (e.y - p.y) / d0;
+      for (let i = 0; i < (tc ? 7 : 5); i++) {
+        const x = e.x + ux * 55 * i, y = e.y + uy * 55 * i;
+        pstrikes.push({ x, y, t: 0.08 + i * 0.1, r: 50 * s * (tc ? 1.35 : 1), mul: 1.5, type: 'ground' });
+        fx.push({ kind: 'lstrike', x, y, c1: '#9a5a2a', c2: '#e8c090', spike: true, t: 0.6 + i * 0.1, max: 0.6 + i * 0.1, d: 0.08 + i * 0.1 });
+      }
     }
+  }
+  // 데스윙: 날개에서 붉은 빛줄기가 적을 꿰뚫고, 빼앗은 생기가 내게로 흘러든다
+  if (has('oblivion-wing') && lcd('oblivion', 0.45)) {
+    fx.push({ kind: 'lbeam', x: p.x, y: p.y, x2: e.x, y2: e.y, w: 9, c1: '#d01838', c2: '#ffd0d8', t: 0.3, max: 0.3 }, { kind: 'lnova', x: e.x, y: e.y, r: 45 * s, c1: '#d01838', c2: '#ffd0d8', t: 0.3, max: 0.3 });
+    damage(e, p.dmg * 0.6, 'flying', false, true);
   }
   // 시드플레어: 맞힌 자리에서 빛이 터져 둥글게 퍼진다
   if (hasFx('flare') && lcd('flare', 0.15)) {
@@ -412,7 +441,7 @@ function legendBeamHit(e) {
   const pillar = { 'photon-geyser': ['#ffe880', '#ffffff'], 'tera-starstorm': ['#c0a0ff', '#fff8ff'], 'blue-flare': ['#40a0ff', '#e0f4ff'], scald: ['#60c0ff', '#ffffff'],
     'steam-eruption': ['#e0f0ff', '#ffffff'], 'shadow-blast': ['#7020b0', '#ffc0ff'], 'light-that-burns-the-sky': ['#fff0a0', '#ffffff'] }[lb.id];
   if (pillar) fx.push({ kind: 'lstrike', x: e.x, y: e.y, c1: pillar[0], c2: pillar[1], t: 0.5, max: 0.5, d: 0 });
-  else fx.push({ kind: 'lnova', x: e.x, y: e.y, r: 70, c1: TYPE_COLOR[lb.type], c2: '#ffffff', t: 0.4, max: 0.4 });
+  else { const [c1, c2] = { eternabeam: ['#ff2050', '#ffd0e0'], 'moongeist-beam': ['#b040ff', '#ffd0ff'], aeroblast: ['#a8c8ff', '#ffffff'], 'fleur-cannon': ['#ff70b8', '#fff0f8'] }[lb.id] ?? [TYPE_COLOR[lb.type], '#ffffff']; fx.push({ kind: 'lnova', x: e.x, y: e.y, r: 70, c1, c2, t: 0.4, max: 0.4 }); }
   const bt = lb.id === 'techno-blast' ? curForm()?.shotType ?? 'normal' : lb.type;
   for (const o of [e, ...enemiesNear(e.x, e.y, 60, e)]) damage(o, p.dmg * 0.9, bt, false, true);
   if (lb.id === 'shadow-blast') e.weak = Math.max(e.weak ?? 0, 3);
