@@ -38,6 +38,7 @@ function hurt(type, amount = 1, src = null) {
   // 특성: 막거나 줄이거나 회복으로 바꾼다
   if (d > 0) { d = abHurt(type, d, who, src); if (d <= 0) { p.inv = 0.4; return; } }
   if (d > 0 && curForm()?.guard) d = 1;  // 테오키스 디펜스폼: 받는 피해는 늘 반 칸
+  if (d > 0 && player.evilHurt > 0) d += player.evilHurt;  // 악의 조직과의 거래 대가: 맞을 때마다 피해가 더 들어온다
   p.inv = p.invTime + abStat('inv', 0); p.streak = 0;
   // 사망 화면에 보여 줄 최근 맞은 공격 3개
   p.lastHits = [...(p.lastHits ?? []), { who: who?.mon.name, move, d, heavy: amount >= 2, type }].slice(-3); p.hits = (p.hits ?? 0) + 1;

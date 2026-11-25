@@ -1,8 +1,8 @@
 // 악의 조직: 체육관을 제패하고 나오면 조직원이 다가와 거래를 건다
-// 거래 = 좋은 것(도구·기술 위력·능력치)을 주는 대신 대가(최대 체력·상대 체력 증가·회복량 절반)를 건다. 거절하면 라이벌급 승부
+// 거래 = 좋은 것(도구·기술 위력·능력치)을 주는 대신 대가(최대 체력·상대 체력 증가·받는 피해 증가·회복량 절반)를 건다. 거절하면 라이벌급 승부
 // 한 번이라도 거래하면 라이벌이 적대적으로 변하고, 8번 모두 거절하면 라이벌이 마지막 승부 뒤에 조건 없는 최고급 거래를 해 준다
 // 기록(플레이어 숫자·참거짓 값이라 이어하기에 그대로 저장된다): evilDue 거래를 걸어올 배지 수, evilDeals 거래 횟수, evilRefused 거절 횟수,
-// evilPow 기술 위력 배수, curseHp 상대 체력 배수, healHalf 회복량 절반, rivalGiftDue/rivalGiftDone 라이벌의 선물
+// evilPow 기술 위력 배수, curseHp 상대 체력 배수, evilHurt 받는 피해 추가(반 칸 단위), healHalf 회복량 절반, rivalGiftDue/rivalGiftDone 라이벌의 선물
 
 // 지방마다: 조직 이름, 색, 조직원·간부·보스 [이름, 스프라이트], 포켓몬 [진화 전, 진화 후], 보스 에이스, 승부 결투장 타입
 const ORGS = {
@@ -38,26 +38,26 @@ const EVIL_LINES = {
 };
 
 // ---------- 거래 내용 ----------
-// 좋은 것: 배지가 많을수록 더 좋다. 한 번에 2가지(배지 7개부터 3가지)를 주고, 조직 전용 물건이 붙기도 한다
-// (2026-11-23: 대가에 비해 보상이 약하다는 의견으로 크게 올림)
+// 좋은 것: 배지가 많을수록 더 좋다. 한 번에 2가지를 주고, 조직 전용 물건이 붙기도 한다
+// (2026-11-23: 대가에 비해 보상이 약하다는 의견으로 크게 올림 → 2026-11-25: 반대로 너무 남는 장사라 보상은 조금 내리고 대가를 무겁게)
 const f2 = v => +v.toFixed(2);
 const EVIL_GIVE = [
-  { id: 'item', ko: k => k >= 4 ? '마스터볼 급 물건 하나' : '하이퍼볼 급 물건 하나', give: k => { const p = player, c = k >= 4 ? masterReward() : hyperReward(); map.pickups.push({ ...c, x: p.x - 30, y: p.y + 40, ball: true }); } },
-  { id: 'pow', ko: k => `모든 기술 위력 x${f2(1.2 + 0.03 * k)}`, give: k => { player.evilPow = (player.evilPow ?? 1) * (1.2 + 0.03 * k); } },
-  { id: 'atk', ko: k => `공격 x${f2(1.15 + 0.02 * k)}`, give: k => { player.dmg *= 1.15 + 0.02 * k; } },
-  { id: 'rate', ko: k => `연사 x${f2(1.15 + 0.02 * k)}, 탄속 x1.15`, give: k => { player.fireDelay /= 1.15 + 0.02 * k; player.shotSpeed *= 1.15; } },
-  { id: 'crit', ko: k => `급소 +${12 + k}%, 사거리 x1.2`, give: k => { player.crit += 0.12 + 0.01 * k; player.range *= 1.2; } },
-  { id: 'hp', ko: k => k >= 5 ? '최대 체력 +1.5칸, 완전 회복' : '최대 체력 +1칸, 완전 회복', give: k => { const p = player, n = k >= 5 ? 3 : 2; p.maxHp += n; p.hp = p.maxHp; } },
-  { id: 'speed', ko: k => `이동 속도 +${f2(0.2 + 0.02 * k)}, 공격 +${f2(0.3 * k)}`, give: k => { player.speed += 40 + 4 * k; player.dmg += 0.3 * k; } },
+  { id: 'item', ko: k => k >= 5 ? '마스터볼 급 물건 하나' : '하이퍼볼 급 물건 하나', give: k => { const p = player, c = k >= 5 ? masterReward() : hyperReward(); map.pickups.push({ ...c, x: p.x - 30, y: p.y + 40, ball: true }); } },
+  { id: 'pow', ko: k => `모든 기술 위력 x${f2(1.15 + 0.02 * k)}`, give: k => { player.evilPow = (player.evilPow ?? 1) * (1.15 + 0.02 * k); } },
+  { id: 'atk', ko: k => `공격 x${f2(1.1 + 0.015 * k)}`, give: k => { player.dmg *= 1.1 + 0.015 * k; } },
+  { id: 'rate', ko: k => `연사 x${f2(1.1 + 0.015 * k)}, 탄속 x1.1`, give: k => { player.fireDelay /= 1.1 + 0.015 * k; player.shotSpeed *= 1.1; } },
+  { id: 'crit', ko: k => `급소 +${8 + k}%, 사거리 x1.15`, give: k => { player.crit += 0.08 + 0.01 * k; player.range *= 1.15; } },
+  { id: 'hp', ko: () => '최대 체력 +1칸, 완전 회복', give: () => { const p = player; p.maxHp += 2; p.hp = p.maxHp; } },
+  { id: 'speed', ko: k => `이동 속도 +${f2(0.15 + 0.015 * k)}, 공격 +${f2(0.2 * k)}`, give: k => { player.speed += 30 + 3 * k; player.dmg += 0.2 * k; } },
 ];
 // 조직 전용 물건: 악의 조직과 거래해야만 얻는다 (도구 r: 'e'는 상자·상점에 안 나온다, 섀도 기술은 마스터볼 급 보상에서도 빠진다)
 ITEMS.push(
-  { ...I('evil-core', 'e', '섀도코어', '조직 전용 · 공격 x1.3, 급소 +10%', p => { p.dmg *= 1.3; p.crit += 0.1; }), icon: 'dark-gem' },
+  { ...I('evil-core', 'e', '섀도코어', '조직 전용 · 공격 x1.25, 급소 +8%', p => { p.dmg *= 1.25; p.crit += 0.08; }), icon: 'dark-gem' },
   { ...I('evil-fang', 'e', '흡혈송곳니', '조직 전용 · 피해를 줄수록 체력을 흡수한다', p => { p.vamp = true; }), icon: 'razor-fang' },
   { ...I('evil-armor', 'e', '흑요석 갑옷', '조직 전용 · 최대 체력 +2칸, 완전 회복', p => { p.maxHp += 4; p.hp = p.maxHp; }), icon: 'malicious-armor' },
   { ...I('evil-disc', 'e', '개조 디스크', '조직 전용 · 연사 x1.3, 탄속 x1.2', p => { p.fireDelay /= 1.3; p.shotSpeed *= 1.2; }), icon: 'dubious-disc' },
   { ...I('evil-stone', 'e', '어둠의 결정', '조직 전용 · 적을 쓰러뜨리면 6초 동안 공격 x1.4', p => { p.evilMoxie = true; }), icon: 'black-augurite' },
-  { ...I('evil-plate', 'e', '어둠의 판', '조직 전용 · 모든 기술 위력 x1.25', p => { p.evilPow = (p.evilPow ?? 1) * 1.25; }), icon: 'dread-plate' },
+  { ...I('evil-plate', 'e', '어둠의 판', '조직 전용 · 모든 기술 위력 x1.2', p => { p.evilPow = (p.evilPow ?? 1) * 1.2; }), icon: 'dread-plate' },
 );
 const EVIL_ITEMS = ['evil-core', 'evil-fang', 'evil-armor', 'evil-disc', 'evil-stone', 'evil-plate'], EVIL_MOVES = ['shadow-rush', 'shadow-blast', 'shadow-storm', 'shadow-end'];
 // 아직 없는 조직 전용 물건 하나 (기술 또는 도구)
@@ -69,21 +69,27 @@ function evilExclusive() {
 }
 const exclusiveGive = c => ({ id: 'excl', ko: () => `조직 전용 ${c.kind === 'tm' ? '기술' : '도구'}: ${c.kind === 'tm' ? c.tm.name : c.item.name} (${c.kind === 'tm' ? c.tm.desc.replace('조직 전용 · ', '') : c.item.desc.replace('조직 전용 · ', '')})`,
   give: () => { const p = player; map.pickups.push({ ...c, x: p.x + 30, y: p.y + 40, ball: true }); }, excl: true });
-// 대가
+// 대가: 배지가 많을수록 무겁다 (조직원 → 간부 → 보스). 배지 1~3개는 1가지, 4개부터는 서로 다른 2가지를 한꺼번에 건다
+// 최대 체력은 2칸 아래로는 깎지 않는다(그만큼 남지 않으면 그 대가는 고르지 않는다)
+const hpLoss = k => k >= 7 ? 10 : k >= 4 ? 6 : 4;  // 반 칸 단위: 2칸 / 3칸 / 5칸
+const curseMul = k => k >= 7 ? 2 : k >= 4 ? 1.7 : 1.4;
+const hurtAdd = k => k >= 7 ? 2 : 1;  // 반 칸 단위
 const EVIL_COST = [
-  { ko: () => '최대 체력 -1칸', ok: p => p.maxHp > 4, pay: p => { p.maxHp -= 2; p.hp = Math.min(p.hp, p.maxHp); } },
-  { ko: () => '앞으로 만나는 상대 포켓몬 체력 x1.15', ok: () => true, pay: p => { p.curseHp = (p.curseHp ?? 1) * 1.15; } },
-  { ko: () => '앞으로 회복량 절반', ok: p => !p.healHalf, pay: p => { p.healHalf = true; } },
+  { id: 'maxhp', ko: k => `최대 체력 -${hpLoss(k) / 2}칸`, ok: (p, k) => p.maxHp - hpLoss(k) >= 4, pay: (p, k) => { p.maxHp -= hpLoss(k); p.hp = Math.min(p.hp, p.maxHp); } },
+  { id: 'curse', ko: k => `앞으로 만나는 상대 포켓몬 체력 x${curseMul(k)}`, ok: () => true, pay: (p, k) => { p.curseHp = (p.curseHp ?? 1) * curseMul(k); } },
+  { id: 'hurt', ko: k => `앞으로 받는 피해 +${hurtAdd(k) === 1 ? '반 칸' : hurtAdd(k) / 2 + '칸'} (맞을 때마다)`, ok: () => true, pay: (p, k) => { p.evilHurt = (p.evilHurt ?? 0) + hurtAdd(k); } },
+  { id: 'heal', ko: () => '앞으로 회복량 절반', ok: p => !p.healHalf, pay: p => { p.healHalf = true; } },
 ];
 let deal = null;
 function makeDeal(n, k) {
-  const p = player, costs = EVIL_COST.filter(c => c.ok(p));
-  const cost = pick(costs.length ? costs : [EVIL_COST[1]]), pool = shuffle(EVIL_GIVE.filter(g => !(g.id === 'hp' && cost === EVIL_COST[0])));
-  const gives = pool.slice(0, k >= 7 ? 3 : 2);
-  // 조직 전용 물건: 배지 1~3개 25%, 4~6개 60%, 7~8개는 반드시
-  const ex = Math.random() < (k >= 7 ? 1 : k >= 4 ? 0.6 : 0.25) && evilExclusive();
+  const p = player, costs = shuffle(EVIL_COST.filter(c => c.ok(p, k))).slice(0, k >= 4 ? 2 : 1);
+  if (!costs.length) costs.push(EVIL_COST[1]);
+  const pool = shuffle(EVIL_GIVE.filter(g => !(g.id === 'hp' && costs.some(c => c.id === 'maxhp'))));
+  const gives = pool.slice(0, 2);
+  // 조직 전용 물건: 배지 1~3개 20%, 4~6개 45%, 7~8개는 반드시
+  const ex = Math.random() < (k >= 7 ? 1 : k >= 4 ? 0.45 : 0.2) && evilExclusive();
   if (ex) gives.push(exclusiveGive(ex));
-  return { n, k, who: n.who, line: orgSay(EVIL_LINES.offer[n.who.rank]), gives, cost };
+  return { n, k, who: n.who, line: orgSay(EVIL_LINES.offer[n.who.rank]), gives, costs };
 }
 
 // ---------- 체육관 밖에서 다가온다 ----------
@@ -127,7 +133,7 @@ function acceptDeal() {
     banner = { text: '라이벌의 마음이 담긴 최고의 거래! 조건 없이 힘을 받았다', t: 4, glow: '#ffd060' };
     renderBar(); return;
   }
-  withDelta(() => { dl.gives.forEach(g => g.give(dl.k)); dl.cost.pay(p); capStats(p); });
+  withDelta(() => { dl.gives.forEach(g => g.give(dl.k)); dl.costs.forEach(c => c.pay(p, dl.k)); capStats(p); });
   p.evilDeals = (p.evilDeals ?? 0) + 1; p.evilDue = 0;
   ach('evil1'); if (p.evilDeals >= 8) ach('evil8');
   if (dl.gives.some(g => g.excl)) ach('evilitem');
@@ -136,7 +142,7 @@ function acceptDeal() {
   lburst(p.x, p.y, '#a02060', '#301028', 36, 220, 0.9, 80); shake = 0.3; sfx('crit');
   dialog = { name: dl.who.name, text: orgSay(EVIL_LINES.accept[dl.who.rank]), t: 4 };
   const rv = RIVALS[region.name];
-  banner = { text: p.evilDeals === 1 && rv ? `거래 성립... 어딘가에서 ${rv[0]}이(가) 지켜보고 있었다` : `거래 성립: ${dl.gives.map(g => g.ko(dl.k)).join(', ')} / 대가: ${dl.cost.ko(dl.k)}`, t: 3.5, glow: '#a02060' };
+  banner = { text: p.evilDeals === 1 && rv ? `거래 성립... 어딘가에서 ${rv[0]}이(가) 지켜보고 있었다` : `거래 성립: ${dl.gives.map(g => g.ko(dl.k)).join(', ')} / 대가: ${dl.costs.map(c => c.ko(dl.k)).join(', ')}`, t: 3.5, glow: '#a02060' };
   dl.n.leaveT = 2.5;
   renderBar();
 }
@@ -176,7 +182,7 @@ function openRivalGift() {
   loadTrainer(sprite);
   deal = { rival: true, k: 8, who: { name, sprite, title: '라이벌', rank: 2 },
     line: orgSay('{org}의 유혹을 여덟 번 모두 뿌리쳤다며? ...역시 넌 내 라이벌이야. 이건 내가 모아 둔 최고의 것들이야. 조건 따윈 없어. 챔피언, 꼭 되라고!'),
-    gives: [EVIL_GIVE[0], EVIL_GIVE[1], EVIL_GIVE[2], EVIL_GIVE[5]], cost: null };
+    gives: [EVIL_GIVE[0], EVIL_GIVE[1], EVIL_GIVE[2], EVIL_GIVE[5]], costs: null };
   state = 'deal'; sfx('select');
 }
 const rivalHostile = () => (player?.evilDeals ?? 0) > 0;
@@ -184,7 +190,7 @@ const rivalHostile = () => (player?.evilDeals ?? 0) > 0;
 // ---------- 거래 화면 ----------
 function drawDeal() {
   const dl = deal; if (!dl) return;
-  const o = org(), col = dl.rival ? '#ffd060' : o.color, w = 560, h = 330, x = SIDE + (W - w) / 2, y = HUD + (H - h) / 2;
+  const o = org(), col = dl.rival ? '#ffd060' : o.color, w = 560, h = 350, x = SIDE + (W - w) / 2, y = HUD + (H - h) / 2;
   ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(SIDE, HUD, W, H);
   ctx.fillStyle = dl.rival ? '#1e1a10' : '#1a1016'; ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
@@ -196,9 +202,10 @@ function drawDeal() {
   ctx.fillStyle = 'rgba(255,210,90,.1)'; ctx.fillRect(x + 20, y + 132, w - 40, 86);
   text(dl.rival ? '선물' : '받는 것', x + 30, y + 148, 11, '#fd6', 'left');
   dl.gives.forEach((g, i) => text(`· ${g.ko(dl.k)}`, x + 30, y + 166 + i * 15, g.excl ? 11 : 12, g.excl ? '#e0a0ff' : '#ffe8a0', 'left'));
-  if (dl.cost) {
-    ctx.fillStyle = 'rgba(255,60,90,.1)'; ctx.fillRect(x + 20, y + 224, w - 40, 36);
-    text('대가', x + 30, y + 238, 11, '#f68', 'left'); text(`· ${dl.cost.ko(dl.k)}`, x + 30, y + 254, 12, '#ff9ab0', 'left');
+  if (dl.costs) {
+    ctx.fillStyle = 'rgba(255,60,90,.1)'; ctx.fillRect(x + 20, y + 224, w - 40, 22 + dl.costs.length * 16);
+    text('대가', x + 30, y + 238, 11, '#f68', 'left');
+    dl.costs.forEach((c, i) => text(`· ${c.ko(dl.k)}`, x + 30, y + 254 + i * 16, 12, '#ff9ab0', 'left'));
   } else text('대가 없음', x + 30, y + 242, 12, '#9f9', 'left');
   const btn = (bx, label, c, fn) => { ctx.fillStyle = c; ctx.fillRect(bx, y + h - 56, 200, 38); text(label, bx + 100, y + h - 32, 13, '#fff'); taps.push({ x: bx, y: y + h - 56, w: 200, h: 38, fn }); };
   if (dl.rival) btn(x + (w - 200) / 2, TOUCH ? '받는다' : '[1] 받는다', '#806020', acceptDeal);
